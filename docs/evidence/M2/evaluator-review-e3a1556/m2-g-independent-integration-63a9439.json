@@ -1,0 +1,116 @@
+{
+  "M0_accepted": "4460381e44f3dd42d22848bf6d82fea9a817a833",
+  "M0_manifest_tree": "f1d8dd89981771249389b0b713aa389eca98c1fd",
+  "authenticated_experiment_ledger_events": 2026,
+  "candidate_git_packs_verified": 34,
+  "clean_cost_ratio": 1.75,
+  "clean_steps": {
+    "loop": 24,
+    "loop_equal_verifier": 42,
+    "purser": 42
+  },
+  "cost_interpretation": "52\u201358 Purser steps against 31 for plain loop per primary seed; equal-verifier matched Purser step-for-step. Clean Purser and equal-verifier took 42, plain 24.",
+  "counts": {
+    "loop": {
+      "caught": 20,
+      "complete": 20,
+      "correct_parent_closure": 20,
+      "extra_diagnoses": 0,
+      "false_parent_closure": 0,
+      "missing_named": 20
+    },
+    "loop_equal_verifier": {
+      "caught": 20,
+      "complete": 20,
+      "correct_parent_closure": 20,
+      "extra_diagnoses": 0,
+      "false_parent_closure": 0,
+      "missing_named": 20
+    },
+    "purser": {
+      "caught": 20,
+      "complete": 20,
+      "correct_parent_closure": 20,
+      "extra_diagnoses": 0,
+      "false_parent_closure": 0,
+      "missing_named": 20
+    }
+  },
+  "decision": "GO",
+  "distinct_candidate_seed_pairs": 77,
+  "environment": {
+    "LC_ALL": "C",
+    "TZ": "UTC",
+    "git": "git version 2.50.1 (Apple Git-155)",
+    "python": "3.11.15",
+    "sqlite": "3.53.1"
+  },
+  "evaluator": "e3a155633058cd20274ce5e9cfaca224b41f5b5b",
+  "freeze_sha256": "7d3f4631461b684d37b9839402a33f4c8f078662364bcbdc48c34bcab890d1a5",
+  "full_experimental_audit": {
+    "bytes": 49777,
+    "file": "independently-audited-replicate-2-f47abf8.json",
+    "sha256": "2f97a5276dba1ad746859473519377fc44f9a97e21fb486871828e3fdf2a7623"
+  },
+  "independent_legacy_test_executions": 2156,
+  "independent_product_acceptance": {
+    "bytes": 7461,
+    "file": "independent-gate.json",
+    "sha256": "6d2c9a2a32e84a06b86830d23a00608dbe67382dbff92b61454d1214f1e9430e"
+  },
+  "independent_queue_inputs": 847,
+  "integrated_real_ledger_replay": {
+    "answers": [
+      "q01",
+      "q02",
+      "q07",
+      "q08",
+      "q09",
+      "q10"
+    ],
+    "artifacts": 4,
+    "head_hash": "09ad2ae06114ebb771ecd87d0d386170bdc897febe701b123056c4378fb8bfe4",
+    "projection_hash": "634218f8cfe75cb3281f349346300232638c54edeb9b202ecd17725e105ade15",
+    "revision": 24
+  },
+  "integration": "63a9439382d68d68c65a9ee56011a94c9ea648e0",
+  "integration_experiments_tree": "49a5222f0d0daca66046edc2ecb938440ef1b43b",
+  "integration_tests_tree": "46794822d41e15d4933893d22496239b0c903a33",
+  "paired_primary_cost_and_outcome_cells": 40,
+  "pinned_comparer": {
+    "bytes": 13098,
+    "file": "e1_archive_r2.py",
+    "sha256": "7e1142ff29ba52d5e47e2ee6ee9f81a3a55fa7a1b9d9f1a350b0356ceedec433"
+  },
+  "precollection": "0338c47968ad757e4b70dcc9fcd92e6cd5ae6247",
+  "preregistered_absolute_threshold": "met",
+  "preregistered_oracle_sha256": "c73109c886ef7eed41941de5239142f1fb72d9c7bd482cacc54058376c31c388",
+  "preregistered_original_no_advantage_threshold": "met",
+  "product_tree": "7a65e28e40c1a45b1170bc787145a80234f4022c",
+  "raw_archive_members_supplied_to_regenerate": [
+    "raw.zip"
+  ],
+  "raw_zip_sha256": "ddee5e3efa0360a10e56d0a947221aa7238a712fd34c155145f4bf62546eeb27",
+  "real_feature": "70097e0a2b933713d4fe91e6eddb5c2132951f89",
+  "real_principal_evidence_commit": "066641a3ead3aade78f0af786ed1ee1636daa334",
+  "regenerated_report_bytes": 7398,
+  "regenerated_report_sha256": "0a82c9a1bbc7addcb1789adf3aa403ab65dfcd4b858d28811bfdcb87faa1fd21",
+  "registered_criterion_judgments_compared": 1422,
+  "registered_units": 63,
+  "repository_suite": {
+    "command": "python -B -m unittest discover",
+    "commit": "f47abf89073f342ded5ec4b127941cf0bb0b7200",
+    "result": "passed",
+    "tests": 107,
+    "wall_seconds": 54.068
+  },
+  "result": "f47abf89073f342ded5ec4b127941cf0bb0b7200",
+  "scope": "M2 product, actual local principal acceptance and registered offline scripted E1 replicate 2. No hosted model, remote service or later milestone was exercised.",
+  "verified_actions": 2892,
+  "verified_checkpoints_per_run_summed": 1387,
+  "wire_comparer": {
+    "bytes": 9455,
+    "file": "e1_r2_wire.py",
+    "sha256": "f0993f63403e8bd26146acb328c8b3b20231e9a13baa450c3a5ae63d43f06300"
+  }
+}

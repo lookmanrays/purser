@@ -1,0 +1,2070 @@
+{
+  "archive_sha256": "ddee5e3efa0360a10e56d0a947221aa7238a712fd34c155145f4bf62546eeb27",
+  "cases": [
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1069296292,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1001,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1759257333,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 33,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 93,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1001,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1297488625,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 19,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1001,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1953351208,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 58,
+        "checkpoints": 39,
+        "closures": [
+          "418657a8ce094c96959a91a4dc74597613ec8795"
+        ],
+        "kernel_events": 105,
+        "qualified": true
+      },
+      "public_closures": [
+        "418657a8ce094c96959a91a4dc74597613ec8795"
+      ],
+      "seed": 1002,
+      "steps": 58,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1394303875,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 58,
+        "checkpoints": 21,
+        "closures": [
+          "418657a8ce094c96959a91a4dc74597613ec8795"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "418657a8ce094c96959a91a4dc74597613ec8795"
+      ],
+      "seed": 1002,
+      "steps": 58,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1096433958,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "418657a8ce094c96959a91a4dc74597613ec8795"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "418657a8ce094c96959a91a4dc74597613ec8795"
+      ],
+      "seed": 1002,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1293239500,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W1/preferences"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 19,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1003,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1055501458,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W1/preferences"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1003,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1755747167,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W1/preferences"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 33,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 93,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1003,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1083443333,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1004,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 2044613417,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 33,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 93,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1004,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1382760625,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 19,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1004,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1998663000,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 58,
+        "checkpoints": 39,
+        "closures": [
+          "b7e8deaa0f25514a52c9c3aeda4070438f9b15e9"
+        ],
+        "kernel_events": 105,
+        "qualified": true
+      },
+      "public_closures": [
+        "b7e8deaa0f25514a52c9c3aeda4070438f9b15e9"
+      ],
+      "seed": 1005,
+      "steps": 58,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1478552750,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 58,
+        "checkpoints": 21,
+        "closures": [
+          "b7e8deaa0f25514a52c9c3aeda4070438f9b15e9"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "b7e8deaa0f25514a52c9c3aeda4070438f9b15e9"
+      ],
+      "seed": 1005,
+      "steps": 58,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1128439250,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "b7e8deaa0f25514a52c9c3aeda4070438f9b15e9"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "b7e8deaa0f25514a52c9c3aeda4070438f9b15e9"
+      ],
+      "seed": 1005,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1363855875,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 19,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1006,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1066983958,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1006,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1886998250,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 33,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 93,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1006,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1075694625,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1007,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1771218958,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 33,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 93,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1007,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1367220750,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 19,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1007,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1973197583,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 58,
+        "checkpoints": 39,
+        "closures": [
+          "a7f212391d734e57d74c6d454bc718eb2b92e370"
+        ],
+        "kernel_events": 105,
+        "qualified": true
+      },
+      "public_closures": [
+        "a7f212391d734e57d74c6d454bc718eb2b92e370"
+      ],
+      "seed": 1008,
+      "steps": 58,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1426918458,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 58,
+        "checkpoints": 21,
+        "closures": [
+          "a7f212391d734e57d74c6d454bc718eb2b92e370"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "a7f212391d734e57d74c6d454bc718eb2b92e370"
+      ],
+      "seed": 1008,
+      "steps": 58,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1156121500,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "a7f212391d734e57d74c6d454bc718eb2b92e370"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "a7f212391d734e57d74c6d454bc718eb2b92e370"
+      ],
+      "seed": 1008,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1305559709,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W3/delivery"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 19,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1009,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1034754333,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W3/delivery"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1009,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1816257084,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W3/delivery"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 33,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 93,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1009,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1054708208,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1010,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1809133167,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 33,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 93,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1010,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1394316791,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 19,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1010,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 2077496250,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 58,
+        "checkpoints": 39,
+        "closures": [
+          "b1fb1562744f63ff8db35250ac19c6e89d6bd345"
+        ],
+        "kernel_events": 105,
+        "qualified": true
+      },
+      "public_closures": [
+        "b1fb1562744f63ff8db35250ac19c6e89d6bd345"
+      ],
+      "seed": 1011,
+      "steps": 58,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1567214708,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 58,
+        "checkpoints": 21,
+        "closures": [
+          "b1fb1562744f63ff8db35250ac19c6e89d6bd345"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "b1fb1562744f63ff8db35250ac19c6e89d6bd345"
+      ],
+      "seed": 1011,
+      "steps": 58,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1113451250,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "b1fb1562744f63ff8db35250ac19c6e89d6bd345"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "b1fb1562744f63ff8db35250ac19c6e89d6bd345"
+      ],
+      "seed": 1011,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1432192458,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W1/preferences"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 19,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1012,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1110331625,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W1/preferences"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1012,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1884311917,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W1/preferences"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 33,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 93,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1012,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1093785458,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1013,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1877978666,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 33,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 93,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1013,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1358132666,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 19,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1013,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 2086537292,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 58,
+        "checkpoints": 39,
+        "closures": [
+          "6f2c0708d499d4767e598f676467bb7f9ef75bf4"
+        ],
+        "kernel_events": 105,
+        "qualified": true
+      },
+      "public_closures": [
+        "6f2c0708d499d4767e598f676467bb7f9ef75bf4"
+      ],
+      "seed": 1014,
+      "steps": 58,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1553471667,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 58,
+        "checkpoints": 21,
+        "closures": [
+          "6f2c0708d499d4767e598f676467bb7f9ef75bf4"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "6f2c0708d499d4767e598f676467bb7f9ef75bf4"
+      ],
+      "seed": 1014,
+      "steps": 58,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1085215500,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "6f2c0708d499d4767e598f676467bb7f9ef75bf4"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "6f2c0708d499d4767e598f676467bb7f9ef75bf4"
+      ],
+      "seed": 1014,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1387358041,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 19,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1015,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1127182416,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1015,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1936636500,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 33,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 93,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1015,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1128827708,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1016,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1812382875,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 33,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 93,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1016,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1379180167,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 19,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1016,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 2013653959,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 58,
+        "checkpoints": 39,
+        "closures": [
+          "592a543f136050848f8141c195e3da9d9da9b067"
+        ],
+        "kernel_events": 105,
+        "qualified": true
+      },
+      "public_closures": [
+        "592a543f136050848f8141c195e3da9d9da9b067"
+      ],
+      "seed": 1017,
+      "steps": 58,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1445651708,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 58,
+        "checkpoints": 21,
+        "closures": [
+          "592a543f136050848f8141c195e3da9d9da9b067"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "592a543f136050848f8141c195e3da9d9da9b067"
+      ],
+      "seed": 1017,
+      "steps": 58,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1060674333,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "592a543f136050848f8141c195e3da9d9da9b067"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "592a543f136050848f8141c195e3da9d9da9b067"
+      ],
+      "seed": 1017,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1343569458,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W3/delivery"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 19,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1018,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1068319250,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W3/delivery"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1018,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1919350042,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W3/delivery"
+      ],
+      "intervention_reproduced": "unchanged_module",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 33,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 93,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1018,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1129864292,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1019,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1860403292,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 33,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 93,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1019,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1396222375,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "W2/retry"
+      ],
+      "intervention_reproduced": "skipped_retry_check",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 52,
+        "checkpoints": 19,
+        "closures": [
+          "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "seed": 1019,
+      "steps": 52,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 2046230375,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 58,
+        "checkpoints": 39,
+        "closures": [
+          "5b10c4e6bc0ddb744991a282bc28c8d30d5f0687"
+        ],
+        "kernel_events": 105,
+        "qualified": true
+      },
+      "public_closures": [
+        "5b10c4e6bc0ddb744991a282bc28c8d30d5f0687"
+      ],
+      "seed": 1020,
+      "steps": 58,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1497760875,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 58,
+        "checkpoints": 21,
+        "closures": [
+          "5b10c4e6bc0ddb744991a282bc28c8d30d5f0687"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "5b10c4e6bc0ddb744991a282bc28c8d30d5f0687"
+      ],
+      "seed": 1020,
+      "steps": 58,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": true,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1113458333,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [
+        "scope/paths"
+      ],
+      "intervention_reproduced": "outside_scope",
+      "missing_named": true,
+      "observed_history": {
+        "actions": 31,
+        "checkpoints": 12,
+        "closures": [
+          "5b10c4e6bc0ddb744991a282bc28c8d30d5f0687"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "5b10c4e6bc0ddb744991a282bc28c8d30d5f0687"
+      ],
+      "seed": 1020,
+      "steps": 31,
+      "track": "primary",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop",
+      "caught": false,
+      "correct_parent_closure": true,
+      "elapsed_ns": 872523708,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [],
+      "intervention_reproduced": null,
+      "missing_named": false,
+      "observed_history": {
+        "actions": 24,
+        "checkpoints": 9,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1001,
+      "steps": 24,
+      "track": "clean",
+      "validity": "complete"
+    },
+    {
+      "arm": "purser",
+      "caught": false,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1482378666,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [],
+      "intervention_reproduced": null,
+      "missing_named": false,
+      "observed_history": {
+        "actions": 42,
+        "checkpoints": 27,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 82,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1001,
+      "steps": 42,
+      "track": "clean",
+      "validity": "complete"
+    },
+    {
+      "arm": "loop_equal_verifier",
+      "caught": false,
+      "correct_parent_closure": true,
+      "elapsed_ns": 1294670167,
+      "extra_diagnoses": 0,
+      "false_parent_closure": false,
+      "first": [],
+      "intervention_reproduced": null,
+      "missing_named": false,
+      "observed_history": {
+        "actions": 42,
+        "checkpoints": 15,
+        "closures": [
+          "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+        ],
+        "kernel_events": 0,
+        "qualified": true
+      },
+      "public_closures": [
+        "7df4a199e2ada1caafe78f5acec2f99b06f44771"
+      ],
+      "seed": 1001,
+      "steps": 42,
+      "track": "clean",
+      "validity": "complete"
+    }
+  ],
+  "clean_steps": {
+    "loop": 24,
+    "loop_equal_verifier": 42,
+    "purser": 42
+  },
+  "freeze_commit": "0338c47968ad757e4b70dcc9fcd92e6cd5ae6247",
+  "git_packs": 34,
+  "independent_11_input_queue_runs": 847,
+  "independent_legacy_tests_attempted": 2156,
+  "independent_oracle_sha256": "c73109c886ef7eed41941de5239142f1fb72d9c7bd482cacc54058376c31c388",
+  "journal_oracle_entries_compared": 1422,
+  "paired_differences": {
+    "1001": [
+      [
+        21,
+        689961041
+      ],
+      [
+        0,
+        461768708
+      ]
+    ],
+    "1002": [
+      [
+        27,
+        856917250
+      ],
+      [
+        0,
+        559047333
+      ]
+    ],
+    "1003": [
+      [
+        21,
+        700245709
+      ],
+      [
+        0,
+        462507667
+      ]
+    ],
+    "1004": [
+      [
+        21,
+        961170084
+      ],
+      [
+        0,
+        661852792
+      ]
+    ],
+    "1005": [
+      [
+        27,
+        870223750
+      ],
+      [
+        0,
+        520110250
+      ]
+    ],
+    "1006": [
+      [
+        21,
+        820014292
+      ],
+      [
+        0,
+        523142375
+      ]
+    ],
+    "1007": [
+      [
+        21,
+        695524333
+      ],
+      [
+        0,
+        403998208
+      ]
+    ],
+    "1008": [
+      [
+        27,
+        817076083
+      ],
+      [
+        0,
+        546279125
+      ]
+    ],
+    "1009": [
+      [
+        21,
+        781502751
+      ],
+      [
+        0,
+        510697375
+      ]
+    ],
+    "1010": [
+      [
+        21,
+        754424959
+      ],
+      [
+        0,
+        414816376
+      ]
+    ],
+    "1011": [
+      [
+        27,
+        964045000
+      ],
+      [
+        0,
+        510281542
+      ]
+    ],
+    "1012": [
+      [
+        21,
+        773980292
+      ],
+      [
+        0,
+        452119459
+      ]
+    ],
+    "1013": [
+      [
+        21,
+        784193208
+      ],
+      [
+        0,
+        519846000
+      ]
+    ],
+    "1014": [
+      [
+        27,
+        1001321792
+      ],
+      [
+        0,
+        533065625
+      ]
+    ],
+    "1015": [
+      [
+        21,
+        809454084
+      ],
+      [
+        0,
+        549278459
+      ]
+    ],
+    "1016": [
+      [
+        21,
+        683555167
+      ],
+      [
+        0,
+        433202708
+      ]
+    ],
+    "1017": [
+      [
+        27,
+        952979626
+      ],
+      [
+        0,
+        568002251
+      ]
+    ],
+    "1018": [
+      [
+        21,
+        851030792
+      ],
+      [
+        0,
+        575780584
+      ]
+    ],
+    "1019": [
+      [
+        21,
+        730539000
+      ],
+      [
+        0,
+        464180917
+      ]
+    ],
+    "1020": [
+      [
+        27,
+        932772042
+      ],
+      [
+        0,
+        548469500
+      ]
+    ]
+  },
+  "queue_candidate_seed_pairs": 77,
+  "replicate": 2,
+  "report_sha256": "0a82c9a1bbc7addcb1789adf3aa403ab65dfcd4b858d28811bfdcb87faa1fd21",
+  "result_commit": "f47abf89073f342ded5ec4b127941cf0bb0b7200",
+  "series_counts": {
+    "loop": {
+      "caught": 20,
+      "complete": 20,
+      "correct_parent_closure": 20,
+      "extra_diagnoses": 0,
+      "false_parent_closure": 0,
+      "missing_named": 20
+    },
+    "loop_equal_verifier": {
+      "caught": 20,
+      "complete": 20,
+      "correct_parent_closure": 20,
+      "extra_diagnoses": 0,
+      "false_parent_closure": 0,
+      "missing_named": 20
+    },
+    "purser": {
+      "caught": 20,
+      "complete": 20,
+      "correct_parent_closure": 20,
+      "extra_diagnoses": 0,
+      "false_parent_closure": 0,
+      "missing_named": 20
+    }
+  },
+  "source": "e3a155633058cd20274ce5e9cfaca224b41f5b5b"
+}
