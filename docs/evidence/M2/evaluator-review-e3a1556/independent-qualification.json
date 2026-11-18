@@ -1,0 +1,568 @@
+{
+  "damage": {
+    "damaged-conflicting-terminal": {
+      "independent_git": 0,
+      "reason": "ValueError: clean/1001/loop.json: terminal and budget reasons disagree | complete record lacks the observed history required to score",
+      "report": 0,
+      "sha256": "17f7f1ccf467a8cf8f852678b0ad294a473cd947f69abab5a0d2051690abd72b",
+      "verify": 1
+    },
+    "damaged-missing-parent-endpoint": {
+      "independent_git": 0,
+      "reason": "ValueError: clean/1001/loop.json: missing after checkpoint on action 24 | complete record lacks the observed history required to score",
+      "report": 0,
+      "sha256": "eea142d62c4f35ab7e08c190584b2af841948a5b376cf4c9af0631d40e7c3021",
+      "verify": 1
+    },
+    "damaged-missing-participant-exit": {
+      "independent_git": 0,
+      "reason": "ValueError: clean/1001/loop.json: participant exit observation missing | complete record lacks the observed history required to score",
+      "report": 0,
+      "sha256": "77f209d1c32669946bb0937fa440907df8c9b622e8f2bc229af1881f2831c0ee",
+      "verify": 1
+    },
+    "damaged-missing-terminal": {
+      "independent_git": 0,
+      "reason": "ValueError: clean/1001/loop.json: expected one final terminal event | terminal and budget reasons disagree | unexpected or missing manual action evidence | participant exit carries failed or missing instrumentation | terminal last observation disagrees with journal | clock provenance disagrees with basis | terminal endpoint disagrees with platform clock | complete record lacks the observed history required to score",
+      "report": 0,
+      "sha256": "b039136b4c47e3c2461365e0096f22e965037a41f480f68678f790242af07267",
+      "verify": 1
+    },
+    "damaged-primary-clock-conflict": {
+      "independent_git": 0,
+      "reason": "ValueError: primary/1001/purser.json: terminal and budget reasons disagree | raw grade disagrees with the observed evidence | complete record lacks the observed history required to score",
+      "report": 0,
+      "sha256": "d469a6ec236b7be6eeb7a7a2d52ff95b8d989ede6c1183dac3893ad63cefc0f0",
+      "verify": 1
+    },
+    "damaged-primary-missing-terminal": {
+      "independent_git": 0,
+      "reason": "ValueError: primary/1001/purser.json: expected one final terminal event | terminal and budget reasons disagree | unexpected or missing manual action evidence | participant exit carries failed or missing instrumentation | terminal last observation disagrees with journal | clock provenance disagrees with basis | terminal endpoint disagrees with platform clock | raw grade disagrees with the observed evidence | complete record lacks the observed history required to score",
+      "report": 0,
+      "sha256": "07f10cee5a410d523ecca6fa49e47cff3d4e5f41f5aa78481b4a01d483a466ec",
+      "verify": 1
+    }
+  },
+  "findings": {
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "fresh": {
+    "done": {
+      "independent_git": 0,
+      "report": 0,
+      "runs": [
+        {
+          "independent_oracle_agreement": 18,
+          "key": "runs/clean/1001/loop.json",
+          "public_facts": [],
+          "raw_score": null,
+          "steps": 24,
+          "terminal": "done",
+          "validity": "complete"
+        }
+      ],
+      "sha256": "9c2a9286d7fdc375e1f94115a3e4d46e40a1cb17b3528011ed5e100272590739",
+      "verify": 0
+    },
+    "healthy": {
+      "independent_git": 0,
+      "report": 0,
+      "runs": [
+        {
+          "independent_oracle_agreement": 18,
+          "key": "runs/clean/1001/loop.json",
+          "public_facts": [
+            "| 1001 | complete | done | no | yes | yes | yes | 0 | 31 | 1.046 |",
+            "| 1001 | complete | done | no | yes | yes | yes | 0 | 52 | 1.766 |"
+          ],
+          "raw_score": null,
+          "steps": 24,
+          "terminal": "done",
+          "validity": "complete"
+        },
+        {
+          "independent_oracle_agreement": 18,
+          "key": "runs/clean/1001/loop_equal_verifier.json",
+          "public_facts": [
+            "| 1001 | complete | done | no | yes | yes | yes | 0 | 31 | 1.046 |",
+            "| 1001 | complete | done | no | yes | yes | yes | 0 | 52 | 1.766 |"
+          ],
+          "raw_score": null,
+          "steps": 42,
+          "terminal": "done",
+          "validity": "complete"
+        },
+        {
+          "independent_oracle_agreement": 18,
+          "key": "runs/clean/1001/purser.json",
+          "public_facts": [
+            "| 1001 | complete | done | no | yes | yes | yes | 0 | 31 | 1.046 |",
+            "| 1001 | complete | done | no | yes | yes | yes | 0 | 52 | 1.766 |"
+          ],
+          "raw_score": null,
+          "steps": 42,
+          "terminal": "done",
+          "validity": "complete"
+        },
+        {
+          "independent_oracle_agreement": 24,
+          "key": "runs/primary/1001/loop.json",
+          "public_facts": [
+            "| 1001 | complete | done | no | yes | yes | yes | 0 | 31 | 1.046 |",
+            "| 1001 | complete | done | no | yes | yes | yes | 0 | 52 | 1.766 |"
+          ],
+          "raw_score": {
+            "caught": true,
+            "correct_parent_closure": true,
+            "extra_diagnoses": 0,
+            "false_parent_closure": false,
+            "missing_named": true
+          },
+          "steps": 31,
+          "terminal": "done",
+          "validity": "complete"
+        },
+        {
+          "independent_oracle_agreement": 24,
+          "key": "runs/primary/1001/purser.json",
+          "public_facts": [
+            "| 1001 | complete | done | no | yes | yes | yes | 0 | 31 | 1.046 |",
+            "| 1001 | complete | done | no | yes | yes | yes | 0 | 52 | 1.766 |"
+          ],
+          "raw_score": {
+            "caught": true,
+            "correct_parent_closure": true,
+            "extra_diagnoses": 0,
+            "false_parent_closure": false,
+            "missing_named": true
+          },
+          "steps": 52,
+          "terminal": "done",
+          "validity": "complete"
+        }
+      ],
+      "sha256": "61277f987a329b8fd9b7b29eeb0ad1bf123ab99d1af350f34e5c856ea5d32244",
+      "verify": 0
+    },
+    "plan-after": {
+      "independent_git": 0,
+      "report": 0,
+      "runs": [
+        {
+          "actor": "closure",
+          "after_state": "done",
+          "before_state": "submitted",
+          "candidate": "627813279b9b9112fd3455901f9851c84f4736a8",
+          "independent_oracle_agreement": 12,
+          "interrupted_attempt": 24,
+          "key": "runs/primary/1002/loop.json",
+          "public_facts": [
+            "| 1002 | infrastructure_invalid | harness_failure | yes | yes | no | no | 0 | \u226524 | \u22651.346 |"
+          ],
+          "raw_score": null,
+          "recovered": [
+            {
+              "diagnosis": [
+                "scope/paths"
+              ],
+              "from": "submitted",
+              "source_action": 24,
+              "to": "done"
+            }
+          ],
+          "steps": 24,
+          "terminal": "harness_failure",
+          "validity": "infrastructure_invalid",
+          "work": "W-notify"
+        }
+      ],
+      "sha256": "6b036295479af68d99ce98c30d4869c36a9920b59547a6bb4b37b0209d187e7a",
+      "verify": 0
+    },
+    "plan-before": {
+      "independent_git": 0,
+      "report": 0,
+      "runs": [
+        {
+          "actor": "closure",
+          "after_state": "submitted",
+          "before_state": "submitted",
+          "candidate": "627813279b9b9112fd3455901f9851c84f4736a8",
+          "independent_oracle_agreement": 6,
+          "interrupted_attempt": 24,
+          "key": "runs/primary/1002/loop.json",
+          "public_facts": [
+            "| 1002 | infrastructure_invalid | harness_failure | no | yes | yes | no | 0 | \u226524 | \u22651.321 |"
+          ],
+          "raw_score": null,
+          "recovered": [],
+          "steps": 24,
+          "terminal": "harness_failure",
+          "validity": "infrastructure_invalid",
+          "work": "W-notify"
+        }
+      ],
+      "sha256": "af3e17548f0538cebf6da313a4b9b2dc9ff1afadb245fc76b421a876151303db",
+      "verify": 0
+    },
+    "plan-repeat-before": {
+      "independent_git": 0,
+      "report": 0,
+      "runs": [
+        {
+          "actor": "closure",
+          "after_state": "submitted",
+          "before_state": "submitted",
+          "candidate": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+          "independent_oracle_agreement": 6,
+          "interrupted_attempt": 8,
+          "key": "runs/primary/1003/loop.json",
+          "public_facts": [
+            "| 1003 | infrastructure_invalid | harness_failure | no | yes | yes | no | 0 | \u22658 | \u22650.299 |"
+          ],
+          "raw_score": null,
+          "recovered": [],
+          "steps": 8,
+          "terminal": "harness_failure",
+          "validity": "infrastructure_invalid",
+          "work": "W1"
+        }
+      ],
+      "sha256": "e670db6f1f7195ff6960c460eb53f09431bfa420a46902844ea6548ff8e6617c",
+      "verify": 0
+    },
+    "post-repair": {
+      "independent_git": 0,
+      "report": 0,
+      "runs": [
+        {
+          "independent_oracle_agreement": 24,
+          "key": "runs/primary/1003/loop.json",
+          "original": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+          "public_facts": [
+            "| 1003 | complete | done | yes | yes | no | no | 0 | 31 | 1.629 |"
+          ],
+          "raw_score": {
+            "caught": false,
+            "correct_parent_closure": false,
+            "extra_diagnoses": 0,
+            "false_parent_closure": true,
+            "missing_named": true
+          },
+          "regressed_parent": "92c1053d23a4a2c517793789df5e39e31359c6e1",
+          "repaired": "6dcb12a91c06f00fc75c5e68b6145a727f3749a7",
+          "steps": 31,
+          "terminal": "done",
+          "validity": "complete"
+        }
+      ],
+      "sha256": "656ee17256a1dec0e2e0dc51e882c7138f4107bb82cb70d784ecc63d9d8d218e",
+      "verify": 0
+    },
+    "sibling": {
+      "independent_git": 0,
+      "report": 0,
+      "runs": [
+        {
+          "first_diagnosis": {
+            "candidate": "4a25e37a8400004cca6a192762a72aae390a7c6b",
+            "fault_origin": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+            "labels": [
+              "W1/preferences"
+            ],
+            "subject": "W3",
+            "target_missing": true
+          },
+          "independent_oracle_agreement": 18,
+          "key": "runs/primary/1003/loop.json",
+          "public_facts": [
+            "| 1003 | complete | done | no | yes | yes | yes | 0 | 31 | 1.677 |"
+          ],
+          "raw_score": {
+            "caught": true,
+            "correct_parent_closure": true,
+            "extra_diagnoses": 0,
+            "false_parent_closure": false,
+            "missing_named": true
+          },
+          "steps": 31,
+          "terminal": "done",
+          "validity": "complete"
+        }
+      ],
+      "sha256": "a08b54ef7ccb6df3a8ab580d2be8de7f8a084f3bb609d99b81d84b982918fdc9",
+      "verify": 0
+    },
+    "sibling-first-wrong": {
+      "independent_git": 0,
+      "report": 0,
+      "runs": [
+        {
+          "first_diagnosis": {
+            "candidate": "4a25e37a8400004cca6a192762a72aae390a7c6b",
+            "fault_origin": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+            "labels": [
+              "W2/retry"
+            ],
+            "subject": "W3",
+            "target_missing": true
+          },
+          "independent_oracle_agreement": 12,
+          "key": "runs/primary/1003/loop.json",
+          "public_facts": [
+            "| 1003 | arm_incomplete | blocked | no | no | no | no | 1 | 20 | 1.084 |"
+          ],
+          "raw_score": {
+            "caught": false,
+            "correct_parent_closure": false,
+            "extra_diagnoses": 1,
+            "false_parent_closure": false,
+            "missing_named": false
+          },
+          "steps": 20,
+          "terminal": "blocked",
+          "validity": "arm_incomplete"
+        }
+      ],
+      "sha256": "dee45865251d81c6dbc6cd373a9f9575e6f6835b3985f14c7e097422e3560b6b",
+      "verify": 0
+    },
+    "sqlite-after": {
+      "independent_git": 0,
+      "report": 0,
+      "runs": [
+        {
+          "actor": "closure",
+          "after_state": "submitted",
+          "before_state": "submitted",
+          "candidate": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+          "independent_oracle_agreement": 6,
+          "interrupted_attempt": 10,
+          "key": "runs/primary/1003/purser.json",
+          "public_facts": [
+            "| 1003 | infrastructure_invalid | harness_failure | no | yes | yes | no | 0 | \u226510 | \u22650.433 |"
+          ],
+          "raw_score": null,
+          "recovered": [
+            {
+              "diagnosis": [
+                "W1/preferences"
+              ],
+              "from": "submitted",
+              "source_action": 10,
+              "to": "submitted"
+            }
+          ],
+          "steps": 10,
+          "terminal": "harness_failure",
+          "validity": "infrastructure_invalid",
+          "work": "W1"
+        }
+      ],
+      "sha256": "e200a89ad64e8a124124482e253dfb83afc87d6f1851e2176a03ab2ef701d9c9",
+      "verify": 0
+    },
+    "sqlite-before": {
+      "independent_git": 0,
+      "report": 0,
+      "runs": [
+        {
+          "actor": "closure",
+          "after_state": "submitted",
+          "before_state": "submitted",
+          "candidate": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+          "independent_oracle_agreement": 6,
+          "interrupted_attempt": 10,
+          "key": "runs/primary/1003/purser.json",
+          "public_facts": [
+            "| 1003 | infrastructure_invalid | harness_failure | no | yes | yes | no | 0 | \u226510 | \u22650.434 |"
+          ],
+          "raw_score": null,
+          "recovered": [],
+          "steps": 10,
+          "terminal": "harness_failure",
+          "validity": "infrastructure_invalid",
+          "work": "W1"
+        }
+      ],
+      "sha256": "bac67774e01fff5bdf95ca621ccba71e383f455d6d808990feb131f2455965b0",
+      "verify": 0
+    },
+    "sqlite-close-after": {
+      "independent_git": 0,
+      "report": 0,
+      "runs": [
+        {
+          "actor": "closure",
+          "after_state": "closed",
+          "before_state": "submitted",
+          "candidate": "7df4a199e2ada1caafe78f5acec2f99b06f44771",
+          "independent_oracle_agreement": 6,
+          "interrupted_attempt": 42,
+          "key": "runs/clean/1001/purser.json",
+          "public_facts": [],
+          "raw_score": null,
+          "recovered": [
+            {
+              "diagnosis": [],
+              "from": "submitted",
+              "source_action": 42,
+              "to": "closed"
+            }
+          ],
+          "steps": 42,
+          "terminal": "harness_failure",
+          "validity": "infrastructure_invalid",
+          "work": "W-notify"
+        }
+      ],
+      "sha256": "59e5b7b5279f20670a56cf727176f512e76c4f9abf97c7f94dadb0b2f156d971",
+      "verify": 0
+    },
+    "sqlite-close-before": {
+      "independent_git": 0,
+      "report": 0,
+      "runs": [
+        {
+          "actor": "closure",
+          "after_state": "submitted",
+          "before_state": "submitted",
+          "candidate": "7df4a199e2ada1caafe78f5acec2f99b06f44771",
+          "independent_oracle_agreement": 0,
+          "interrupted_attempt": 42,
+          "key": "runs/clean/1001/purser.json",
+          "public_facts": [],
+          "raw_score": null,
+          "recovered": [],
+          "steps": 42,
+          "terminal": "harness_failure",
+          "validity": "infrastructure_invalid",
+          "work": "W-notify"
+        }
+      ],
+      "sha256": "80fc513fe6fa85c5be065351ce19c2dd567dd81e6e5476233f7b74f3f67512bc",
+      "verify": 0
+    },
+    "sqlite-repeat-before": {
+      "independent_git": 0,
+      "report": 0,
+      "runs": [
+        {
+          "actor": "closure",
+          "after_state": "submitted",
+          "before_state": "submitted",
+          "candidate": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+          "independent_oracle_agreement": 6,
+          "interrupted_attempt": 11,
+          "key": "runs/primary/1003/purser.json",
+          "public_facts": [
+            "| 1003 | infrastructure_invalid | harness_failure | no | yes | yes | no | 0 | \u226511 | \u22650.384 |"
+          ],
+          "raw_score": null,
+          "recovered": [],
+          "steps": 11,
+          "terminal": "harness_failure",
+          "validity": "infrastructure_invalid",
+          "work": "W1"
+        }
+      ],
+      "sha256": "97d064a61a00b62853a65b9f842e85ef3809acae34d46fb665a18560ed249d0c",
+      "verify": 0
+    },
+    "sqlite-verifier-after": {
+      "independent_git": 0,
+      "report": 0,
+      "runs": [
+        {
+          "actor": "independent_verifier",
+          "after_state": "submitted",
+          "before_state": "submitted",
+          "candidate": "f1d3617b3e47d8ad709d68e01491e20969f91dc6",
+          "independent_oracle_agreement": 6,
+          "interrupted_attempt": 27,
+          "key": "runs/primary/1001/purser.json",
+          "public_facts": [
+            "| 1001 | infrastructure_invalid | harness_failure | no | yes | yes | no | 0 | \u226527 | \u22651.427 |"
+          ],
+          "raw_score": null,
+          "recovered": [
+            {
+              "diagnosis": [
+                "W2/retry"
+              ],
+              "from": "submitted",
+              "source_action": 27,
+              "to": "submitted"
+            }
+          ],
+          "steps": 27,
+          "terminal": "harness_failure",
+          "validity": "infrastructure_invalid",
+          "work": "W2"
+        }
+      ],
+      "sha256": "195990be9400b44880090654e8ddfc4306211cf805f2c47df4a97c16a3396bf9",
+      "verify": 0
+    },
+    "sqlite-verifier-before": {
+      "independent_git": 0,
+      "report": 0,
+      "runs": [
+        {
+          "actor": "independent_verifier",
+          "after_state": "submitted",
+          "before_state": "submitted",
+          "candidate": "f1d3617b3e47d8ad709d68e01491e20969f91dc6",
+          "independent_oracle_agreement": 6,
+          "interrupted_attempt": 27,
+          "key": "runs/primary/1001/purser.json",
+          "public_facts": [
+            "| 1001 | infrastructure_invalid | harness_failure | no | yes | yes | no | 0 | \u226527 | \u22651.417 |"
+          ],
+          "raw_score": null,
+          "recovered": [],
+          "steps": 27,
+          "terminal": "harness_failure",
+          "validity": "infrastructure_invalid",
+          "work": "W2"
+        }
+      ],
+      "sha256": "f5055580b586d039d4198a277e653e3a05aa283d27c5ec4d12bb53d2e6c87f30",
+      "verify": 0
+    }
+  },
+  "fresh_independent_oracle_comparisons": 234,
+  "fresh_participant_count": 19,
+  "identity": {
+    "candidate": "e3a155633058cd20274ce5e9cfaca224b41f5b5b",
+    "candidate_parent": "853c3a76a1d168017f0fc38f46bb6564984a74e6",
+    "comparison_base": "163badfb67311ad6049b41faacd2a7f1a029d18b",
+    "git": "git version 2.50.1 (Apple Git-155)",
+    "kernel": "25.5.0",
+    "pin_sha256": "2f1473683480dea56bb4ea7e3e2f69c3ff71c61eae8df2e5195d97328175cb21",
+    "private_pin_commit": "c7108b342f797f166661531abd16f272b8ca604c",
+    "python": "3.11.15 (main, Jun 23 2026, 15:46:51) [Clang 22.1.3 ]",
+    "sqlite": "3.53.1"
+  },
+  "independence": "separate reviewer, prepared controls before candidate identity; local detached clone; independent Git/queue oracle",
+  "known_scope": "Trusted local M2 scripted evaluator, no real model, hostile-host isolation, study or product acceptance.",
+  "preserved": {
+    "preserved-contradictory-cutoff": {
+      "independent_git": 0,
+      "report": 0,
+      "sha256": "63fc69283255ecf4d80b422a4d54e191d23c3923a0ad3e6fb60ce44e1db24fc0",
+      "verify": 1
+    },
+    "preserved-done-false-close": {
+      "independent_git": 0,
+      "report": 0,
+      "sha256": "930017fdd7294b82116ca83293cc2e20b34134fab3640a685a6a5a0fd5503654",
+      "verify": 0
+    }
+  },
+  "review_verdict": "PASS",
+  "selected_candidate_tests": 24,
+  "sigkill_controls": 10
+}

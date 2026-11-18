@@ -5,6 +5,8 @@ import json
 from .artifacts import FIXTURE, changes, encoded, sha
 from .executor import LEAVES, ORDER, PARENT, PARENT_CHECKS, PATHS, TASKS, local_check
 from .measurement import probe, same
+from .outcomes import is_closed
+from .recovery import write_atomic
 
 
 def self_review(repo, oid, root, work):
@@ -30,20 +32,29 @@ def self_review(repo, oid, root, work):
 class Plan:
     def __init__(self, directory):
         self.file = directory / "plan.json"
-        self.file.write_bytes(encoded({work: {"state": "open", "candidate": None, "verified": {}, "work": {"id": work, "title": TASKS[work]}}
-                                       for work in (*ORDER, PARENT)}))
+        self.invocation = None
+        write_atomic(self.file, encoded({work: {"state": "open", "candidate": None, "verified": {},
+                                                "work": {"id": work, "title": TASKS[work]}}
+                                         for work in (*ORDER, PARENT)}))
 
     def read(self):
         return json.loads(self.file.read_bytes())
 
-    def update(self, work, **fields):
+    def update(self, work, *, diagnosis=(), **fields):
         plans = self.read()
-        plans[work].update(fields)
-        self.file.write_bytes(encoded(plans))
-        return {"state": plans[work]["state"]}
+        row = plans[work]
+        row.update(fields)
+        if self.invocation is not None:
+            row["_publication"] = {**self.invocation, "subject": work, "candidate": row["candidate"],
+                                   "diagnosis": list(diagnosis)}
+        write_atomic(self.file, encoded(plans))
+        return {"state": row["state"]}
 
     def context(self, work):
-        return self.read()[work]
+        row = self.read()[work]
+        # The controller's receipt identifies a write on readback. It is outside the released context.
+        row.pop("_publication", None)
+        return row
 
     def assign_again(self, work):
         return self.update(work, state="open", candidate=None, verified={})
@@ -60,16 +71,16 @@ class Plan:
     def verify(self, work, label, observed):
         checked = self.context(work)["verified"]
         checked[label] = observed["verdict"]
-        return self.update(work, verified=checked)
+        diagnosis = [label] if observed["verdict"] in ("fail", "inconclusive") else []
+        return self.update(work, verified=checked, diagnosis=diagnosis)
 
     def decide(self, work, audit):
         plans = self.read()
         missing = set(audit["missing"])
         missing.update(label for label, result in plans[work]["verified"].items() if result != "pass")
         if work == PARENT:
-            missing.update(LEAVES[k] for k in ORDER if plans[k]["state"] != "closed")
-        if not missing:
-            self.update(work, state="closed")
+            missing.update(LEAVES[k] for k in ORDER if not is_closed(plans[k]["state"]))
+        self.update(work, state=plans[work]["state"] if missing else "closed", diagnosis=sorted(missing))
         return {"diagnosis": sorted(missing), "claim": self.context(work)}
 
     def public_view(self):

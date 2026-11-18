@@ -180,7 +180,10 @@ class TrialControllerTests(unittest.TestCase):
         complete = run.reconcile_interrupted(self.directory, self.assets, "loop", partial, seed=seed, rank=rank)
         self.assertEqual(complete["rows"][:-1], partial["rows"])
         self.assertEqual(complete["rows"][-1]["payload"]["criterion"], "legacy/compat")
-        self.assertTrue(run.scorer.score(complete["rows"])["false_parent_closure"])
+        observed = run.scorer.assess(complete["rows"], candidates=complete["candidates"])
+        self.assertEqual(observed.false_candidates, [oid])
+        # This fixture journal starts after the leaf submissions. Only the parent was read back.
+        self.assertIsNone(observed.score(True))
         self.assertEqual(plan.file.read_bytes(), original)
 
     def test_interrupted_admitted_verifier_failure_preserves_its_public_diagnosis(self):

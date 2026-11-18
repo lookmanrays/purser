@@ -19,7 +19,7 @@ def source_pin():
     paths = [p for base in (ROOT / "experiments/e1", ROOT / "purser") for p in base.rglob("*.py")]
     names = sorted(p.relative_to(ROOT).as_posix() for p in paths)
     status = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=all",
-                                      "--", *names, "experiments/manifests/v1"], cwd=ROOT)
+                                      "--", ":(glob)experiments/e1/**/*.py", ":(glob)purser/**/*.py", "experiments/manifests/v1"], cwd=ROOT)
     if status:
         raise RuntimeError("study source or frozen manifest has uncommitted edits")
     files = {name: sha((ROOT / name).read_bytes()) for name in names}
@@ -36,7 +36,7 @@ def source_pin():
         "manifest_sha256": sha((REGISTRATION / "manifest.json").read_bytes()),
         "protocol_sha256": sha((REGISTRATION / "protocol.md").read_bytes()),
         "raw_schema_sha256": sha((REGISTRATION / "raw.schema.json").read_bytes()),
-        "scorer_sha256": group(selected("scorer") + support), "fault_driver_sha256": group(selected("executor", "run")),
+        "scorer_sha256": group(selected("scorer", "outcomes") + support), "fault_driver_sha256": group(selected("executor", "run")),
         "executor_sha256": group(selected("executor") + support), "controller_sha256": group(code),
         "treatments": {arm: sha(encoded({"selected_arm": arm,
                                            "implementation": group(code + (kernel if arm == "purser" else []))}))

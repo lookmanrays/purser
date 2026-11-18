@@ -3,10 +3,16 @@
 import json
 import re
 import subprocess
+import tempfile
 import zipfile
 from dataclasses import dataclass
+from pathlib import Path
 
-from .artifacts import FIXTURE, MANIFEST, REGISTRATION, ROOT, encoded, read_artifact, sha
+from .outcomes import CLOSED
+from .accounting import READ_ERRORS, PublicHistory, check_exit, digest, journal_prefix
+from .artifacts import FIXTURE, MANIFEST, REGISTRATION, ROOT, START, encoded, extract_tree, git, read_artifact, sha
+from .executor import PARENT
+from .intervention import validate_fault, verify_fault_candidate
 from .measurement import same
 from .scorer import LABELS, assess, verify_report
 from .suite import ARMS, schedule
@@ -52,7 +58,8 @@ def validate_freeze(freeze):
     def modules(*names):
         return ["experiments/e1/" + n + ".py" for n in names]
     support = modules("artifacts", "measurement", "probe")
-    pins = {"controller_sha256": group(study), "scorer_sha256": group(modules("scorer") + support),
+    outcome = modules("outcomes") if "experiments/e1/outcomes.py" in files else []
+    pins = {"controller_sha256": group(study), "scorer_sha256": group(modules("scorer") + outcome + support),
             "executor_sha256": group(modules("executor") + support),
             "fault_driver_sha256": group(modules("executor", "run"))}
     for key, value in pins.items():
@@ -105,19 +112,237 @@ class Case:
     raw: dict
     evidence: object
     basis: str
+    issues: tuple = ()
+    final_parent: tuple | None = None
+    measured_endpoint: bool = False
 
     def comparable(self):
-        clean = self.raw["track"] == "clean"
-        score = self.evidence.score(not clean)
-        return bool(self.raw["validity"] == "complete" and self.raw["terminal"] == "done"
-                    and self.basis == "exact" and score is not None
-                    and (not clean or (score["correct_parent_closure"] and not score["false_parent_closure"])))
+        if self.issues or self.basis != "exact" or self.raw["validity"] != "complete" or self.raw["terminal"] != "done":
+            return False
+        primary = self.raw["track"] == "primary"
+        if self.evidence.score(primary) is None or not self.final_parent or self.final_parent[0] not in CLOSED:
+            return False
+        oid = self.final_parent[1]
+        state, measured_parent = self.evidence.final_parent
+        if state not in CLOSED or measured_parent != oid:
+            return False
+        if primary:
+            return oid in self.evidence.correct_candidates or oid in self.evidence.false_candidates
+        return oid in self.evidence.correct_candidates and self.evidence.facts["false_parent_closure"] is False
 
 
-def inspect_series(directory):
+class Objects:
+    def __init__(self, archive):
+        self.archive = archive
+        self.parsed, self.content = {}, {}
+
+    def blob(self, ref):
+        require(type(ref) is dict and ref.keys() == {"path", "sha256", "bytes"}
+                and type(ref["bytes"]) is int and ref["bytes"] >= 0 and digest(ref["sha256"], 64)
+                and type(ref["path"]) is str and ref["path"] in
+                {f"objects/{ref['sha256']}.{suffix}" for suffix in ("json", "bin", "pack")}, "invalid artifact reference")
+        key = (ref["path"], ref["sha256"], ref["bytes"])
+        try:
+            if key not in self.content:
+                self.content[key] = read_artifact(self.archive, ref)
+            return self.content[key]
+        except (KeyError, zipfile.BadZipFile) as exc:
+            raise ValueError("unavailable object " + ref["path"]) from exc
+
+    def references(self, value):
+        if type(value) is dict:
+            if "path" in value and ("sha256" in value or "bytes" in value):
+                yield value
+            else:
+                for member in value.values():
+                    yield from self.references(member)
+        elif type(value) is list:
+            for member in value:
+                yield from self.references(member)
+
+    def item(self, ref):
+        key = encoded(ref)
+        if key not in self.parsed:
+            self.parsed[key] = parse(self.blob(ref))
+        return self.parsed[key]
+
+
+class GitPacks:
+    def __init__(self, directory):
+        self.directory, self.repos, self.entries = directory, {}, {}
+
+    def restore(self, oid, entry, objects):
+        key = oid, encoded(entry)
+        if key in self.entries:
+            return self.entries[key]
+        require(digest(oid, 40) and digest(entry["tree"], 40) and entry["start"] == START
+                and (entry["parent"] is None if oid == START else digest(entry["parent"], 40)),
+                "invalid Git candidate identity")
+        pack = objects.blob(entry["pack"])
+        path = self.directory / entry["pack"]["sha256"]
+        if path not in self.repos:
+            path.mkdir(exist_ok=True)
+            git(path, "init", "-q", "--bare", "--object-format=sha1")
+            git(path, "index-pack", "--stdin", data=pack)
+            git(path, "fsck", "--full", "--no-dangling")
+            self.repos[path] = path
+        git(path, "merge-base", "--is-ancestor", START, oid)
+        ancestry = git(path, "rev-list", "--parents", "-n", "1", oid).decode().split()
+        require(ancestry == [oid] + ([entry["parent"]] if entry["parent"] else [])
+                and git(path, "rev-parse", oid + "^{tree}").decode().strip() == entry["tree"],
+                "archived Git parent or tree identity mismatch")
+        self.entries[key] = path
+        return path
+
+
+def inspect_case(raw, schema, objects, packs, freeze, track, seed, rank, arm):
+    issues = []
+
+    def issue(message):
+        if message not in issues:
+            issues.append(message)
+
+    def read(label, operation, default=None):
+        try:
+            return operation()
+        except (*READ_ERRORS, OSError, subprocess.SubprocessError) as exc:
+            issue(f"{label}: {exc}")
+            return default
+
+    if not wire_valid(raw, schema, schema):
+        issue("raw record violates frozen schema")
+    if "terminal" not in raw or "validity" not in raw:
+        raw = dict(raw, terminal=raw.get("terminal", "unavailable"), validity=raw.get("validity", "unavailable"))
+    artifacts = raw["artifacts"]
+    journal, ordered = journal_prefix(read("journal", lambda: objects.item(artifacts["journal"])), arm, issue)
+    platform = read("platform", lambda: objects.item(artifacts["platform"]), {})
+    if type(platform) is not dict:
+        issue("invalid platform artifact")
+        platform = {}
+    declared = read("candidates", lambda: objects.item(artifacts["candidates"]), {})
+    if type(declared) is not dict:
+        issue("invalid candidate map")
+        declared = {}
+    candidates, repos = {}, {}
+    for oid, entry in declared.items():
+        repo = read(f"candidate {oid}", lambda: packs.restore(oid, entry, objects))
+        if repo is not None:
+            candidates[oid], repos[oid] = entry, repo
+            if oid != START and entry["parent"] not in declared:
+                issue(f"candidate {oid} lacks its archived parent entry")
+
+    modern = "experiments/e1/accounting.py" in freeze["source_files"] or "clock_stopped" in platform
+    basis, endpoint_ok = check_exit(raw, journal, platform, modern, issue)
+    measured_endpoint = (basis == "exact" and endpoint_ok and ordered
+                         and (raw["terminal"] != "harness_failure" or modern and platform.get("participant_exit") is not None))
+    if modern and type(platform.get("public_history_complete")) is not bool:
+        issue("public history certainty missing")
+    complete_exit = raw.get("validity") == "complete"
+    infrastructure = raw.get("validity") == "infrastructure_invalid"
+    history = PublicHistory(arm, modern, objects.item, issue)
+    observed = history.reconcile(journal, platform, incomplete=not complete_exit)
+    for ref in objects.references(journal):
+        read("journal reference", lambda: objects.blob(ref))
+    refs = platform.get("referenced_files", [])
+    if type(refs) is list:
+        for ref in refs:
+            read("referenced file", lambda: objects.blob(ref))
+    else:
+        issue("invalid platform file manifest")
+    definitions = platform.get("definition_artifacts", [])
+    labels = set()
+    if type(definitions) is list:
+        for ref in definitions:
+            definition = read("operational definition", lambda: objects.item(ref))
+            if type(definition) is not dict:
+                issue("invalid operational definition")
+                continue
+            label = definition.get("criterion")
+            if (label not in LABELS or label in labels or not same(definition.get("version"), 1)
+                    or definition.get("fixture") != FIXTURE["tree_sha1"]):
+                issue("operational criterion identity mismatch")
+                continue
+            expected = {name: freeze["source_files"].get("experiments/e1/" + name)
+                        for name in ("observer.py", "probe.py", "measurement.py")}
+            if not same(definition.get("public_verifier"), expected):
+                issue("operational verifier differs from the source registration")
+            labels.add(label)
+    else:
+        issue("invalid operational definition manifest")
+    environment = platform.get("environment_artifact")
+    if environment is not None:
+        recorded = read("environment", lambda: objects.item(environment))
+        expected = {"git": platform.get("git"), "platform": platform.get("os"), "python": platform.get("python")}
+        if not same(recorded, expected):
+            issue("environment differs from platform")
+    if not infrastructure and (labels != set(LABELS) or not environment or not platform.get("treatment_trace")
+                               or not all(type(platform.get(k)) is str and platform[k] for k in ("git", "os", "python", "sqlite"))):
+        issue("participant exit lacks enrolled definitions, environment or trace")
+    if not infrastructure and modern and platform.get("public_history_complete") is not True:
+        issue("participant exit has incomplete public history")
+
+    checks = {}
+    duplicates = set()
+    for event in observed:
+        if event["kind"] != "oracle":
+            continue
+        p = event["payload"]
+        def check_oracle():
+            oid, label = p["candidate"], p["criterion"]
+            require(oid in candidates and label in LABELS and same(p["version"], 1), "unknown protected subject")
+            report = objects.item(p["evidence"])
+            judgment = verify_report(report, oid, label, seed, rank)
+            require(same(report.get("version"), 1) and judgment == report["verdict"] == p["verdict"] == p["observed"]
+                    and p["expected"] == "all specified cases pass", "protected observation disagrees with journal")
+            return oid, label
+        identity = read(f"oracle at event {event.get('seq')}", check_oracle)
+        if identity is not None:
+            if identity in checks:
+                duplicates.add(identity)
+                issue(f"duplicate protected criterion {identity}")
+            checks[identity] = event
+    valid_oracles = {id(event) for key, event in checks.items() if key not in duplicates}
+    reliable = [e for e in observed if e["kind"] != "oracle" or id(e) in valid_oracles]
+    for event in reliable:
+        p = event["payload"]
+        if event["kind"] in ("action", "public_state", "fault") and p.get("candidate") is not None and p["candidate"] not in candidates:
+            issue(f"missing retained Git candidate for event {event.get('seq')}")
+
+    # Public work may still have correctly or incorrectly closed when an intervention is unavailable.
+    try:
+        fault = validate_fault(reliable, track, seed, rank)
+        if fault is not None:
+            require(fault.get("candidate") in candidates, "faulted candidate unavailable")
+            verify_fault_candidate(repos[fault["candidate"]], candidates, reliable, seed, rank)
+    except (*READ_ERRORS, OSError, subprocess.SubprocessError) as exc:
+        issue(f"registered intervention: {exc}")
+        reliable = [e for e in reliable if e["kind"] != "fault"]
+
+    known_history = ordered and endpoint_ok and history.complete and history.final is not None
+    if modern:
+        known_history = known_history and platform.get("public_history_complete") is True
+    elif infrastructure:
+        known_history = False
+    evidence = assess(reliable, history_complete=known_history, candidates=candidates)
+    expected = evidence.score(True) if track == "primary" and not infrastructure else None
+    if not same(expected, raw.get("score")):
+        issue("raw grade disagrees with the observed evidence")
+    final = history.final[PARENT] if history.final is not None else None
+    if complete_exit:
+        submissions = {e["payload"]["candidate"] for e in reliable if e["kind"] == "action" and e["payload"]["action"] == "submit"}
+        if not submissions or any((oid, label) not in checks or (oid, label) in duplicates for oid in submissions for label in LABELS):
+            issue("complete record lacks candidate-specific protected measurements")
+        if not final or final[0] not in CLOSED or not (final[1] in evidence.false_candidates or final[1] in evidence.correct_candidates):
+            issue("complete record lacks its final measured public parent")
+        if not known_history or evidence.missing_candidates or track == "primary" and expected is None:
+            issue("complete record lacks the observed history required to score")
+    return Case(raw, evidence, basis, tuple(issues), final, measured_endpoint)
+
+
+def inspect_series(directory, *, strict=True):
     results = {}
     schema = parse((REGISTRATION / "raw.schema.json").read_bytes())
-    with zipfile.ZipFile(directory / "raw.zip") as archive:
+    with zipfile.ZipFile(directory / "raw.zip") as archive, tempfile.TemporaryDirectory(prefix="purser-e1-inspect-") as tmp:
         members = archive.namelist()
         require(len(members) == len(set(members)), "duplicate ZIP archive member")
         freeze_bytes = archive.read("freeze.json")
@@ -136,209 +361,63 @@ def inspect_series(directory):
                 require(tail in keys, "unregistered archive run or marker")
             else:
                 require(re.fullmatch(r"objects/([0-9a-f]{64})\.(json|bin|pack)", name), "invalid object member")
-                require(sha(archive.read(name)) == tail.split(".")[0], "object content address mismatch")
-        def blob(ref):
-            require(type(ref) is dict and ref.keys() == {"path", "sha256", "bytes"}
-                    and type(ref["bytes"]) is int and ref["bytes"] >= 0
-                    and type(ref["path"]) is str and type(ref["sha256"]) is str and HEX64.fullmatch(ref["sha256"])
-                    and ref["path"].rsplit(".", 1)[0] == "objects/" + ref["sha256"], "invalid artifact reference")
-            return read_artifact(archive, ref)
-        def item(ref):
-            return parse(blob(ref))
-        def nested_refs(value):
-            if type(value) is dict:
-                if value.keys() == {"path", "sha256", "bytes"}:
-                    blob(value)
-                else:
-                    for member in value.values():
-                        nested_refs(member)
-            elif type(value) is list:
-                for member in value:
-                    nested_refs(member)
+                if strict:
+                    require(sha(archive.read(name)) == tail.split(".")[0], "object content address mismatch")
+        objects, packs = Objects(archive), GitPacks(Path(tmp))
         for track, seed, rank, arm in scheduled:
             suffix = f"{track}/{seed}/{arm}.json"
             marker, name = "started/" + suffix, "runs/" + suffix
-            if marker in members:
-                start = parse(archive.read(marker))
-                require(all(same(start.get(k), v) for k, v in
-                            {"arm": arm, "seed": seed, "rank": rank, "track": track}.items()), "incorrect start marker")
-            if name not in members:
+            if name not in members and marker not in members:
                 continue
-            require(marker in members, "raw record without scheduled start marker")
-            raw = parse(archive.read(name))
-            require(wire_valid(raw, schema, schema), "raw record violates frozen schema")
-            require((raw["suite"], raw["experiment"], raw["mode"], raw["track"], raw["seed"], raw["arm"], raw["replicate"])
-                    == (MANIFEST["id"], "E1", "scripted", track, seed, arm, replicate), "raw series identity mismatch")
-            pins = {k: freeze[k] for k in
-                    ("fixture_tree", "fixture_commit", "manifest_sha256", "protocol_sha256", "raw_schema_sha256",
-                     "scorer_sha256", "executor_sha256", "fault_driver_sha256")}
-            pins.update(treatment_sha256=freeze["treatments"][arm], worktree_head=freeze["source_commit"])
-            require(pins == raw["inputs"], "raw source inputs differ from frozen pins")
-            journal = item(raw["artifacts"]["journal"])
-            nested_refs(journal)
-            candidates = item(raw["artifacts"]["candidates"])
-            platform = item(raw["artifacts"]["platform"])
-            for ref in platform["referenced_files"] + platform["definition_artifacts"]:
-                blob(ref)
-            for key in ("environment_artifact", "treatment_trace"):
-                if platform.get(key) is not None:
-                    blob(platform[key])
-            for oid, entry in candidates.items():
-                require(HEX40.fullmatch(oid) and HEX40.fullmatch(entry["tree"]) and entry["start"] == FIXTURE["commit_sha1"]
-                        and (entry["parent"] is None if oid == FIXTURE["commit_sha1"] else entry["parent"] in candidates),
-                        "incomplete Git candidate ancestry")
-                blob(entry["pack"])
-            require([e["seq"] for e in journal] == list(range(1, len(journal) + 1)), "non-contiguous journal")
-            actions = [r["payload"] for r in journal if r["kind"] == "action"]
-            require(len(actions) == raw["cost"]["steps"]
-                    and [a["attempt"] for a in actions] == list(range(1, len(actions) + 1)), "step total mismatch")
-            basis = platform.get("cost_basis", "exact")
-            require(basis in ("exact", "before_release", "observed_lower_bound"), "unknown cost basis")
-            start_ns, end_ns = (platform.get(k) for k in ("start_monotonic_ns", "end_monotonic_ns"))
-            if start_ns is None or end_ns is None:
-                require(start_ns is end_ns is None and raw["cost"]["elapsed_ns"] == 0 and basis != "exact"
-                        and raw["validity"] == "infrastructure_invalid", "missing measured clock")
-            else:
-                require(type(start_ns) is int and type(end_ns) is int
-                        and end_ns - start_ns == raw["cost"]["elapsed_ns"], "elapsed time mismatch")
-            checks = {}
-            for row in journal:
-                p = row["payload"]
-                if row["kind"] != "oracle":
-                    continue
-                oid, label = p["candidate"], p["criterion"]
-                require(oid in candidates and label in LABELS and p["version"] == 1, "unknown protected subject")
-                report = item(p["evidence"])
-                judgment = verify_report(report, oid, label, seed, rank)
-                require(judgment == report["verdict"] == p["verdict"] == p["observed"], "protected observation disagrees with journal")
-                checks.setdefault(oid, set()).add(label)
-            faults = [r["payload"] for r in journal if r["kind"] == "fault"]
-            require(track == "primary" or not faults, "fault injected into a clean control")
-            if faults:
-                registration = MANIFEST["experiments"]["E1"]
-                j = rank - 1
-                variant = registration["fault_cycle"][j % 3]
-                target = {"skipped_retry_check": "W2/retry", "outside_scope": "scope/paths",
-                          "unchanged_module": LABELS[(j // 3) % 3]}[variant]
-                require(len(faults) == 1 and (faults[0]["seed"], faults[0]["intervention"], faults[0]["target"])
-                        == (seed, variant, target), "fault differs from the preregistered seed")
-            evidence = assess(journal)
-            expected = evidence.score(True) if track == "primary" and raw["validity"] != "infrastructure_invalid" else None
-            require(same(expected, raw["score"]), "raw grade disagrees with the observed evidence")
-            if raw["validity"] == "complete":
-                submissions = {a["candidate"] for a in actions if a["action"] == "submit"}
-                require(raw["terminal"] == "done" and basis == "exact" and platform.get("treatment_trace")
-                        and platform["definition_artifacts"] and platform.get("environment_artifact")
-                        and raw["cost"]["elapsed_ns"] <= MANIFEST["budgets"]["scripted"]["max_elapsed_s"] * 10**9
-                        and evidence.false_candidates + evidence.correct_candidates and not evidence.missing_candidates
-                        and submissions and all(checks.get(oid) == set(LABELS) for oid in submissions),
-                        "complete record lacks qualifying candidate, closure or trace evidence")
-            results[(track, seed, arm)] = Case(raw, evidence, basis)
+            try:
+                require(marker in members, "raw record without scheduled start marker")
+                start = parse(archive.read(marker))
+                require(all(same(start.get(k), v) for k, v in {"arm": arm, "seed": seed, "rank": rank, "track": track}.items()),
+                        "incorrect start marker")
+                require(name in members, "started case lacks a run record")
+                raw = parse(archive.read(name))
+                require(same([raw[k] for k in ("suite", "experiment", "mode", "track", "seed", "arm", "replicate")],
+                             [MANIFEST["id"], "E1", "scripted", track, seed, arm, replicate]), "raw series identity mismatch")
+                pins = {k: freeze[k] for k in ("fixture_tree", "fixture_commit", "manifest_sha256", "protocol_sha256", "raw_schema_sha256",
+                                                  "scorer_sha256", "executor_sha256", "fault_driver_sha256")}
+                pins.update(treatment_sha256=freeze["treatments"][arm], worktree_head=freeze["source_commit"])
+                require(same(pins, raw["inputs"]), "raw source inputs differ from frozen pins")
+                case = inspect_case(raw, schema, objects, packs, freeze, track, seed, rank, arm)
+            except (*READ_ERRORS, zipfile.BadZipFile) as exc:
+                if strict:
+                    raise ValueError(f"{suffix}: {exc}") from exc
+                raw = {"track": track, "seed": seed, "arm": arm, "validity": "unavailable", "terminal": "unavailable",
+                       "cost": {"steps": None, "elapsed_ns": None}, "score": None}
+                case = Case(raw, assess([], history_complete=False), "unavailable", (str(exc),))
+            if strict and case.issues:
+                raise ValueError(f"{suffix}: " + " | ".join(case.issues))
+            results[(track, seed, arm)] = case
     return results
 
 
 def render(directory):
-    seen = inspect_series(directory)
-    seeds = MANIFEST["experiments"]["E1"]["seeds"]
-    out = ["# Scripted E1 results", "",
-           "The table includes verified false closures from interrupted attempts. Completion counts refer to measured, "
-           "fully qualified primary runs. Each arm had 20 scheduled seeds.", "",
-           "| Arm | Complete | Incomplete | Infrastructure or missing | Seeds with false close | Missing named | Caught | Correct close |",
-           "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
-    totals = {}
-    for arm in ARMS:
-        rows = [seen.get(("primary", seed, arm)) for seed in seeds]
-        complete = [r for r in rows if r and r.comparable()]
-        incomplete = sum(bool(r and r.raw["validity"] == "arm_incomplete") for r in rows)
-        false = sum(bool(r and r.evidence.false_candidates) for r in rows)
-        true = sum(bool(r and r.evidence.correct_candidates) for r in rows)
-        scores = [r.evidence.score(True) for r in complete]
-        named, caught = (sum(x[k] for x in scores) for k in ("missing_named", "caught"))
-        totals[arm] = (len(complete), false, named, caught)
-        vals = (arm, len(complete), incomplete, 20-len(complete)-incomplete, false, named, caught, true)
-        out.append("| " + " | ".join(map(str, vals)) + " |")
-    n, false, named, _ = totals["purser"]
-    passed = "missed" if false else ("inconclusive" if n != 20 else ("met" if named >= 19 else "missed"))
-    baseline, _, _, caught = totals["loop"]
-    no_adv = "inconclusive" if baseline != 20 else ("met" if caught >= 19 else "missed")
-    out += ["", f"The absolute E1 threshold for Purser was **{passed}**. "
-            f"The original no-advantage threshold for the plain loop was **{no_adv}**.", "",
-            "The last two columns give paired differences in steps and elapsed seconds for eligible runs.", "",
-            "| Seed | Plain loop | Purser | Equal verifier | Purser − plain | Purser − equal verifier |",
-            "| ---: | --- | --- | --- | ---: | ---: |"]
-    def label(case):
-        if case is None:
-            return "missing"
-        raw, evidence = case.raw, case.evidence
-        outcome = "false close" if evidence.false_candidates else (
-            "caught" if case.comparable() and evidence.caught else raw["validity"])
-        if raw["validity"] != "complete" and evidence.false_candidates:
-            outcome += ", " + raw["validity"]
-        return f"{outcome} / {raw['cost']['steps']}" if case.basis == "exact" else outcome + " / cost unavailable"
-    def difference(a, b):
-        if not a or not b or not (a.comparable() and b.comparable()):
-            return "unavailable"
-        x, y = a.raw["cost"], b.raw["cost"]
-        return f"{x['steps'] - y['steps']:+d} / {(x['elapsed_ns'] - y['elapsed_ns']) / 1e9:+.3f} s"
-    for seed in seeds:
-        a,b,c = (seen.get(("primary", seed, arm)) for arm in ARMS)
-        out.append(f"| {seed} | {label(a)} | {label(b)} | {label(c)} | {difference(b,a)} | {difference(b,c)} |")
-    clean = MANIFEST["experiments"]["E1"]["clean_seed"]
-    out += ["", "## Clean control", "", "| Arm | Terminal | Steps | Elapsed seconds | Correct close |",
-            "| --- | --- | ---: | ---: | --- |"]
-    for arm in ARMS:
-        case = seen.get(("clean", clean, arm))
-        if case and case.comparable():
-            raw = case.raw
-            out.append(f"| {arm} | {raw['terminal']} | {raw['cost']['steps']} | "
-                       f"{raw['cost']['elapsed_ns']/1e9:.3f} | yes |")
-        else:
-            terminal = case.raw["terminal"] if case else "missing"
-            out.append(f"| {arm} | {terminal} | unavailable | unavailable | unqualified |")
-    a, b = (seen.get(("clean", clean, arm)) for arm in ("loop", "purser"))
-    if a and b and a.comparable() and b.comparable():
-        ac, bc = a.raw["cost"]["steps"], b.raw["cost"]["steps"]
-        relation = "exceeded" if bc > ac * 2 else "was within"
-        overhead = f"Purser used {bc} clean steps and the plain loop used {ac}. Purser {relation} the twice-baseline limit."
-    else:
-        overhead = "The clean step-overhead comparison is inconclusive."
-    out += ["", overhead, "Scripted runs make zero model calls and incur zero model spend.", ""]
-    return "\n".join(out)
+    from .summary import render_summary
+    return render_summary(inspect_series(directory, strict=False))
 
 
 def verify_candidates(directory):
     """Restore each self-contained pack and repeat the frozen protected behavior on its own bytes."""
-    import tempfile
-    from pathlib import Path
     from . import scorer
-    from .artifacts import START, encoded, extract_tree, git
 
-    seen = inspect_series(directory)
+    seen = inspect_series(directory, strict=True)
     with tempfile.TemporaryDirectory(prefix="purser-e1-report-") as tmp, zipfile.ZipFile(directory / "raw.zip") as archive:
-        repos, measurements = {}, {}
+        packs, objects, measurements = GitPacks(Path(tmp)), Objects(archive), {}
         for track, seed, rank, arm in schedule():
             item = seen.get((track, seed, arm))
             if not item:
                 continue
             raw = item.raw
-            entries = json.loads(read_artifact(archive, raw["artifacts"]["candidates"]))
-            for oid, entry in entries.items():
-                digest = entry["pack"]["sha256"]
-                if digest not in repos:
-                    repo = Path(tmp) / digest
-                    repo.mkdir()
-                    git(repo, "init", "-q", "--bare", "--object-format=sha1")
-                    git(repo, "index-pack", "--stdin", data=read_artifact(archive, entry["pack"]))
-                    git(repo, "fsck", "--full", "--no-dangling", oid)
-                    git(repo, "merge-base", "--is-ancestor", START, oid)
-                    repos[digest] = repo
-                repo = repos[digest]
-                ancestry = git(repo, "rev-list", "--parents", "-n", "1", oid).decode().split()
-                if ancestry != [oid] + ([entry["parent"]] if entry["parent"] else []):
-                    raise ValueError("archived parent identity mismatch")
-                if git(repo, "rev-parse", oid + "^{tree}").decode().strip() != entry["tree"]:
-                    raise ValueError("archived tree identity mismatch")
-            journal = json.loads(read_artifact(archive, raw["artifacts"]["journal"]))
+            entries = objects.item(raw["artifacts"]["candidates"])
+            repos = {oid: packs.restore(oid, entry, objects) for oid, entry in entries.items()}
+            journal = objects.item(raw["artifacts"]["journal"])
+            fault = next((event["payload"] for event in journal if event["kind"] == "fault"), None)
+            if fault is not None:
+                verify_fault_candidate(repos[fault["candidate"]], entries, journal, seed, rank, replay_check=True)
             reports = {}
             for event in journal:
                 if event["kind"] == "oracle":
@@ -349,11 +428,10 @@ def verify_candidates(directory):
                 previous = measurements.setdefault(key, {})
                 missing = archived.keys() - previous.keys()
                 if missing:
-                    repo = repos[entries[oid]["pack"]["sha256"]]
-                    with extract_tree(repo, oid) as checkout:
-                        current = scorer.measure(repo, oid, Path(checkout), seed, rank, labels=missing)
+                    with extract_tree(repos[oid], oid) as checkout:
+                        current = scorer.measure(repos[oid], oid, Path(checkout), seed, rank, labels=missing)
                     previous.update(current)
                 for label, ref in archived.items():
-                    if encoded(previous[label]) != read_artifact(archive, ref):
+                    if encoded(previous[label]) != objects.blob(ref):
                         raise ValueError("archived input produced a different protected report")
-        return {"runs": len(seen), "independent_git_packs": len(repos), "reexecuted_seed_candidates": len(measurements)}
+        return {"runs": len(seen), "independent_git_packs": len(packs.repos), "reexecuted_seed_candidates": len(measurements)}
