@@ -18,7 +18,7 @@ def status(snapshot, as_of):
         "head_hash": snapshot["head_hash"],
         "projection_hash": digest("projection", projection),
         "as_of": as_of,
-        "answers": {"q01": commitments, **WorkView(projection).answers()},
+        "answers": {"q01": commitments, **WorkView(projection).answers(as_of)},
     }
 
 
@@ -36,7 +36,7 @@ def why(snapshot, as_of, record_id):
     else:
         reasons = view.reasons(record_id)
     result = {"v": 1, "revision": snapshot["revision"], "as_of": as_of, "record": record, "reasons": reasons}
-    if record["kind"] == "WorkItem" and (view.graph.outgoing[record_id] or view.graph.acquired(record_id) or any(
+    if record["kind"] == "WorkItem" and (record["fields"].get("effect_slots") or view.graph.outgoing[record_id] or view.graph.acquired(record_id) or any(
         r["commitment"] == record["commitment"] and r["kind"] in ("Assumption", "Decision") for r in records.values()
     )):
         causes = []

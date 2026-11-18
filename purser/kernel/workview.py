@@ -1,8 +1,10 @@
 """Pure work eligibility, closure witnesses and continuity answers at one revision."""
 from collections import defaultdict
+from datetime import datetime, timezone
 
+from . import effectpolicy
 from .support import SupportGraph
-from .wire import digest
+from .wire import digest, format_time
 
 
 def _reasons(items):
@@ -92,10 +94,19 @@ class WorkView:
             issues.append(("missing_evidence", [key]))
         if (not children or work.get("assignment") or self.related[(key, "Obligation")]) and not work["candidate"]:
             issues.append(("missing_result", [key]))
+        effects = []
+        for effect_id in sorted(slot["effect"] for slot in work.get("effect_slots", {}).values()):
+            effect = self.fields(effect_id)
+            intent = effect.get("intent")
+            if (effect["state"] == "confirmed_happened" and intent["generation"] == work["generation"]
+                    and intent["assignment"] == work.get("assignment") and intent["target"] == work["candidate"]):
+                effects.append({"effect": effect_id, "observation": effect["observation"]})
+            else:
+                issues.append(("effect_unresolved", [effect_id]))
         basis = {"work": key, "generation": work["generation"], "candidate": work["candidate"],
                  "coverage": coverage, "children": list(children), "witnesses": witnesses,
                  "decisions": [{"id": d["id"], "revision": d["revision"]} for d in self.graph.decisions(key)],
-                 "obligations": obligations, "effects": []}
+                 "obligations": obligations, "effects": effects}
         return basis, _reasons(issues), None if issues else digest("outcome", basis)
 
     def basis(self, work):
@@ -127,6 +138,11 @@ class WorkView:
             if f["state"] == "superseded":
                 return [{"code": "superseded", "refs": [f["superseded_by"]]}]
             return []
+        if record["kind"] in ("Effect", "EffectAttempt") and f["state"] in effectpolicy.UNRESOLVED:
+            refs = [key, f.get("attempt", f.get("effect"))]
+            if f.get("observation"):
+                refs.append(f["observation"])
+            return _reasons([("effect_unresolved", refs)])
         if record["kind"] == "Observation" and "assumption" in f:
             return self.reasons(f["assumption"])
         if record["kind"] == "DecisionOpinion":
@@ -154,6 +170,10 @@ class WorkView:
             stack.extend(self.children[key])
             f = self.fields(key)
             seen.update(v for v in (f.get("assignment"), f.get("result")) if v)
+            for slot in f.get("effect_slots", {}).values():
+                effect = self.fields(slot["effect"])
+                seen.add(slot["effect"])
+                seen.update(v for v in (effect.get("attempt"), effect.get("observation")) if v)
             for oid in self.related[(key, "Obligation")]:
                 seen.add(oid)
                 criterion = self.fields(oid)
@@ -175,6 +195,7 @@ class WorkView:
             if candidate and candidate["kind"] == "artifact.bytes":
                 result.add(candidate["digest"])
             pending.extend(w["work"] for w in basis["witnesses"])
+            result.update(self.fields(e["observation"])["artifact_sha256"] for e in basis["effects"])
             for witness in basis["obligations"]:
                 if witness["evidence"]:
                     run = self.fields(witness["run"])
@@ -182,8 +203,19 @@ class WorkView:
                     result.update((run["definition_sha256"], run["environment_sha256"], obs["artifact_sha256"]))
         return sorted(result)
 
-    def answers(self):
-        answers = {name: [] for name in ("q02", "q03", "q04", "q07", "q08", "q09", "q10")}
+    def capabilities(self, work, as_of):
+        fields = self.fields(work)
+        return [{"grant": key, **{k: self.fields(key)[k] for k in (
+                        "slot", "capability", "repository", "repository_instance", "resource", "paths", "expires_at")}}
+                for key in self.related[work, "AuthorityGrant"]
+                if self.fields(key)["assignment"] == fields.get("assignment")
+                and self.fields(key)["generation"] == fields["generation"]
+                and effectpolicy.grant_state(self.fields(key), as_of) == "active"
+                and self.fields(key)["grantee"] == self.fields(fields["assignment"])["executor"]]
+
+    def answers(self, as_of=None):
+        as_of = as_of or format_time(datetime.now(timezone.utc))
+        answers = {name: [] for name in ("q02", "q03", "q04", "q05", "q06", "q07", "q08", "q09", "q10")}
         actions = set()
         for key, row in sorted(self.records.items()):
             f, kind = row["fields"], row["kind"]
@@ -228,6 +260,16 @@ class WorkView:
                     actions.add(("reconsider", key))
             elif kind == "Assumption" and f["state"] == "invalidated":
                 answers["q04"].append({"assumption": key, "affected": list(f["affected"])})
+            elif kind == "AuthorityGrant":
+                answers["q05"].append({"grant": key, "commitment": row["commitment"],
+                    **{k: f[k] for k in ("grantee", "capability", "resource", "expires_at")},
+                    "state": effectpolicy.grant_state(f, as_of)})
+            elif kind == "Effect":
+                if f["state"] in effectpolicy.UNRESOLVED:
+                    actions.add(("reconcile", key))
+                    answers["q06"].append({"effect": key, "attempt": f["attempt"], "state": f["state"]})
+                elif effectpolicy.dispatchable(self, f, as_of) is None:
+                    actions.add(("authorize_dispatch", key))
             elif kind == "Commitment":
                 answers["q09"].append({"commitment": key, "root": f["root"], "missing": self.reasons(f["root"])})
             elif kind == "Approval" and f["state"] == "pending":

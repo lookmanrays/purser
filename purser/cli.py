@@ -41,6 +41,7 @@ def arguments(argv):
     context = commands.add_parser("context", allow_abbrev=False)
     context.add_argument("assignment_id", metavar="ASSIGNMENT")
     context.add_argument("--revision", type=int, metavar="N")
+    context.add_argument("--as-of", type=parse_time, metavar="TIME")
     for name in ("status", "why", "frontier", "replay"):
         query = commands.add_parser(name, allow_abbrev=False)
         if name == "why":
@@ -95,10 +96,10 @@ def run(args):
         from .driver import tick
         result = tick(store)
         return (4 if result.get("receipt", {}).get("disposition") == "rejected" else 0), result
+    as_of = format_time(args.as_of or datetime.now(timezone.utc))
     if args.command == "context":
         from .driver import context_pack
-        return 0, context_pack(store.snapshot(revision=args.revision), args.assignment_id)
-    as_of = format_time(args.as_of or datetime.now(timezone.utc))
+        return 0, context_pack(store.snapshot(revision=args.revision), args.assignment_id, as_of=as_of)
     if args.command == "replay":
         return 0, status(store.replay(), as_of)
     snapshot = store.snapshot(revision=args.revision)
