@@ -1,0 +1,48 @@
+{
+  "after_repair": {
+    "caught": true,
+    "correct_parent_closure": true,
+    "extra_diagnoses": 0,
+    "false_parent_closure": true,
+    "missing_named": true
+  },
+  "before_repair": {
+    "caught": false,
+    "correct_parent_closure": true,
+    "extra_diagnoses": 0,
+    "false_parent_closure": true,
+    "missing_named": true
+  },
+  "candidate": "3785d19f4c670e1aab25c44b572598d56df39ab5",
+  "event": {
+    "kind": "public_state",
+    "payload": {
+      "candidate": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+      "checkpoint": {
+        "plan_sha256": "06eaa860df030f3d7e6c8966c392cddeb02116802dc634cea099c8954ffd607b"
+      },
+      "diagnosis": [],
+      "effect_disposition": null,
+      "evidence": {
+        "claim": {
+          "candidate": "7df4a199e2ada1caafe78f5acec2f99b06f44771",
+          "state": "closed",
+          "verified": {},
+          "work": {
+            "id": "W-notify",
+            "title": "Integrate the three policies, retain compatibility and restrict edits to the three policy files."
+          }
+        },
+        "diagnosis": []
+      },
+      "from": "submitted",
+      "subject": "W-notify",
+      "to": "closed"
+    }
+  },
+  "fault": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+  "provenance": "Constructed order controls from a healthy primary 1003 loop journal, not scored study trials. The inserted public event uses the exact originally faulty OID.",
+  "seed": 1003,
+  "source_archive_sha256": "5dafb29e7fe38b01b411e0377a81d98d337e6efaf246ced5d528edc91374a0b1",
+  "source_journal_sha256": "1f767fa5781da8beb1411f9255e024ffff9723d8082fc5d6125991597fa6ab06"
+}

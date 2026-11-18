@@ -1,0 +1,466 @@
+{
+  "archive_controls": {
+    "duplicate-zip": {
+      "accepted": false,
+      "archive": {
+        "name": "qualified-archives/duplicate-zip/raw.zip",
+        "sha256": "6c4e6d0ad221e5a0c08130040a1c306561dac472a229734bbcaef2e03da7df46"
+      },
+      "error": "ValueError",
+      "message": "duplicate ZIP archive member"
+    },
+    "incomplete-clean": {
+      "accepted": true,
+      "archive": {
+        "name": "qualified-archives/incomplete-clean/raw.zip",
+        "sha256": "c9ca19a1aa25827d7b98402cc9be34ecd38ebfd2056880712386335689f1da88"
+      },
+      "clean_comparison": [
+        "The clean step-overhead comparison is inconclusive."
+      ],
+      "clean_eligible": false
+    },
+    "missing-closure-oracle": {
+      "accepted": false,
+      "archive": {
+        "name": "qualified-archives/missing-closure-oracle/raw.zip",
+        "sha256": "527468fabb5afdebe7ae01c925b9c6571ed1941172ac34a8ae96a1b9eae27fbf"
+      },
+      "error": "ValueError",
+      "message": "raw grade disagrees with the observed evidence"
+    },
+    "missing-evidence-blob": {
+      "accepted": false,
+      "archive": {
+        "name": "qualified-archives/missing-evidence-blob/raw.zip",
+        "sha256": "6f30b8d8f870d76fcf903b4ed2e6bfbd72f66ee750c8a0a700a572654ccf33f5"
+      },
+      "error": "KeyError",
+      "message": "\"There is no item named 'objects/6a039ac30a100a2a53e1923cd965d754d5aa275cd8c0f5eaea33b22971c8260f.json' in the archive\""
+    },
+    "missing-start": {
+      "accepted": false,
+      "archive": {
+        "name": "qualified-archives/missing-start/raw.zip",
+        "sha256": "a64b1a2089b24e7a44ae6c9fdbce6cb3b65f66aeb39b1c75b69682bfc32175ab"
+      },
+      "error": "ValueError",
+      "message": "raw record without scheduled start marker"
+    },
+    "wrong-pin": {
+      "accepted": false,
+      "archive": {
+        "name": "qualified-archives/wrong-pin/raw.zip",
+        "sha256": "51cb6a8b7b9c46daa8814e4fc97df217413228aba6593a06813e624433da209c"
+      },
+      "error": "ValueError",
+      "message": "raw source inputs differ from frozen pins"
+    }
+  },
+  "candidate": "3785d19f4c670e1aab25c44b572598d56df39ab5",
+  "disposition": "NO-GO",
+  "environment": {
+    "LC_ALL": "C",
+    "TZ": "UTC",
+    "python": "3.11.15"
+  },
+  "healthy_control": {
+    "archive": {
+      "name": "repair-checkout/experiments/results/reviewer-healthy-controls/raw.zip",
+      "sha256": "5dafb29e7fe38b01b411e0377a81d98d337e6efaf246ced5d528edc91374a0b1"
+    },
+    "paired_steps": {
+      "loop": 24,
+      "purser": 42
+    }
+  },
+  "independent_process_controls": {
+    "false-close": {
+      "actions": 24,
+      "actual_attempts": [
+        "first ('loop', 'primary', 1002, 2)",
+        "restart ('loop', 'primary', 1003, 3)"
+      ],
+      "archive": {
+        "name": "repair-checkout/experiments/results/reviewer-false-close/raw.zip",
+        "sha256": "4a8087733ccde47a908ad3a9aee7dcfac3014ada9831248c9a71aab9f4ba61db"
+      },
+      "candidate_pack_sha256": "6adc417309764dbb3a31788cc91e284b233f9f061831d86d6ebb55cc1ea01ab0",
+      "captured_id": "627813279b9b9112fd3455901f9851c84f4736a8",
+      "correct_candidates": [],
+      "cost_basis": "observed_lower_bound",
+      "false_candidates": [
+        "627813279b9b9112fd3455901f9851c84f4736a8"
+      ],
+      "first_exit": -9,
+      "issues": [],
+      "journal_sha256": "25b1ba684cbca62a36c4daad2fdf48f8c2995f899beb4e2d80c54a877ac23e9a",
+      "public_after_restart": [
+        "submitted",
+        "closed"
+      ],
+      "public_before_kill": "closed",
+      "raw_sha256": "093b34c22e46334afa2d49f992a8809506f1f79025b8b8f42c70d368f27832c7",
+      "rendered_seed": "| 1002 | false close, infrastructure_invalid / cost unavailable | missing | missing | unavailable | unavailable |",
+      "retained_checked": {
+        "W1/preferences": "pass",
+        "W2/retry": "pass",
+        "W3/delivery": "pass",
+        "legacy/compat": "pass",
+        "queue/composition": "pass",
+        "scope/paths": "fail"
+      },
+      "second_exit": 0,
+      "unavailable": [],
+      "witness": {
+        "name": "repair-false-close-death/observed.json",
+        "sha256": "52feed4d70082207aad01ec01cd1ad53476545f58d4250d387878dd7d66367da"
+      }
+    },
+    "negative-controls": {
+      "actions": 24,
+      "actual_attempts": [
+        "first ('loop', 'primary', 1002, 2)",
+        "restart ('loop', 'primary', 1003, 3)"
+      ],
+      "archive": {
+        "name": "repair-checkout/experiments/results/reviewer-negative-controls/raw.zip",
+        "sha256": "930017fdd7294b82116ca83293cc2e20b34134fab3640a685a6a5a0fd5503654"
+      },
+      "candidate_pack_sha256": "6adc417309764dbb3a31788cc91e284b233f9f061831d86d6ebb55cc1ea01ab0",
+      "captured_id": "627813279b9b9112fd3455901f9851c84f4736a8",
+      "correct_candidates": [],
+      "cost_basis": "observed_lower_bound",
+      "false_candidates": [],
+      "first_exit": -9,
+      "issues": [],
+      "journal_sha256": "c5315761f0e20ce500a712c17245a27393f43996fdb505963b8ae703c7f6ab16",
+      "public_after_restart": [
+        "submitted",
+        "done"
+      ],
+      "public_before_kill": "done",
+      "raw_sha256": "9c53158b637d320a436c73cd8a98a59b8ec599572e84c15a870637bb8b7f6f46",
+      "rendered_seed": "| 1002 | infrastructure_invalid / cost unavailable | missing | missing | unavailable | unavailable |",
+      "retained_checked": {
+        "W1/preferences": "pass",
+        "W2/retry": "pass",
+        "W3/delivery": "pass",
+        "legacy/compat": "pass",
+        "queue/composition": "pass",
+        "scope/paths": "fail"
+      },
+      "second_exit": 0,
+      "unavailable": [],
+      "witness": {
+        "name": "repair-done-death/observed.json",
+        "sha256": "5da6736423b95112254bdd685489c267e9f7340f7140d6737e41dca03d094f2d"
+      }
+    },
+    "partial-measurement": {
+      "actions": 24,
+      "actual_attempts": [
+        "first ('loop', 'primary', 1002, 2)",
+        "restart ('loop', 'primary', 1003, 3)"
+      ],
+      "archive": {
+        "name": "repair-checkout/experiments/results/reviewer-partial-measurement/raw.zip",
+        "sha256": "8bae1bbf6ddc37ec53b51f04ca6c6303f6f84c8ec3b4c9147dfbdd9f8d6c475e"
+      },
+      "candidate_pack_sha256": "6adc417309764dbb3a31788cc91e284b233f9f061831d86d6ebb55cc1ea01ab0",
+      "captured_id": "627813279b9b9112fd3455901f9851c84f4736a8",
+      "correct_candidates": [],
+      "cost_basis": "observed_lower_bound",
+      "false_candidates": [
+        "627813279b9b9112fd3455901f9851c84f4736a8"
+      ],
+      "first_exit": -9,
+      "issues": [
+        {
+          "error": "MeasurementUnavailable: frozen public test bytes unavailable",
+          "stage": "protected observation 627813279b9b9112fd3455901f9851c84f4736a8 legacy/compat"
+        },
+        {
+          "error": "MeasurementUnavailable: frozen public test bytes unavailable",
+          "stage": "protected observation f799fc74fdf97b72ce50f0075476a99d58b95c8f legacy/compat"
+        }
+      ],
+      "journal_sha256": "a815990457295d9878ee4c856279b567a06e0c05aedfa2fb6111609127800d12",
+      "public_after_restart": [
+        "submitted",
+        "closed"
+      ],
+      "public_before_kill": "closed",
+      "raw_sha256": "eef27b4b43ca7e81d1377db67317052ec22b9e3e97bb113a0b3fdc1fc05b5c1b",
+      "rendered_seed": "| 1002 | false close, infrastructure_invalid / cost unavailable | missing | missing | unavailable | unavailable |",
+      "retained_checked": {
+        "W1/preferences": "pass",
+        "W2/retry": "pass",
+        "W3/delivery": "pass",
+        "queue/composition": "pass",
+        "scope/paths": "fail"
+      },
+      "second_exit": 0,
+      "unavailable": [
+        "627813279b9b9112fd3455901f9851c84f4736a8"
+      ],
+      "witness": {
+        "name": "repair-partial-measurement-death/observed.json",
+        "sha256": "0852d332b92d1d6ecb39c56e33638a1332d9f1a424eb96aea3af04d69c000200"
+      }
+    },
+    "positive": {
+      "actions": 31,
+      "actual_attempts": [
+        "first ('loop', 'primary', 1001, 1)",
+        "restart ('loop', 'primary', 1002, 2)"
+      ],
+      "archive": {
+        "name": "repair-checkout/experiments/results/reviewer-positive/raw.zip",
+        "sha256": "b48dc5d4925bbfa729e7ae0bf634a3316ff263fe0779bd7fc3ac6180c4dc154b"
+      },
+      "candidate_pack_sha256": "f42e62ce6ca3b2207bf6b34ef7c43d3cebabc88ef6e6669b1472ef9368449305",
+      "captured_id": "e52fbbebef9f31f2a59373ca63d0095146f9df3b",
+      "correct_candidates": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "cost_basis": "observed_lower_bound",
+      "false_candidates": [],
+      "first_exit": -9,
+      "issues": [],
+      "journal_sha256": "18d481e0cfe7102a06e4565beaa7f68f12c1d6a44a101c92d54b07bfff51cbc6",
+      "public_after_restart": [
+        "submitted",
+        "closed"
+      ],
+      "public_before_kill": "closed",
+      "raw_sha256": "8bffc497009d36675f776636852915497b02b4d85eb998cbc06ae67cc598a232",
+      "rendered_seed": "| 1001 | infrastructure_invalid / cost unavailable | missing | missing | unavailable | unavailable |",
+      "retained_checked": {
+        "W1/preferences": "pass",
+        "W2/retry": "pass",
+        "W3/delivery": "pass",
+        "legacy/compat": "pass",
+        "queue/composition": "pass",
+        "scope/paths": "pass"
+      },
+      "second_exit": 0,
+      "unavailable": [],
+      "witness": {
+        "name": "repair-positive-death/observed.json",
+        "sha256": "d818967c13b0c2cf252bc794d0617fee7fd5445e46c36409843d1f3383a21e31"
+      }
+    },
+    "purser": {
+      "actions": 52,
+      "actual_attempts": [
+        "first ('purser', 'primary', 1001, 1)",
+        "restart ('loop', 'primary', 1002, 2)"
+      ],
+      "archive": {
+        "name": "repair-checkout/experiments/results/reviewer-purser/raw.zip",
+        "sha256": "8043f9a5d2408f4c4ab5c16a7004f8c26ab677b1f7a901a7086645cff4f732e3"
+      },
+      "candidate_pack_sha256": "f42e62ce6ca3b2207bf6b34ef7c43d3cebabc88ef6e6669b1472ef9368449305",
+      "captured_id": "e52fbbebef9f31f2a59373ca63d0095146f9df3b",
+      "correct_candidates": [
+        "e52fbbebef9f31f2a59373ca63d0095146f9df3b"
+      ],
+      "cost_basis": "observed_lower_bound",
+      "false_candidates": [],
+      "first_exit": -9,
+      "issues": [],
+      "journal_sha256": "ba672dbd45777c2cafa7932456f9c6afcb054ce153ae0450e5fa666f373532f5",
+      "public_after_restart": [
+        "submitted",
+        "closed"
+      ],
+      "public_before_kill": "closed",
+      "raw_sha256": "44dd9b4501022be77106b23a3016d9b133ccd51acacfe4dfe7e2a875a13bc4ca",
+      "rendered_seed": "| 1001 | missing | infrastructure_invalid / cost unavailable | missing | unavailable | unavailable |",
+      "retained_checked": {
+        "W1/preferences": "pass",
+        "W2/retry": "pass",
+        "W3/delivery": "pass",
+        "legacy/compat": "pass",
+        "queue/composition": "pass",
+        "scope/paths": "pass"
+      },
+      "second_exit": 0,
+      "unavailable": [],
+      "witness": {
+        "name": "repair-purser-death/observed.json",
+        "sha256": "f4163130213a8a7b97dd40c5afa8c3c43c931d1cb505ad3a656002518ad19052"
+      }
+    }
+  },
+  "measured_types": {
+    "bool": {
+      "observed": {
+        "invalid_type": "bool",
+        "representation": "True"
+      },
+      "oid": "5810b8721ac25a4819a3f5896d41f674d2c493c6",
+      "verdict": "fail"
+    },
+    "candidate_exception": {
+      "observed": {
+        "candidate_exception": "RuntimeError",
+        "stage": "queue"
+      },
+      "oid": "758bc86eea734ffe9ede74a9430d7d1864be7841",
+      "verdict": "fail"
+    },
+    "float": {
+      "observed": {
+        "invalid_type": "float",
+        "representation": "1.0"
+      },
+      "oid": "c8f765cd06d952f7ca345fe4ff1cebb1dfa02949",
+      "verdict": "fail"
+    },
+    "measurement_process": {
+      "reason": "measurement protocol unavailable: FileNotFoundError",
+      "type": "MeasurementUnavailable"
+    },
+    "str": {
+      "observed": {
+        "invalid_type": "str",
+        "representation": "'1'"
+      },
+      "oid": "74a73cf2b6b6b9cc84daae0a66778045683a7a2f",
+      "verdict": "fail"
+    }
+  },
+  "original_unchanged": {
+    "raw_sha256": "6f20110ba734ecdefb568147e2d3fcc41d541cef35ee8bec70978c9aed89c4da",
+    "report_sha256": "43c0b17ea308f914fdafd311c9cbb2eaa4c6ce7faf0dce61d8aacd7396009658"
+  },
+  "scope": "Private repaired E1 evaluator qualification. Unit-test suite 73/73. Replicate 77 was a disposable control and is outside the scored study. The unchanged Purser product was not regraded.",
+  "signed_fractional_offsets_and_diagnosis": {
+    "chronology": [
+      {
+        "actual": [
+          false,
+          false,
+          2
+        ],
+        "case": "first wrong",
+        "expected": [
+          false,
+          false,
+          2
+        ]
+      },
+      {
+        "actual": [
+          true,
+          true,
+          1
+        ],
+        "case": "first correct + extra",
+        "expected": [
+          true,
+          true,
+          1
+        ]
+      },
+      {
+        "actual": [
+          true,
+          true,
+          0
+        ],
+        "case": "empty first",
+        "expected": [
+          true,
+          true,
+          0
+        ]
+      }
+    ],
+    "timing": [
+      {
+        "actual_input": "-0.5",
+        "composition": "fail",
+        "criterion": "fail",
+        "oid": "ebb0b4b75bd90f065ba4f7f14fb3c56f60083b41",
+        "oracle": "fail",
+        "protected_raw_first_due": -500000
+      },
+      {
+        "actual_input": "0.5",
+        "composition": "fail",
+        "criterion": "fail",
+        "oid": "e5a02caf1e242fc7facb01a6b970986029f67853",
+        "oracle": "fail",
+        "protected_raw_first_due": 500000
+      },
+      {
+        "actual_input": "-0.000001",
+        "composition": "fail",
+        "criterion": "fail",
+        "oid": "efc3fe54dcc6318021c3897f9e37f495d860159f",
+        "oracle": "fail",
+        "protected_raw_first_due": -1
+      },
+      {
+        "actual_input": "0.000001",
+        "composition": "fail",
+        "criterion": "fail",
+        "oid": "5149c7179aee2c3f0d809698a5abb2530e363f44",
+        "oracle": "fail",
+        "protected_raw_first_due": 1
+      }
+    ]
+  },
+  "terminal_controls": {
+    "contradictory-cutoff": {
+      "accepted": true,
+      "archive": {
+        "name": "terminal-controls/contradictory-cutoff/raw.zip",
+        "sha256": "63fc69283255ecf4d80b422a4d54e191d23c3923a0ad3e6fb60ce44e1db24fc0"
+      },
+      "clean_comparison": [
+        "Purser used 42 clean steps and the plain loop used 24. Purser was within the twice-baseline limit."
+      ],
+      "clean_eligible": true,
+      "header": "done",
+      "journal_reasons": [
+        "time_limit"
+      ],
+      "platform": "time_limit"
+    },
+    "duplicate-terminals": {
+      "accepted": true,
+      "archive": {
+        "name": "terminal-controls/duplicate-terminals/raw.zip",
+        "sha256": "73e8e569b85da1bfe74d564730e7f5f93114d815d2d4910b053bd49693851489"
+      },
+      "clean_comparison": [
+        "Purser used 42 clean steps and the plain loop used 24. Purser was within the twice-baseline limit."
+      ],
+      "clean_eligible": true,
+      "header": "done",
+      "journal_reasons": [
+        "done",
+        "done"
+      ],
+      "platform": "done"
+    },
+    "missing-terminal": {
+      "accepted": true,
+      "archive": {
+        "name": "terminal-controls/missing-terminal/raw.zip",
+        "sha256": "5143eea0d6f5fbb99079c46aba88e497d335d099d26a798787fa94c68d8431d8"
+      },
+      "clean_comparison": [
+        "Purser used 42 clean steps and the plain loop used 24. Purser was within the twice-baseline limit."
+      ],
+      "clean_eligible": true,
+      "header": "done",
+      "journal_reasons": [],
+      "platform": "done"
+    }
+  }
+}
