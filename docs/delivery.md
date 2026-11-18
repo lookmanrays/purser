@@ -45,3 +45,7 @@ The independent reviewer declined evaluator candidate `3785d19` before registrat
 The owner authorized a separate primary implementation chat for recovery. Its Codex ID is `01a1ef8e-6e96-7491-be33-5a7a9351e08d`. The architect chat retains project scope, milestone decisions and integration.
 
 **M2-G accepted.** The independent verifier issued GO on the integrated product, real accepted commitment and registered E1 replication at `63a9439382d68d68c65a9ee56011a94c9ea648e0`. Each arm caught all 20 faults. The plain loop took 24 steps on clean work, compared with 42 for Purser and 42 for the equal-verifier loop. The experimental source, raw results, checksums and gate disposition are in the [M2 acceptance record](evidence/M2/acceptance.md).
+
+## M3 · Reconsider decisions and preserve unaffected work
+
+M3-A and M3-B are released from the accepted M2 base at `661a08c1d26fc9811ecd0d6c9656640f03631e89`. The implementation chat owns the two technical packets, their preflights and their independent candidate evidence. The architect owns integration and the M3-G decision. [M3 dispatch](evidence/M3/dispatch.md)
