@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WIRE = json.loads((ROOT / "docs/contracts/wire-v1.json").read_bytes())
 EXPECTED = WIRE["expected"]
 AS_OF = EXPECTED["replay_as_of"]
-M2_STATUS = {s["revision"]: {**s, "answers": {**s["answers"], "q03": [], "q04": []}}
+M2_STATUS = {s["revision"]: {**s, "answers": {**s["answers"], "q03": [], "q04": [], "q05": [], "q06": []}}
              for s in json.loads((ROOT / "docs/contracts/m2-legacy-status-v1.json").read_bytes())}
 
 

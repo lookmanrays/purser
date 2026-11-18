@@ -1,6 +1,6 @@
 """Deterministic interpretation of admitted domain events. No I/O or clock."""
 from .wire import KernelError, parse_time
-from . import decisionevents, workevents
+from . import decisionevents, effectevents, workevents
 
 
 def empty_projection():
@@ -39,10 +39,10 @@ def _receipt(projection, data, revision, end):
 
 def apply_event(projection, event_type, data, revision, batch_end, *, event_version=1):
     location = {"revision": revision}
-    if event_version == 1 and event_type in decisionevents.EVENTS:
-        return decisionevents.project(projection, event_type, data, revision)
-    if event_version == 1 and event_type in workevents.EVENTS:
-        return workevents.project(projection, event_type, data, revision)
+    if event_version == 1:
+        for domain in (workevents, decisionevents, effectevents):
+            if event_type in domain.EVENTS:
+                return domain.project(projection, event_type, data, revision)
     if event_type not in _FIELDS or not (
         event_version == 1 or event_version == 0 and event_type == "CommitmentCreated"
     ):

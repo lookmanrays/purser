@@ -1,12 +1,13 @@
 """One foreground turn over durable state. Adapters are supplied by trusted launchers."""
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from .kernel.gate import admit
-from .kernel.wire import KernelError
+from .kernel.wire import KernelError, format_time
 from .kernel.workview import WorkView
 
 
-def context_pack(snapshot, assignment_id):
+def context_pack(snapshot, assignment_id, *, as_of=None):
     view = WorkView(snapshot["projection"])
     row = view.records.get(assignment_id)
     if not row or row["kind"] != "Assignment":
@@ -32,8 +33,11 @@ def context_pack(snapshot, assignment_id):
             for oid in view.observations[run]:
                 observations.append({"id": oid, **view.fields(oid)})
     direct = view.graph.acquired(work_id)
+    capabilities = view.capabilities(work_id, as_of or format_time(datetime.now(timezone.utc)))
+    effects = [{"slot": slot, "effect": policy["effect"], "state": view.fields(policy["effect"])["state"]}
+               for slot, policy in sorted(work.get("effect_slots", {}).items())]
     return {
-        **({"work_supports": direct} if direct else {}),
+        **({"work_supports": direct} if direct else {}), **({"effects": effects} if effects else {}),
         "v": 1, "revision": snapshot["revision"], "head_hash": snapshot["head_hash"],
         "commitment": {"id": scope, "statement": commitment["statement"]},
         "assignment": {"id": assignment_id, "executor": assignment["executor"]},
@@ -41,9 +45,9 @@ def context_pack(snapshot, assignment_id):
                  "title": work.get("title", commitment["statement"]), "candidate": work["candidate"],
                  "children": list(view.children[work_id]), "coverage": work.get("coverage")},
         "acceptance": "principal" if work_id == commitment["root"] else "automatic",
-        "limits": {"results_per_assignment": 1, "shared_effects": 0},
+        "limits": {"results_per_assignment": 1, "shared_effects": len({grant["slot"] for grant in capabilities})},
         "obligations": obligations, "observations": observations, "reasons": view.reasons(work_id),
-        "decisions": view.graph.decisions(work_id), "capabilities": [],
+        "decisions": view.graph.decisions(work_id), "capabilities": capabilities,
     }
 
 
@@ -51,7 +55,8 @@ def tick(store, executors=None, *, clock=None):
     """Dispatch at most one eligible local action. An executor returns its candidate identity."""
     snapshot = store.snapshot()
     view = WorkView(snapshot["projection"])
-    actions = view.answers()["q10"]
+    as_of = format_time(clock() if clock else datetime.now(timezone.utc))
+    actions = view.answers(as_of)["q10"]
     executors = {} if executors is None else executors
     for action in actions:
         name, work_id = action["action"], action["subject"]
@@ -80,7 +85,7 @@ def tick(store, executors=None, *, clock=None):
                               {"op": "assignment.dispatch", "id": assignment_id}, "p-release-")
             if release["disposition"] != "admitted":
                 return {"v": 1, "state": "refused", "revision": release["revision"], "action": action, "receipt": release}
-            candidate = executors[actor](context_pack(snapshot, assignment_id))
+            candidate = executors[actor](context_pack(snapshot, assignment_id, as_of=as_of))
             op = {"op": "result.submit", "id": "R-" + token, "assignment": assignment_id, "candidate": candidate}
             role = "executor"
         else:
