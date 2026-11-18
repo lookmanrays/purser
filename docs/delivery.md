@@ -25,3 +25,7 @@ The first domain is one local coding repository. The sole runtime principal acce
 Before M5 runs model-authored Python, qualify the narrow candidate-execution boundary used by the evaluator. Even a frozen test suite imports candidate code. Keep the trusted scorer, journal, provider credential and canonical repository outside that process. M6 additionally qualifies the interactive coding agent, its tools and its transport. The scripted M0 fixture only exercises known, controlled code.
 
 Track the 3,000-line target using physical Python source lines, including comments and blank lines, in the tracked `purser/` production package. Include semantic authority, projection, admission and closure code even if subsequently extracted under another package. Exclude tests, fixtures and separately qualified adapter-only infrastructure. Crossing the target triggers an architectural review. Record the measured scope and count with each integrated code gate.
+
+## M1 · Local ledger, admission and CLI
+
+Dispatch base `dad1118aee40c509bbbc30a31224777deaf79026` contains the accepted M0 inputs and [implementation preflight](evidence/M1/preflight.md). The store worker owns `lookman/purser-m1-store`. The CLI worker owns `lookman/purser-m1-cli`. Both return local commits to the orchestrator. The orchestrator owns the dependent admission module and integrates the three packages. The independent reviewer tests the resulting immutable commit through the CLI and separate SQLite processes.
