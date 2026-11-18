@@ -2,12 +2,14 @@
 import re
 from datetime import datetime, timezone
 
+from .artifacts import Artifacts
 from .projector import apply_event
+from .rules import HASH, ID, Refusal, matches
+from .workops import OPS, WorkAdmission, bound, candidate, validate_work, work_reads
+from .workview import WorkView
 from .wire import KernelError, canonical, decode, digest, parse_time
 
 PRINCIPAL = "principal:local"
-ID = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,95}")
-HASH = re.compile(r"[0-9a-f]{64}")
 APPROVAL = re.compile(r"a:[0-9a-f]{64}")
 FIELDS = {
     "commitment.create": {"op", "id", "root", "statement"},
@@ -17,22 +19,27 @@ FIELDS = {
 }
 
 
-class Refusal(KernelError):
-    """A valid first delivery whose semantic rejection must survive restart."""
-
-
-def matches(pattern, value):
-    return isinstance(value, str) and pattern.fullmatch(value) is not None
-
-
 def authenticate(binding):
     keys = {"actor_id", "role", "principal_id", "commitment", "assignment"}
-    if (not isinstance(binding, dict) or binding.keys() != keys
+    if (not isinstance(binding, dict) or not keys <= binding.keys()
             or any(not isinstance(binding[k], str) or not binding[k] for k in ("actor_id", "role"))
             or binding["principal_id"] != PRINCIPAL
             or (binding["role"] == "principal") != (binding["actor_id"] == PRINCIPAL)
             or any(binding[k] is not None and not matches(ID, binding[k]) for k in ("commitment", "assignment"))):
         raise KernelError("unauthenticated")
+    extra = binding.keys() - keys
+    if extra:
+        name = {"observer": "witness", "verifier": "criterion"}.get(binding["role"])
+        if extra != {name} or type(binding[name]) is not dict:
+            raise KernelError("unauthenticated")
+        proof = binding[name]
+        byte_fields = ("definition", "environment", "artifact") if name == "witness" else ("definition", "environment")
+        other = {"candidate"} if name == "witness" else {"work", "observer"}
+        if (proof.keys() != {*byte_fields, *other}
+                or any(type(proof[k]) is not bytes or len(proof[k]) > 8 * 1024 * 1024 for k in byte_fields)
+                or name == "witness" and not candidate(proof["candidate"])
+                or name == "criterion" and (not matches(ID, proof["work"]) or type(proof["observer"]) is not str)):
+            raise KernelError("unauthenticated")
 
 
 def envelope(value):
@@ -96,12 +103,14 @@ def conflicts(records, versions):
 
 
 class Admission:
-    def __init__(self, snapshot, at, binding, proposal, request_digest):
+    def __init__(self, snapshot, at, binding, proposal, request_digest, artifacts):
         self.start = snapshot["revision"]
         self.projection = snapshot["projection"]
         self.at = at
         self.proposal = proposal
         self.actor = binding["actor_id"]
+        self.binding = binding
+        self.artifacts = artifacts
         self.request_digest = request_digest
         self.events = []
 
@@ -139,6 +148,8 @@ class Admission:
 
     def apply(self, op):
         name, key = op["op"], op["id"]
+        if name in OPS:
+            return WorkAdmission(self).apply(op)
         records = self.records()
         if name == "commitment.create":
             if key in records or op["root"] in records:
@@ -169,6 +180,12 @@ class Admission:
 
 def admit(store, binding, proposal, *, clock=lambda: datetime.now(timezone.utc)):
     authenticate(binding)
+    binding = dict(binding)
+    for proof in ("witness", "criterion"):
+        if proof in binding:
+            binding[proof] = dict(binding[proof])
+    if "witness" in binding:
+        binding["witness"]["candidate"] = dict(binding["witness"]["candidate"])
     proposal = envelope(proposal)
     actor, scope, base = binding["actor_id"], proposal["commitment"], proposal["base_revision"]
     proposal_id = proposal["proposal_id"]
@@ -184,8 +201,13 @@ def admit(store, binding, proposal, *, clock=lambda: datetime.now(timezone.utc))
                 raise KernelError("id_conflict")
             if not scoped_here and previous["code"] != "forbidden":
                 raise KernelError("unauthenticated")
+            if previous["disposition"] != "rejected" and any(
+                type(op) is dict and type(op.get("op")) is str and op["op"] in OPS and not bound(op, binding)
+                for op in proposal["ops"]
+            ):
+                raise KernelError("unauthenticated")
             return [], previous
-        batch = Admission(snapshot, at, binding, proposal, request_digest)
+        batch = Admission(snapshot, at, binding, proposal, request_digest, Artifacts(store.path))
         try:
             if not 0 <= base <= snapshot["revision"]:
                 raise Refusal("bad_revision")
@@ -198,8 +220,18 @@ def admit(store, binding, proposal, *, clock=lambda: datetime.now(timezone.utc))
                     raise Refusal("bad_revision") from exc
             if not scoped_here:
                 raise Refusal("forbidden")
-            keys = {key for op in proposal["ops"] for key in validate_op(op, proposal, binding)}
+            keys = set()
             records = batch.records()
+            view = WorkView(batch.projection)
+            for op in proposal["ops"]:
+                if isinstance(op, dict) and isinstance(op.get("op"), str) and op["op"] in OPS:
+                    references = validate_work(op, binding)
+                    if any(k in records and records[k]["commitment"] != scope for k in references):
+                        raise Refusal("not_found")
+                    keys.update(work_reads(view, op, binding))
+                    keys.add(scope)
+                else:
+                    keys.update(validate_op(op, proposal, binding))
             # A scoped lookup cannot expose another commitment's records or change revision.
             for key in keys:
                 if key in records and records[key]["commitment"] != scope:
