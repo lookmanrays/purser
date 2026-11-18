@@ -30,4 +30,8 @@ Track the 3,000-line target using physical Python source lines, including commen
 
 Dispatch base `dad1118aee40c509bbbc30a31224777deaf79026` contains the accepted M0 inputs and [implementation preflight](evidence/M1/preflight.md). The store worker owns `lookman/purser-m1-store`. The CLI worker owns `lookman/purser-m1-cli`. Both return local commits to the orchestrator. The orchestrator owns the dependent admission module and integrates the three packages. The independent reviewer tests the resulting immutable commit through the CLI and separate SQLite processes.
 
-The first combined implementation reached the CLI and durable admission boundary. M1-G declined `fc6d72a` because a named historical read could contradict its surviving head. The revised store scope and recovery coverage are recorded in the [M1 preflight](evidence/M1/preflight.md). M2 remains gated on an accepted correction.
+M1-G declined `fc6d72a` because a named historical read could contradict its surviving head. The corrected candidate `59454662450feb58e7a76a80f36000ea093d7ef0` passed independent M1-G. See the [acceptance and reproduced outcomes](evidence/M1/acceptance.md).
+
+## M2 · Independent evidence and work closure
+
+M2-A and M2-B are released against the [M2 preflight](evidence/M2/preflight.md). The work worker owns the shared gate/projector registrations and the evaluation worker owns the independent scorer, baseline and scripted harness. The orchestrator owns the dependent driver, CLI integration and real development commitment. The existing frozen inputs remain at their M0 identities.
