@@ -1,0 +1,57 @@
+{
+  "M3_dispatch": "927d5ec32a1d17cc463b79b567d02629d1d522e3",
+  "files": {
+    "cold_cli.py": {
+      "bytes": 2033,
+      "sha256": "77f8933776cda4bdba68fa67bc3161fb4ae6327bb291b09d1413a91110be6330"
+    },
+    "consumer-procedure.md": {
+      "bytes": 7661,
+      "sha256": "c371ab9af279bf5cd3413186f2261fa33cf0a48b5fb3202f96eb20a9223e5b2a"
+    },
+    "e2_reference.py": {
+      "bytes": 6810,
+      "sha256": "04870d41b826ff1b321f7f850a127b4b470035e4ea3a788c5252cd04d165bf42"
+    },
+    "hand-cases.json": {
+      "bytes": 56428,
+      "sha256": "292b210bb6c1762dc1def131414283f24cff822a8858a825e8923952daf7ece2"
+    },
+    "hand-git-proofs.json": {
+      "bytes": 3091,
+      "sha256": "696cd21574d65f4356641dc56f69f66db63e02f9c71f3b2bbcc3e48348f5085c"
+    },
+    "hand_cases.py": {
+      "bytes": 7490,
+      "sha256": "5ff2bc46a1408c233fe7a119d4fc3f2f7fbda7d157df24dd4973498fc9e2b690"
+    },
+    "m3-criterion-v1.json": {
+      "bytes": 5195,
+      "sha256": "1a2cd7e67832bc5a10a3c802ec6ba3b723b103f459a58e729711c2614da976bf"
+    },
+    "m3-environment-v1.json": {
+      "bytes": 1103,
+      "sha256": "5b750a9e88effeed7e7cdf40799974efde7d84dfe062690d96185828ba2fd4e1"
+    },
+    "make_hand_fixture.py": {
+      "bytes": 3468,
+      "sha256": "2e1749eff2b9ffbc872ff7aae82def2f382c0319102a936cb7e41d2739b9a51b"
+    },
+    "queue_reference.py": {
+      "bytes": 6629,
+      "sha256": "a1612991ddb556a0737adb849e152d3b0c25bfa8043dd76d0251467daf07b5e4"
+    }
+  },
+  "independent_preimplementation": true,
+  "private_checks": {
+    "hand_scored_threshold_cases": 7,
+    "hand_scored_trace_cases": 19,
+    "phase_seed_definitions": 40,
+    "private_legacy_executions": 336,
+    "queue_injections_per_candidate_phase": 11,
+    "real_candidate_phase_pairs": 12,
+    "real_git_control_candidates": 6
+  },
+  "python": "3.11.15",
+  "registered_source": "4460381e44f3dd42d22848bf6d82fea9a817a833"
+}
