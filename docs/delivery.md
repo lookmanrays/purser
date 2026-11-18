@@ -4,7 +4,7 @@ The orchestrator integrates worker candidates on `lookman/purser-development`. E
 
 ## Current implementation
 
-M0 through M3 passed their local engineering gates. All 66 scripted E2 trials completed. Both original arms preserved the two unaffected siblings in 20/20 primary cases. Purser used 500 rework steps against the plain loop’s 260. The M4 CLI can now publish an approved change to a registered private Git repository and recover an interrupted write. Whole-product tests passed at `62ac9b6`. The E3 study and final M4 decision are pending. [CLI usage](../README.md) · [M3 decision and evidence](evidence/M3/acceptance.md) · [M4 product verification](evidence/M4/foreground-verification.md)
+M0 through M4 passed their local engineering gates. The CLI can explain current or stale work, verify independent evidence and recover an interrupted Git publication. On the original E3 study, Purser and both comparison loops recovered 20/20 ordinary updates without duplicates. Purser used 130 primary steps against the plain loop’s 120. The real development ledger closed M4 at revision 68. M5 is open for the model adapter, real-model harness and human operating decision. [CLI usage](../README.md) · [M3 decision](evidence/M3/acceptance.md) · [M4 decision and evidence](evidence/M4/acceptance.md)
 
 ## M0 · Design and experimental protocol
 
