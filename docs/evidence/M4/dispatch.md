@@ -2,6 +2,8 @@
 
 The architect released M4-A and M4-B from `d865971fa3da20d0b82fa7bc56ca1b24c080270b`, after M3 passed on `1baab9ec2d13c6ca5842199027df9a02f27487db`. The live project ledger opened `W-m4-git-authority` at revision 53. The independent observer owns the expected continuity answers and the external Git measurements. The architect owns the join, the registered E3 collection and the milestone disposition. [M3 acceptance](../M3/acceptance.md) · [Adopted M4 plan](../../implementation-plan-v0.5.md)
 
+The independent verifier enrolled `O-m4-integrated` at revision 55. Its criterion binds the source, results, Git observations, ten continuity answers and twelve design invariants to the submitted candidate. The architect took assignment `AS-m4-integration-1` at revision 57. A fresh CLI process read the assigned work, its open obligation and the verifier’s artifact digests at head `0dc9f063245586b9ccddf214cebe73bc8497aa51427248ba874aa9c12e01856b`. [Enrolled criterion](observer/criterion-v1.json) · [Reference environment](observer/environment-v1.json)
+
 | Packet | Owner and implementation | Evidence required for the join |
 | --- | --- | --- |
 | M4-A · Authority | `lookman/purser-m4-authority`. Extend the existing admission, projection and principal-action mechanisms. Bind the grant, required work slot, immutable intent and each attempted dispatch. Use current authority and observed Git paths. Add the grant and unresolved-effect answers to the existing CLI. | Real SQLite demonstrates grant expiry at equality, revocation on both sides of the durable cutoff, current generation and scope, request replay, and exclusion of overlapping unresolved effects. Closure and historical answers retain their original evidence and digests. |

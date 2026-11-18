@@ -1,0 +1,81 @@
+{
+  "commitment": "C-purser-delivery",
+  "criteria": [
+    "Bind the actual submitted immutable Git revision and production/evaluator trees, result, generation, assignment, run, criterion bytes, environment bytes and independent retained observation. Authenticate original registration before first collection, complete actual inputs, source identities and collected result; where these are separate revisions demonstrate Git ancestry and the same affected source and archived result bytes.",
+    "Through the normal public whole-product entrypoints on a disposable genuine Git repository and SQLite/WAL, exercise principal approval and repeated response, grantee and commitment binding, assignment and scope attenuation, capability/branch/path and candidate range, exclusive expiry, generation and slot de-duplication, and exclusion of a second unresolved effect for the same target. Record the actual cutoff time and ledger order from independent processes in both revoke/dispatch orders. A first revocation prevents a new physical action; a prior durable release may still complete, including across later revocation. Test live equality at expiry. Durable authorization or a lost acknowledgement cannot authorize another physical release.",
+    "Cut real broker processes before dispatch, after durable authorization before mutation, after an actual expected-old branch move plus protected receipt and before its response, and after reconciliation before reply. Follow real admitted attempts, per-intent receipts, actual old/new canonical ref transitions and writer/child quiescence independently. Confirm a successful operation even after a later legitimate branch advancement. Confirm absence only with quiescence, intact retention, a still-valid precondition and no unrecorded transition under the qualified boundary. Retry only after an accurate disposition and fresh authority for the same intention. Inconsistent/unreadable/insufficient facts remain pending with a reason and no duplicate effect.",
+    "Admit an awkward full-domain fixture with open/submitted/stale/closed work, independent evidence, valid and invalidated decisions, active and time-inactive authority, and an unresolved real dispatch. Kill the normal process, discard or omit projections and transcripts, reconstruct from original events and retained bytes with models disabled, and compare all ten fixed-time CLI answers to an independent golden at a completed revision. Test cold vs live frontier, historical rows at the original time, live equality at expiry and explicit later external reconciliation. Exercise the twelve v0.5 invariants on the joined product at the locally trusted, no-model M4 boundary and verify old M0–M3 wire, genuine history and retained results relevant to the affected paths.",
+    "Independently recover the M0 E3 fixed input and prepared commits, schedule of 20 three-arm paired seeds plus one clean and one separate genuinely ambiguous stress seed in each arm, the same response/available tools and permitted observations, timed budgets and raw identities. Measure original physical outcome per intent, every externally visible branch transition across attempts, the participant’s actual public original disposition and evidence before retry/completion, fresh authority, effective changes, resolved-by-budget and actual manual repair. Derive duplicate count, correct reconciliations, stuck/missing cases, conditional overhead and paired raw steps and elapsed time from independent public/physical records. Preserve and report both original absolute and no-advantage predicates and the distinct diagnostic arm. Reproduce the public report from its frozen actual originals; accurately reported negative or inconclusive scientific results are valid."
+  ],
+  "frozen_sources": [
+    {
+      "commit": "4460381e44f3dd42d22848bf6d82fea9a817a833",
+      "path": "docs/contracts/kernel-v1.md",
+      "sha256": "673ff1e7241eb04588254662896e4541687af1821afbc1235369d14964bd4e7d"
+    },
+    {
+      "commit": "4460381e44f3dd42d22848bf6d82fea9a817a833",
+      "path": "docs/contracts/lifecycle-v1.json",
+      "sha256": "be4ee8a73e6c96cffc3332d12e9bbd73ad1e18dd99290d147f24561cb774944b"
+    },
+    {
+      "commit": "4460381e44f3dd42d22848bf6d82fea9a817a833",
+      "path": "docs/contracts/wire-v1.json",
+      "sha256": "2b4c9f3777a3c3acfee356daea795713236cfd256acb94afebdf4ed88c14fa32"
+    },
+    {
+      "commit": "4460381e44f3dd42d22848bf6d82fea9a817a833",
+      "path": "experiments/manifests/v1/manifest.json",
+      "sha256": "1c51ce44eb1887bc5cf08ee98afd7714faa7b23cf8f9b62c998c128f9ce54b73"
+    },
+    {
+      "commit": "4460381e44f3dd42d22848bf6d82fea9a817a833",
+      "path": "experiments/manifests/v1/protocol.md",
+      "sha256": "5722774bffd56969b97c1575b2776cd7b9b3536da99dc1b4e49976be4835b2eb"
+    },
+    {
+      "commit": "4460381e44f3dd42d22848bf6d82fea9a817a833",
+      "path": "experiments/manifests/v1/raw.schema.json",
+      "sha256": "7886a6f9c2027281d51dd72ee21e093a4d06a7c3479f07e0efe55d0e2465eb1b"
+    },
+    {
+      "commit": "4460381e44f3dd42d22848bf6d82fea9a817a833",
+      "path": "experiments/manifests/v1/worked-examples.json",
+      "sha256": "69399778226f413e97a804fb9d38b9767ccaaacdaeb236a9d024badcde16d45b"
+    },
+    {
+      "commit": "d865971fa3da20d0b82fa7bc56ca1b24c080270b",
+      "path": "docs/architecture-v0.5.md",
+      "sha256": "28bfc613d93c238bf4211b19fa5484f4eb16cc84ebb6c64d3b08a7237c0a51cf"
+    },
+    {
+      "commit": "d865971fa3da20d0b82fa7bc56ca1b24c080270b",
+      "path": "docs/implementation-plan-v0.5.md",
+      "sha256": "e7ad1f76a62a1ab2ffeb35549b36c7b79f75d69a157bef3f41a55b9b732bdbd7"
+    },
+    {
+      "commit": "d865971fa3da20d0b82fa7bc56ca1b24c080270b",
+      "path": "docs/contracts/work-v1.md",
+      "sha256": "be5c8b1f01213a78515a90ae824ef435346d5e295a85ed39ded0c958a565bd8c"
+    },
+    {
+      "commit": "d865971fa3da20d0b82fa7bc56ca1b24c080270b",
+      "path": "docs/contracts/decisions-v1.md",
+      "sha256": "e568529678dae19bef1dc79aa9f94e8f03ed8a1b517a392a2184db105ad14f6b"
+    }
+  ],
+  "id": "purser.m4.integrated.criterion.v1",
+  "obligation": "O-m4-integrated",
+  "observer": "observer:independent-m4",
+  "retained_report": "Canonical JSON with exact subjects and component identities, bytes or content-addressed references for independently observed Git changes, process/cutoff timing and public receipts, fixed-time/cold and historical CLI, the 12 invariant checks, independent per-seed/cost comparison, outcomes/denominators/limitations and source provenance.",
+  "starting_project_commit": "d865971fa3da20d0b82fa7bc56ca1b24c080270b",
+  "title": "The submitted guarded Git effect survives process loss, preserves the full no-model frontier and faithfully reports preregistered E3",
+  "verdict_rules": {
+    "fail": "A demonstrated material contradiction at an enrolled supported operating boundary or a materially incorrect claim about the registered original observations/report.",
+    "inconclusive": "Essential product or study evidence cannot be attributed or checked. Name the absent physical or public boundary and preserve available measurements.",
+    "pass": "The submitted M4 product satisfies the enrolled locally qualified authority, Git-recovery and continuity checks, and its registered observations and report independently reproduce the original E3 rules. An adverse comparison is retained."
+  },
+  "verifier": "verifier:independent-m4",
+  "version": 1,
+  "work": "W-m4-git-authority"
+}

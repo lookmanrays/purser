@@ -1,0 +1,19 @@
+{
+  "binary_sha256": {
+    "git": "be4afb2b003904725826250de9fb76567bbacf82323457b5a1ec26706b66bcae",
+    "libpython": "db517ed35c5958d7c22302b66a99096c51f6b84ed1dcba6a039b0cea614a7dd6",
+    "python": "612bb6e55a95ea6eaf3c9693cf17fbf1a738408ad3bbfce988f712d7321d2c42"
+  },
+  "git": "git version 2.50.1 (Apple Git-155)",
+  "id": "purser.m4.integrated.environment.v1",
+  "implementation": "CPython",
+  "locale": "C",
+  "machine": "arm64",
+  "python": "3.11.15",
+  "release": "25.5.0",
+  "scope": "Single trusted local Darwin reference host. Local fixture Git canonical ref and protected receipt with independent physical observation, original attempt/child process and quiescence evidence, SQLite/WAL and content-addressed artifacts, fresh Python module CLI at a specified UTC instant. Case workspaces are disposable. Separate scripted seeds use fixed byte-pinned input and budget on the actual host. No network dependency, paid services, model credentials, live remote approvals, or external Git pushes. Process interruption is qualified within the local supported failure model.",
+  "sqlite": "3.53.1",
+  "system": "Darwin",
+  "timezone": "UTC",
+  "version": 1
+}
