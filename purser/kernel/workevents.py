@@ -1,5 +1,6 @@
 """Version-one work events interpreted by the sole deterministic projector."""
-from .rules import HASH, candidate, matches
+from .rules import HASH, candidate, matches, witnesses_run
+from .support import SupportGraph
 from .wire import KernelError
 
 EVENTS = {
@@ -75,8 +76,13 @@ def project(projection, name, data, revision):
         prior = records.get(work, {}).get("fields", {}).get("assignment")
         if prior:
             update(prior, "Assignment", state="superseded")
-        create("Assignment", dict(fields, state="current"))
-        update(work, "WorkItem", state="assigned", generation=data["generation"], assignment=identity,
+        acquired = SupportGraph(records, edges).work_outcomes(work)
+        if any(value is None for value in acquired.values()):
+            raise error
+        binding = {"work_supports": acquired} if acquired else {}
+        create("Assignment", dict(fields, state="current", **binding))
+        recovered = {"causes": []} if "causes" in records[work]["fields"] else {}
+        update(work, "WorkItem", state="assigned", generation=data["generation"], assignment=identity, **recovered,
                candidate=None, result=None, accepted_outcome=None, closed_outcome=None)
     elif name == "ResultSubmitted":
         create("Result", fields)
@@ -91,8 +97,14 @@ def project(projection, name, data, revision):
         create("VerificationRun", fields)
         update(data["obligation"], "Obligation", current_run=identity)
     elif name == "ObservationRecorded":
+        if data["observer"] != records[data["run"]]["fields"]["observer"]:
+            raise error
         create("Observation", fields)
     elif name == "EvidenceRecorded":
+        run = records[data["run"]]["fields"]
+        observation = records[data["observation"]]["fields"]
+        if not witnesses_run(observation, data["run"], run) or data["verifier"] != run["verifier"]:
+            raise error
         create("Evidence", fields)
     elif name == "ObligationWaived":
         create("Waiver", fields)

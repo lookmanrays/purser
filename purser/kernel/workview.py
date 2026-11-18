@@ -1,6 +1,7 @@
 """Pure work eligibility, closure witnesses and continuity answers at one revision."""
 from collections import defaultdict
 
+from .support import SupportGraph
 from .wire import digest
 
 
@@ -14,6 +15,7 @@ def _reasons(items):
 class WorkView:
     def __init__(self, projection):
         self.records = {r["id"]: r for r in projection["records"]}
+        self.graph = SupportGraph(self.records, projection["edges"])
         self.children = defaultdict(list)
         self.related = defaultdict(list)
         self.observations = defaultdict(list)
@@ -25,7 +27,7 @@ class WorkView:
                 self.children[f["parent"]].append(key)
             if "work" in f:
                 self.related[(f["work"], kind)].append(key)
-            if kind == "Observation":
+            if kind == "Observation" and "run" in f:
                 self.observations[f["run"]].append(key)
             if kind == "Evidence":
                 self.evidence[f["run"]].append(key)
@@ -37,6 +39,8 @@ class WorkView:
         obligation = self.fields(key)
         work = self.fields(obligation["work"])
         witness = {"id": key, "version": obligation["version"], "run": None, "evidence": None, "waiver": None}
+        if self.graph.issues(obligation["work"]):
+            return "open", witness
         waiver = obligation.get("waiver")
         if waiver:
             w = self.fields(waiver)
@@ -68,7 +72,7 @@ class WorkView:
     def _evaluate(self, key):
         work = self.fields(key)
         children, coverage = self.children[key], work.get("coverage")
-        issues, witnesses, obligations = [], [], []
+        issues, witnesses, obligations = self.graph.issues(key), [], []
         for oid in self.related[(key, "Obligation")]:
             state, witness = self.qualification(oid)
             if state in ("passed", "waived"):
@@ -90,7 +94,8 @@ class WorkView:
             issues.append(("missing_result", [key]))
         basis = {"work": key, "generation": work["generation"], "candidate": work["candidate"],
                  "coverage": coverage, "children": list(children), "witnesses": witnesses,
-                 "decisions": [], "obligations": obligations, "effects": []}
+                 "decisions": [{"id": d["id"], "revision": d["revision"]} for d in self.graph.decisions(key)],
+                 "obligations": obligations, "effects": []}
         return basis, _reasons(issues), None if issues else digest("outcome", basis)
 
     def basis(self, work):
@@ -115,6 +120,17 @@ class WorkView:
             waiting = [r["id"] for r in self.records.values() if r["kind"] == "Approval"
                        and r["commitment"] == record["commitment"] and r["fields"]["state"] == "pending"]
             return _reasons([("awaiting_activation", waiting or [record["commitment"]])])
+        if record["kind"] in ("Decision", "Assumption"):
+            if f["state"] in ("reconsidering", "invalidated"):
+                return _reasons([("invalidated_support", [key, *f["causes"],
+                                *(self.fields(c)["assumption"] for c in f["causes"])])])
+            if f["state"] == "superseded":
+                return [{"code": "superseded", "refs": [f["superseded_by"]]}]
+            return []
+        if record["kind"] == "Observation" and "assumption" in f:
+            return self.reasons(f["assumption"])
+        if record["kind"] == "DecisionOpinion":
+            return self.reasons(f["decision"])
         work = key if record["kind"] == "WorkItem" else f.get("work")
         if not work and "run" in f:
             work = self.fields(f["run"])["work"]
@@ -127,13 +143,14 @@ class WorkView:
 
     def reads(self, work):
         """Current work, descendants and each qualifying/rejecting record read to evaluate them."""
-        seen = set()
+        seen, work_seen = set(), set()
         stack = [work]
         while stack:
             key = stack.pop()
-            if key in seen:
+            if key in work_seen:
                 continue
-            seen.add(key)
+            work_seen.add(key)
+            seen.update({key, *self.graph.supports(key)})
             stack.extend(self.children[key])
             f = self.fields(key)
             seen.update(v for v in (f.get("assignment"), f.get("result")) if v)
@@ -166,7 +183,7 @@ class WorkView:
         return sorted(result)
 
     def answers(self):
-        answers = {name: [] for name in ("q02", "q07", "q08", "q09", "q10")}
+        answers = {name: [] for name in ("q02", "q03", "q04", "q07", "q08", "q09", "q10")}
         actions = set()
         for key, row in sorted(self.records.items()):
             f, kind = row["fields"], row["kind"]
@@ -177,7 +194,11 @@ class WorkView:
                 reasons = self.reasons(key)
                 answers["q08"].append({"work": key, "reasons": reasons})
                 if active and not self.closed(key):
-                    if self.outcome(key):
+                    if f["state"] == "stale":
+                        actions.add(("rework", key))
+                    elif self.graph.issues(key):
+                        continue
+                    elif self.outcome(key):
                         actions.add(("principal_accept" if commitment["root"] == key else "evaluate_close", key))
                     elif f.get("assignment") and not f.get("result"):
                         actions.add(("execute", key))
@@ -189,6 +210,8 @@ class WorkView:
                 answers["q07"].append({"obligation": key, "work": f["work"], "version": f["version"],
                                        "state": state, "evidence": ids})
                 work = self.fields(f["work"])
+                if self.graph.issues(f["work"]):
+                    continue
                 if active and work.get("result") and state == "open":
                     run = f.get("current_run")
                     if not run or self.fields(run)["result"] != work["result"]:
@@ -199,6 +222,12 @@ class WorkView:
                         actions.update(("verify", obs) for obs in self.observations[run])
                 elif active and state in ("conflict", "failed", "inconclusive"):
                     actions.add(("rework", f["work"]))
+            elif kind == "Decision" and f["state"] != "superseded":
+                answers["q03"].append({"decision": key, "state": f["state"], "support": list(f["support"])})
+                if active and f["state"] == "reconsidering":
+                    actions.add(("reconsider", key))
+            elif kind == "Assumption" and f["state"] == "invalidated":
+                answers["q04"].append({"assumption": key, "affected": list(f["affected"])})
             elif kind == "Commitment":
                 answers["q09"].append({"commitment": key, "root": f["root"], "missing": self.reasons(f["root"])})
             elif kind == "Approval" and f["state"] == "pending":

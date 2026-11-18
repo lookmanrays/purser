@@ -2,6 +2,7 @@
 import re
 from datetime import datetime, timezone
 
+from . import decisionops
 from .artifacts import MAX_WITNESS_BYTES, Artifacts
 from .projector import apply_event
 from .rules import HASH, ID, Refusal, candidate, matches
@@ -19,6 +20,17 @@ FIELDS = {
 }
 
 
+# Admission, read-set derivation and receipt re-delivery share family membership.
+_SCOPED = {name: (validate_work, work_reads, prior_work_access) for name in OPS}
+_SCOPED.update({name: (decisionops.validate, decisionops.reads, decisionops.prior_access) for name in decisionops.OPS})
+
+
+def scoped_ops(op):
+    if isinstance(op, dict) and isinstance(op.get("op"), str):
+        return _SCOPED.get(op["op"])
+    return None
+
+
 def authenticate(binding):
     keys = {"actor_id", "role", "principal_id", "commitment", "assignment"}
     if (not isinstance(binding, dict) or not keys <= binding.keys()
@@ -28,7 +40,12 @@ def authenticate(binding):
             or any(binding[k] is not None and not matches(ID, binding[k]) for k in ("commitment", "assignment"))):
         raise KernelError("unauthenticated")
     extra = binding.keys() - keys
-    if extra:
+    if extra == {"premise"} and binding["role"] == "observer":
+        proof = binding["premise"]
+        if (type(proof) is not dict or proof.keys() != {"artifact"} or type(proof["artifact"]) is not bytes
+                or not 0 < len(proof["artifact"]) <= MAX_WITNESS_BYTES):
+            raise KernelError("unauthenticated")
+    elif extra:
         name = {"observer": "witness", "verifier": "criterion"}.get(binding["role"])
         if extra != {name} or type(binding[name]) is not dict:
             raise KernelError("unauthenticated")
@@ -148,6 +165,8 @@ class Admission:
 
     def apply(self, op):
         name, key = op["op"], op["id"]
+        if name in decisionops.OPS:
+            return decisionops.apply(WorkAdmission(self), op)
         if name in OPS:
             return WorkAdmission(self).apply(op)
         records = self.records()
@@ -181,7 +200,7 @@ class Admission:
 def admit(store, binding, proposal, *, clock=lambda: datetime.now(timezone.utc)):
     authenticate(binding)
     binding = dict(binding)
-    for proof in ("witness", "criterion"):
+    for proof in ("witness", "criterion", "premise"):
         if proof in binding:
             binding[proof] = dict(binding[proof])
     if "witness" in binding:
@@ -201,34 +220,41 @@ def admit(store, binding, proposal, *, clock=lambda: datetime.now(timezone.utc))
                 raise KernelError("id_conflict")
             if not scoped_here and previous["code"] != "forbidden":
                 raise KernelError("unauthenticated")
-            if previous["code"] not in ("invalid_op", "unknown_op", "forbidden", "not_found") and any(
-                type(op) is dict and type(op.get("op")) is str and op["op"] in OPS
-                and not prior_work_access(store, op, binding, previous["revision"]) for op in proposal["ops"]
-            ):
-                raise KernelError("unauthenticated")
+            if previous["code"] not in ("bad_revision", "invalid_op", "unknown_op", "forbidden", "not_found"):
+                for op in proposal["ops"]:
+                    family = scoped_ops(op)
+                    if family and not family[2](store, op, binding, previous["revision"]):
+                        raise KernelError("unauthenticated")
             return [], previous
         batch = Admission(snapshot, at, binding, proposal, request_digest, Artifacts(store.path))
         try:
             if not 0 <= base <= snapshot["revision"]:
                 raise Refusal("bad_revision")
+            base_projection = None
             if base not in (0, snapshot["revision"]):
                 try:
-                    store.snapshot(revision=base)
+                    base_projection = store.snapshot(revision=base)["projection"]
                 except KernelError as exc:
                     if exc.code != "bad_revision":
                         raise
                     raise Refusal("bad_revision") from exc
             if not scoped_here:
                 raise Refusal("forbidden")
-            keys = set()
+            keys, incoming = set(), set()
             records = batch.records()
             view = WorkView(batch.projection)
             for op in proposal["ops"]:
-                if isinstance(op, dict) and isinstance(op.get("op"), str) and op["op"] in OPS:
-                    references = validate_work(op, binding)
+                family = scoped_ops(op)
+                if family:
+                    validate, read_set, _ = family
+                    references = validate(op, binding)
                     if any(k in records and records[k]["commitment"] != scope for k in references):
                         raise Refusal("not_found")
-                    keys.update(work_reads(view, op, binding, references))
+                    keys.update(read_set(view, op, binding, references))
+                    if base != snapshot["revision"] and op["op"] in decisionops.OPS:
+                        incoming.update(decisionops.incoming_reads(view, op))
+                        if base_projection is not None:
+                            incoming.update(decisionops.incoming_reads(WorkView(base_projection), op))
                     keys.add(scope)
                 else:
                     keys.update(validate_op(op, proposal, binding))
@@ -238,6 +264,9 @@ def admit(store, binding, proposal, *, clock=lambda: datetime.now(timezone.utc))
                     if binding["role"] != "principal" or any(op["op"] == "approval.answer" for op in proposal["ops"]):
                         raise Refusal("not_found")
             stale = conflicts(records, dict.fromkeys(keys, base))
+            if incoming:
+                stale.extend(decisionops.incoming_conflicts(store.verified_changes_since(base), incoming))
+                stale.sort(key=lambda row: row["key"])
             if stale:
                 raise Refusal("stale_base", {"conflicts": stale})
             for op in proposal["ops"]:

@@ -241,6 +241,13 @@ class Store:
                 _verify_projection(db, snapshot)
             return snapshot
 
+    def verified_changes_since(self, revision):
+        """Original events for a gate read that includes historical relation membership."""
+        with self._transaction() as db:
+            _fold(db)
+            return [decode(raw) for (raw,) in db.execute(
+                "SELECT body FROM events WHERE revision > ? ORDER BY revision", (revision,))]
+
     def replay(self):
         with self._transaction(write=True) as db:
             current = _fold(db)
