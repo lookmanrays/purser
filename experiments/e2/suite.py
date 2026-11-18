@@ -20,7 +20,8 @@ MAPPING = {
     "submit": "Publish one sealed candidate on its assignment.",
     "observe": "Run one public independent criterion on the sealed candidate.",
     "decide": "Publish one verifier verdict or request one subject closure.",
-    "fault": "Deliver the incoming observation at the recorded checkpoint. This intervention adds zero worker steps.",
+    "fault": "Independently qualify the exact old W2 commit and both sibling closures during the recorded clock pause, "
+             "then deliver the incoming observation. This adds zero worker steps.",
     "rework": "Count each subsequent charged plan/context/edit/check/submit/observe/decide on W1/W2/W3 or W-notify, "
               "including attempted calls at cutoff. Each has one observed subject. Reads by the retrospective scorer add zero.",
     "hand_count": "Clean loop: plan 1 + 3 leaves x 6 + parent 5 = 24. Clean equipped: 24 + 6 criteria x 3 = 42. "
@@ -59,11 +60,13 @@ def source_pin(rev=None):
     kernel = [p for p in files if p.startswith("purser/")]
     def modules(area, *names):
         return [f"experiments/{area}/{n}.py" for n in names]
-    common = modules("e1", "artifacts", "measurement", "probe")
-    protected = (common + modules("e1", "scorer", "outcomes", "accounting", "report", "capture", "recovery")
-                 + modules("e2", "measure", "outcomes", "evidence", "policy", "report", "summary", "suite") + kernel)
-    executor = (common + modules("e1", "executor", "arms", "purser_arm", "observer", "run", "capture")
-                + modules("e2", "driver", "policy", "trial"))
+    common = modules("e1", "artifacts", "measurement", "probe", "executor", "outcomes", "capture", "accounting",
+                     "run", "observer", "arms", "purser_arm", "report", "recovery", "scorer", "suite")
+    participant = modules("e2", "driver", "actions", "policy", "head", "plan_versions", "checkpoint", "clock", "measure",
+                          "evidence", "outcomes", "trial")
+    readback = modules("e2", "public_history", "public_sources", "attribution", "views", "report", "summary", "suite")
+    protected = common + participant + readback + kernel
+    executor = common + participant + readback
     return {"suite": MANIFEST["id"], "experiment": "E2", "source_files": files, "source_commit": rev,
             "fixture_tree": FIXTURE["tree_sha1"], "fixture_commit": FIXTURE["commit_sha1"],
             "manifest_sha256": sha((REGISTRATION / "manifest.json").read_bytes()),

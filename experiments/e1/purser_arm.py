@@ -49,7 +49,7 @@ class Treatment:
         for w in (*ORDER, PARENT):
             self.assign_again(w)
 
-    def send(self, role, ops, *, assignment=None, witness=None, premise=None, allow_rejected=False):
+    def send(self, role, ops, *, assignment=None, witness=None, premise=None, allow_rejected=False, proposal_store=None):
         actor = {"principal": PRINCIPAL, "planner": "planner:study", "closure": "closure:study",
                  "executor": EXECUTOR, "observer": OBSERVER, "verifier": VERIFIER}[role]
         binding = {"role": role, "actor_id": actor, "principal_id": PRINCIPAL,
@@ -63,7 +63,8 @@ class Treatment:
                     "base_revision": self.store.snapshot()["revision"], "justification": [], "ops": ops}
         self.record_request({"actor_id": actor, "proposal_id": proposal["proposal_id"], "body": proposal,
                              "digest": digest("proposal", {"actor_id": actor, "proposal": proposal})})
-        receipt = admit(self.store, binding, proposal, clock=lambda: datetime(2026, 1, 1, tzinfo=timezone.utc))
+        receipt = admit(self.store if proposal_store is None else proposal_store, binding, proposal,
+                        clock=lambda: datetime(2026, 1, 1, tzinfo=timezone.utc))
         self.receipts.append({"role": role, "proposal": proposal, "receipt": receipt})
         if receipt["disposition"] == "rejected" and not allow_rejected:
             raise RuntimeError(f"{ops[0]['op']}: {receipt}")

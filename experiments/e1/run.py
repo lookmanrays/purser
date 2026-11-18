@@ -61,8 +61,11 @@ class Journal:
         if self.progress is not None:
             self.progress(deepcopy(self.checkpoint()))
 
+    def elapsed(self):
+        return time.monotonic_ns() - self.start
+
     def event(self, kind, payload):
-        self.rows.append({"seq": len(self.rows) + 1, "offset_ns": time.monotonic_ns() - self.start,
+        self.rows.append({"seq": len(self.rows) + 1, "offset_ns": self.elapsed(),
                           "kind": kind, "payload": payload})
         self.persist()
 
@@ -79,7 +82,7 @@ class Journal:
         number = self.steps + 1
         if number > limits["max_steps"]:
             raise Cutoff("step_limit")
-        if time.monotonic_ns() - self.start >= limits["max_elapsed_s"] * 10**9:
+        if self.elapsed() >= limits["max_elapsed_s"] * 10**9:
             raise Cutoff("time_limit")
         info = {"action_id": f"action-{number}", "attempt": number, "action": kind, "subject": work,
                 "candidate": oid, "actor": actor, "arm": self.arm, "input": inputs}
@@ -341,7 +344,7 @@ def _run_arm(driver, journal):
     previous = signal.signal(signal.SIGALRM, expire)
     try:
         journal.release()
-        remaining = MANIFEST["budgets"]["scripted"]["max_elapsed_s"] - (time.monotonic_ns() - journal.start) / 1e9
+        remaining = MANIFEST["budgets"]["scripted"]["max_elapsed_s"] - journal.elapsed() / 1e9
         if remaining <= 0:
             return "time_limit"
         signal.setitimer(signal.ITIMER_REAL, remaining)

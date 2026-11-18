@@ -51,7 +51,7 @@ def utc_time(value):
     return result if result.utcoffset() == timedelta(0) else None
 
 
-def check_exit(raw, journal, platform, modern, issue):
+def check_exit(raw, journal, platform, modern, issue, *, duration=None):
     """Keep the raw identities for diagnostics. Only a reconciled clock has a comparable cost."""
     endpoint_ok = True
     def check(condition, message):
@@ -101,7 +101,7 @@ def check_exit(raw, journal, platform, modern, issue):
     else:
         times = utc_time(started), utc_time(ended)
         clock_ok &= check(type(start) is int and type(end) is int and 0 <= start <= end
-                          and same(end - start, span) and all(times) and times[0] <= times[1],
+                          and same(end - start if duration is None else duration(start, end, platform), span) and all(times) and times[0] <= times[1],
                           "invalid clock interval or elapsed cost")
         if clock_ok:
             live = [row for row in journal if row["kind"] in ("action", "fault") or

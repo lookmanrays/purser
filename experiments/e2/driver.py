@@ -1,6 +1,8 @@
 """Run the common participant policy; the observer never sees the protected grader."""
 
 import json
+import time
+from contextlib import nullcontext
 from pathlib import Path
 
 from experiments.e1 import capture, observer
@@ -9,14 +11,14 @@ from experiments.e1.executor import LEAVES, ORDER, PARENT, PARENT_CHECKS
 from experiments.e1.outcomes import is_closed
 from experiments.e1.run import Driver as ActionDriver
 
-from . import policy
+from . import checkpoint, head, policy
 from .actions import PublicActions
 
 
 class Driver(ActionDriver):
-    def __init__(self, candidates, adapter, journal, assets, seed, track):
+    def __init__(self, candidates, adapter, journal, assets, seed, track, rank):
         super().__init__(candidates, adapter, journal, assets, seed, "clean")
-        self.track = track
+        self.track, self.rank = track, rank
         self.phase = policy.LINEAR
         self.actions = PublicActions(self)
         self.adapter.work_actions = self.actions
@@ -76,30 +78,54 @@ class Driver(ActionDriver):
 
     def receive(self, oid):
         message = policy.notice(self.seed)
-        rows, identity = self.adapter.public_view()
-        event = {"intervention": "linear_to_exponential", "observation_id": message["id"], "seed": self.seed,
-                 "trigger": self.track, "released": message, "released_sha256": sha(encoded(message)),
-                 "before": capture.checkpoint(self.assets, rows, identity), "candidate": oid,
-                 "subject": "W2", "actor": "fixture_observer", "attempt": message["id"]}
+        qualification = self.j.platform.get("checkpoint_measurement")
+        expected = qualification["checkpoint"] if qualification and qualification.get("qualified") is True else None
+        from .plan_versions import HeadMoved
+        try:
+            with head.expect(self.adapter, expected) if expected else nullcontext():
+                self.adapter.receive(message)
+        except HeadMoved:
+            return None
+        return message
+
+    def physical_receive(self, adapter, message, operation):
+        """Observe the exposed incoming port, including a copied port with no driver call."""
+        from .plan_versions import HeadMoved
+        rows, identity = adapter.public_view()
+        issued = time.monotonic_ns()
+        self.j.public_activity(issued)
+        event = {"required_before": head.required(), "intervention": "linear_to_exponential",
+                 "observation_id": message["id"], "seed": self.seed, "trigger": self.track,
+                 "released": message, "released_sha256": sha(encoded(message)),
+                 "before": capture.checkpoint(self.assets, rows, identity), "candidate": capture.position(rows["W2"])[1],
+                 "subject": "W2", "actor": "fixture_observer", "attempt": message["id"], "issued_monotonic_ns": issued}
         self.j.event("fault", event)
-        if isinstance(self.adapter, policy.KernelArm):
+        if isinstance(adapter, policy.KernelArm):
+            previous = adapter.on_proposal
             def record(proposal):
                 event["proposal"] = proposal
                 self.j.persist()
-            self.adapter.on_proposal = record
+            adapter.on_proposal = record
         try:
-            reply = self.adapter.receive(message)
+            reply = operation()
+            event["return"] = reply
+            return reply
+        except HeadMoved:
+            event.update(disposition="head_moved", **{"return": {"disposition":"withheld", "reason":"qualified checkpoint changed"}})
+            raise
+        except Exception as error:
+            event["return"] = {"failure": str(error)}
+            raise
         finally:
-            if isinstance(self.adapter, policy.KernelArm):
-                self.adapter.on_proposal = None
-        event["return"] = reply
-        event["response_evidence"] = self.assets.put(capture.response_evidence(event), "json")
-        self.j.persist()
-        rows, identity = self.adapter.public_view()
-        event["after"] = capture.checkpoint(self.assets, rows, identity)
-        self.j.persist()
-        capture.states(rows, event["after"], self.previous, self.j.event, action=event)
-        return message
+            event["finished_monotonic_ns"] = time.monotonic_ns()
+            if isinstance(adapter, policy.KernelArm):
+                adapter.on_proposal = previous
+            event["response_evidence"] = self.assets.put(capture.response_evidence(event), "json")
+            self.j.persist()
+            rows, identity = adapter.public_view()
+            event["after"] = capture.checkpoint(self.assets, rows, identity)
+            self.j.persist()
+            capture.states(rows, event["after"], self.previous, self.j.event, action=event)
 
     def execute(self):
         self.call("plan", PARENT, "planner", {"schedule": list(ORDER)}, lambda: {"work_order": list(ORDER)})
@@ -111,7 +137,11 @@ class Driver(ActionDriver):
             if not self.finish("W2", old):
                 return "blocked"
         if self.track != "clean":
+            if not checkpoint.qualify(self, old):
+                return "blocked"
             message = self.receive(old)
+            if message is None:
+                return "blocked"
             # The plan names the affected criterion. Both loops can act only on W2.
             work = next(w for w, criterion in LEAVES.items() if criterion == message["criterion"])
             self.call("plan", work, "planner", {"adopt": message["id"], "work": work},

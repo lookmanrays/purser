@@ -65,7 +65,7 @@ def input_identity(freeze, arm):
             "worktree_head": freeze["source_commit"]}
 
 
-def failure_record(assets, freeze, arm, track, seed, rank, *, reason, progress=None):
+def failure_record(assets, freeze, arm, track, seed, rank, *, reason, progress=None, duration=None):
     progress = progress or {}
     rows = [dict(row) for row in progress.get("rows", []) if row["kind"] != "terminal"]
     for seq, row in enumerate(rows, 1):
@@ -73,7 +73,9 @@ def failure_record(assets, freeze, arm, track, seed, rank, *, reason, progress=N
     steps = sum(row["kind"] == "action" for row in rows)
     start = progress.get("start_monotonic_ns")
     end = progress.get("end_monotonic_ns", progress.get("last_monotonic_ns"))
-    elapsed = end - start if start is not None and end is not None else 0
+    elapsed = 0
+    if start is not None and end is not None:
+        elapsed = end - start if duration is None else duration(start, end, progress.get("platform", {}))
     if elapsed < 0:
         raise ValueError("trial progress clock regressed")
     stopped = progress.get("end_monotonic_ns") is not None

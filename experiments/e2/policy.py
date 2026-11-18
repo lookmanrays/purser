@@ -7,7 +7,7 @@ from experiments.e1.executor import PATHS, TASKS, implement, local_check
 from experiments.e1.measurement import probe, same
 from experiments.e1.purser_arm import OBSERVER, Treatment
 
-from . import plan_versions
+from . import head, plan_versions
 from .actions import WorkPorts
 
 LINEAR = "linear"
@@ -33,14 +33,22 @@ def decision(identity, choice, support, supersedes):
             "supersedes": supersedes}
 
 
+def receive_at_port(arm, message, operation):
+    if arm.work_actions is None:
+        return operation()
+    return arm.work_actions.driver.physical_receive(arm, message, operation)
+
+
 class PlanArm(WorkPorts, Plan):
     def __init__(self, directory):
         super().__init__(directory, tasks=TASK_TITLES)
         self.update("W2", retry_choice=LINEAR, criterion="W2/retry", premise=None)
 
     def receive(self, message):
-        with plan_versions.delivery(message["id"]):
-            return self.update("W2", premise=message)
+        def deliver():
+            with plan_versions.delivery(message["id"]):
+                return self.update("W2", premise=message)
+        return receive_at_port(self, message, deliver)
 
     def revise(self, message):
         return self.public_operation("revise", "plan", "W2", "planner", {"adopt": message["id"], "notice": message},
@@ -93,9 +101,9 @@ class KernelArm(WorkPorts, Treatment):
                               {"op": "dependency.add", "id": "W2", "support": ORIGINAL}])
 
     def receive(self, message):
-        return self.send("observer", [{"op": "assumption.observe", "id": message["id"],
+        return receive_at_port(self, message, lambda: self.send("observer", [{"op": "assumption.observe", "id": message["id"],
                                        "assumption": message["assumption"], "finding": message["finding"]}],
-                         assignment=ASSUMPTION, premise={"artifact": encoded(message)})
+                         assignment=ASSUMPTION, premise={"artifact": encoded(message)}, proposal_store=head.for_notice(self.store)))
 
     def revise(self, message):
         return self.public_operation("revise", "plan", "W2", "planner", {"adopt": message["id"], "notice": message},
