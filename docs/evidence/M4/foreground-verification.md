@@ -2,6 +2,8 @@
 
 Product candidate `62ac9b63761bb03e1f8ca6a9f65f5fc9a7429c61` has `purser/` tree `be08b616456806724c0bd66f9239d855214dc427`. Its public changes join the executor, SQLite gate, Git broker and independent observer. The architect ran all 230 repository tests on Python 3.11.15. All passed. A separate Python 3.14.3 run passed the 55 tests covering the affected Git, authority, CLI, driver, work and decision paths. The three original M0 vector checks also passed. [Foreground API and CLI usage](../../contracts/git-effects-v1.md#running-a-governed-effect) · [Six end-to-end tests](../../../tests/test_git_foreground.py)
 
+The independent verifier accepted this product candidate after exercising all twelve invariants, six fresh process and Git scenarios and 82 boundary tests. All ten previously recorded expected answers matched the restarted CLI at revision 146. Its verified head was `110c9cb933afca6e5836d70c7ebe4e9d2ae962b26c7264df1f8954639f3d1979`. At the grant’s exact expiry, only the grant answer changed. Five monitored cold CLI processes performed zero network calls, provider imports or child process launches. A restored prefix also attributed the original write after a separately authorized later branch advance. [Independent disposition](observer/independent-product-disposition.json) · [Original commands and observations](observer/independent-product-62ac9b6.zip)
+
 | Point of process termination | What the next process saw and did |
 | --- | --- |
 | Before dispatch | The intent was ready and Git had zero publications. A CLI turn with the registered repository published once. The next turn confirmed it. |

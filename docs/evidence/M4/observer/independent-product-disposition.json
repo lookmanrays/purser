@@ -1,0 +1,211 @@
+{
+  "candidate": "62ac9b63761bb03e1f8ca6a9f65f5fc9a7429c61",
+  "checks": {
+    "I1": {
+      "files": [
+        "landed.json",
+        "normal-cli.json",
+        "joined-product-tests.out"
+      ],
+      "observed": "Atomic proposal with invalid second operation published one rejected receipt and no preceding WorkItem. Executor-verdict proposal returned forbidden."
+    },
+    "I10": {
+      "files": [
+        "landed.json",
+        "absent.json",
+        "revoked-first.json",
+        "normal-cli.json"
+      ],
+      "observed": "Cut the real original before authorization, after durable release before mutation, after native write before reply, and after reconciliation before reply. Original withdrawal/pending, positive absent, fresh T2 and later-tip positive receipt measured natively; duplicate API calls made no additional publication."
+    },
+    "I11": {
+      "files": [
+        "landed.json",
+        "normal-cli.json",
+        "joined-product-tests.out"
+      ],
+      "observed": "Old and new role-bound ContextPacks retain their own assignment, decision, candidate, obligation and actions. Normal replacement used generation two and a new controlled grant."
+    },
+    "I12": {
+      "files": [
+        "normal-cli.json",
+        "landed.json",
+        "no-model-cold.json"
+      ],
+      "observed": "Distinct foreground processes selected authorization, reconciliation and the two closes, then repeatedly idle; normalized ledger and refs stayed unchanged across idle. Five additional instrumented fresh public calls observed zero provider imports, network events, or child processes."
+    },
+    "I2": {
+      "files": [
+        "landed.json",
+        "legacy-originals.json"
+      ],
+      "observed": "Rebuilt from original event bytes and content-checked blobs at the dispatch checkpoint. All ten public answers, historical head and projection are exact, and refs stayed fixed across reads. Earlier real 24/51-row ledgers replayed."
+    },
+    "I3": {
+      "files": [
+        "landed.json",
+        "no-model-cold.json"
+      ],
+      "observed": "Fresh public status, why and frontier with deterministic historical revision and explicit time agree to the sealed literal fixture. An additional audited cold CLI completed with no provider imports or network."
+    },
+    "I4": {
+      "files": [
+        "landed.json"
+      ],
+      "observed": "Old A verdict at r80 left the current O-retries open. Real evidence E-B satisfies that obligation alone and the independently required publish effect continued to block W2."
+    },
+    "I5": {
+      "files": [
+        "landed.json",
+        "normal-cli.json",
+        "joined-product-tests.out"
+      ],
+      "observed": "Separate observer admitted the physical Git witness and content address for matching repository, intent and original attempt. Executor self-verdict was forbidden."
+    },
+    "I6": {
+      "files": [
+        "landed.json",
+        "normal-cli.json"
+      ],
+      "observed": "Observed W2 and W-notify close in successive fresh normal runs; principal acceptance remained separately required. Wrong digest returned rejection; a matching controlled principal accepted the exact rooted outcome."
+    },
+    "I7": {
+      "files": [
+        "revoked-first.json",
+        "cutoff-first.json",
+        "wall-clock-expiry.json",
+        "normal-cli.json",
+        "joined-product-tests.out"
+      ],
+      "observed": "Revoke before cutoff prevented all Git writes; revoke after durable authorization recorded the one in-flight attempt and allowed only its one later physical write. A real expiry passed between reads, blocking issue and removing it from frontier. Repeated permission and semantic aliases, role/scope and instance were exercised."
+    },
+    "I8": {
+      "files": [
+        "landed.json"
+      ],
+      "observed": "After mere opinion at r64 D-original remained effective. At the admitted contradiction r66 it was reconsidering, and the later supported decision D-revised was effective."
+    },
+    "I9": {
+      "files": [
+        "landed.json",
+        "joined-product-tests.out"
+      ],
+      "observed": "W1 and W3 stayed closed on E-prefs and E-delivery. W2 became stale at r66 and the old pass at r80 could not requalify it. A separately stale C-doc branch and submitted sibling remained distinct."
+    }
+  },
+  "criterion_version": "a326bcacd7ea0eeb0dc8a4a2e0f86e9c6066cc15bea8dc28a697387bafe82cd4",
+  "environment_version": "d0e349f493ca0bd8addc05d341bb1eb351fe5a848674d781e6909edda1d1c65a",
+  "evidence": {
+    "absent.json": "9a61d433673c71e0573d22cdf344ef02b20acd36c61b0340977eb2a41ffe30f0",
+    "cutoff-first.json": "716888d977711a97e1208a0ceaa2f5b4f6aee0db402f08c35265a3afac998a40",
+    "joined-product-tests.out": "04f748348510c402abbe061120f5add24545a741b8def63721e87bcedea494de",
+    "landed.json": "ad9ac06c4bb2304002aead22e518424e3ae6ce59c6c468dceed900bd3c0eb3a5",
+    "legacy-originals.json": "1852bd87cba58922e190c157d966fe6f17cd8e275465cefc1d6a7f778e1c1ba2",
+    "no-model-cold.json": "1c452d6c25995319fb050b33d9de485a18261ce73b9adddc198b40e5caa5eb81",
+    "normal-cli.json": "cd0adffd1eb4fadc74093b7dad149de304465f4f2fa917f6f00fedafba5fa543",
+    "revoked-first.json": "e087466ddc96bf8bee1c12dd8e2b89d4b47e066e4bbb8b4bf32a683fcb2f11f3",
+    "wall-clock-expiry.json": "6c182aa79845b08834d86965ecede4cdef19bd7f2be05c30b517baedb431a9d9"
+  },
+  "fresh_original_groups": 6,
+  "git_tree": "ea0967aedb9d89168cac4f1c9f2199b4c19f61d2",
+  "golden": {
+    "as_of": "2026-11-18T13:59:59.000000Z",
+    "head_hash": "110c9cb933afca6e5836d70c7ebe4e9d2ae962b26c7264df1f8954639f3d1979",
+    "projection_hash": "0d8fdffc0ac11b1b38cce252b224882a1948ea9039e983d285022c33f75d1b9e",
+    "revision": 146,
+    "v": 1
+  },
+  "golden_row_cardinality": {
+    "q01": 2,
+    "q02": 9,
+    "q03": 2,
+    "q04": 2,
+    "q05": 3,
+    "q06": 1,
+    "q07": 5,
+    "q08": 9,
+    "q09": 3,
+    "q10": 5
+  },
+  "later_prefix_witness": {
+    "attempt": "T1",
+    "branch_tip": "a94c009d8a365da9b35a6157f720fb5b20d542f7",
+    "expected_old": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+    "history_intact": true,
+    "intent_digest": "1311fb53246c2fd5fd7a6b3534285a91dd30db2d5c9593eb5f8ef7cac96d88d3",
+    "matching_transitions": 1,
+    "reason": "protected_receipt_verified",
+    "receipt_ref": "refs/purser/receipts/1311fb53246c2fd5fd7a6b3534285a91dd30db2d5c9593eb5f8ef7cac96d88d3",
+    "receipt_target": "f22bff619dc763ecf74c5b41eef09676f70c4645",
+    "repository": "R-notify",
+    "repository_instance": "3ed7a27a971cc698aeb1734efc5316a848c640281a73b463b1dc7a1fd987468a",
+    "resource": "refs/heads/purser-demo",
+    "state": "confirmed_happened",
+    "target": "f22bff619dc763ecf74c5b41eef09676f70c4645",
+    "writer_quiescent": true
+  },
+  "legacy": {
+    "M2": {
+      "added_empty_keys": [
+        "q03",
+        "q04",
+        "q05",
+        "q06"
+      ],
+      "archive_sha256": "3e26990bb328f6449c8734a75c6a7c8502afcf8e0fdc9378f15f9548a06c6122",
+      "artifacts_independently_content_checked": 4,
+      "events": 24,
+      "head": "09ad2ae06114ebb771ecd87d0d386170bdc897febe701b123056c4378fb8bfe4",
+      "matched_original_keys": [
+        "q01",
+        "q02",
+        "q07",
+        "q08",
+        "q09",
+        "q10"
+      ],
+      "projection_hash": "634218f8cfe75cb3281f349346300232638c54edeb9b202ecd17725e105ade15"
+    },
+    "M3": {
+      "added_empty_keys": [
+        "q05",
+        "q06"
+      ],
+      "archive_sha256": "df7b297f3028d353a209cff287eb42596608decf0afd53c4abdcb0dc5f9c83c3",
+      "artifacts_independently_content_checked": 6,
+      "events": 51,
+      "head": "0a329abb5c9fab27d6aa44289c83cb34b63a90384de74ebdf8c356e2f5c459e2",
+      "matched_cold_why_and_frontier": [
+        "frontier",
+        "m3",
+        "project"
+      ],
+      "matched_original_keys": [
+        "q01",
+        "q02",
+        "q03",
+        "q04",
+        "q07",
+        "q08",
+        "q09",
+        "q10"
+      ],
+      "projection_hash": "a4723123e3c1b72b49702176ee0b47387d379a60c001364945f95a893f555487"
+    }
+  },
+  "normal_product_tests": 82,
+  "predecessor_components": {
+    "authority_02f238e": "5ac6a2043fc9c767b8776942b716823d88fb040825d601db631f01e9c37c6dfb",
+    "git_b781dcb": "45ed5c1d4ff102d4ac397fb47c3c3125280dff26192096eda7431bb804c7e88c"
+  },
+  "preimplementation_reference": "1135f39ee2cefc70c1698e185eacf4af52962d75f56ff6ea1997eb19333c6f81",
+  "product_disposition": "GO for the joined, trusted, single-host M4 product on the stated candidate.",
+  "product_tree": "be08b616456806724c0bd66f9239d855214dc427",
+  "real_expiry": {
+    "actual_end_utc": "2026-11-18T23:08:00.289726Z",
+    "grant_expiry": "2026-11-18T23:08:00.250622Z",
+    "initial_utc": "2026-11-18T23:07:55.250622Z"
+  },
+  "scientific_originals": "E1 v2 reproduced with the actual integrated consumer. E1 v1 and E2 reproduced using their registered, source-pinned consumers; the changed Purser tree was correctly refused as the historical E2 treatment. No new trial was run.",
+  "scope": "Credential-free CPython 3.11.15, actual local Darwin Git filesystem, SQLite/WAL, genuine independent test-role processes. E3, later integrated result, actual live observation and milestone gate remain open. Disposable principal actors supplied fixture approvals only."
+}
