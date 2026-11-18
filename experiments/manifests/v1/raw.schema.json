@@ -1,0 +1,754 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Purser independent experiment run, version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "experiment",
+    "track",
+    "seed",
+    "arm",
+    "mode",
+    "replicate",
+    "inputs",
+    "artifacts",
+    "terminal",
+    "validity",
+    "cost",
+    "score"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "suite": {
+      "const": "purser-notify-v1"
+    },
+    "experiment": {
+      "enum": [
+        "E1",
+        "E2",
+        "E3"
+      ]
+    },
+    "track": {
+      "enum": [
+        "primary",
+        "clean",
+        "closed-affected",
+        "inconclusive-observation"
+      ]
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "arm": {
+      "enum": [
+        "loop",
+        "purser",
+        "loop_equal_verifier"
+      ]
+    },
+    "mode": {
+      "enum": [
+        "scripted",
+        "model"
+      ]
+    },
+    "replicate": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "inputs": {
+      "$ref": "#/$defs/inputs"
+    },
+    "artifacts": {
+      "$ref": "#/$defs/artifacts"
+    },
+    "terminal": {
+      "enum": [
+        "done",
+        "blocked",
+        "idle",
+        "step_limit",
+        "time_limit",
+        "model_limit",
+        "provider_unavailable",
+        "harness_failure"
+      ]
+    },
+    "validity": {
+      "enum": [
+        "complete",
+        "arm_incomplete",
+        "infrastructure_invalid"
+      ]
+    },
+    "cost": {
+      "$ref": "#/$defs/cost"
+    },
+    "score": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/E1"
+        },
+        {
+          "$ref": "#/$defs/E2"
+        },
+        {
+          "$ref": "#/$defs/E3"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "experiment": {
+            "const": "E1"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "score": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/E1"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "experiment": {
+            "const": "E2"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "score": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/E2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "experiment": {
+            "const": "E3"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "score": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/E3"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "track": {
+            "const": "primary"
+          },
+          "validity": {
+            "const": "complete"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "score": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "validity": {
+            "const": "infrastructure_invalid"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "score": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "scripted"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "artifacts": {
+            "properties": {
+              "model": {
+                "type": "null"
+              }
+            }
+          },
+          "cost": {
+            "properties": {
+              "model_calls": {
+                "const": 0
+              },
+              "input_tokens": {
+                "const": 0
+              },
+              "output_tokens": {
+                "const": 0
+              },
+              "spend_usd_micros": {
+                "const": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "experiment": {
+            "const": "E1"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "track": {
+            "enum": [
+              "clean",
+              "primary"
+            ]
+          },
+          "seed": {
+            "enum": [
+              1001,
+              1002,
+              1003,
+              1004,
+              1005,
+              1006,
+              1007,
+              1008,
+              1009,
+              1010,
+              1011,
+              1012,
+              1013,
+              1014,
+              1015,
+              1016,
+              1017,
+              1018,
+              1019,
+              1020
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "experiment": {
+            "const": "E1"
+          },
+          "track": {
+            "const": "clean"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "seed": {
+            "const": 1001
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "experiment": {
+            "const": "E2"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "track": {
+            "enum": [
+              "clean",
+              "primary",
+              "closed-affected"
+            ]
+          },
+          "seed": {
+            "enum": [
+              2001,
+              2002,
+              2003,
+              2004,
+              2005,
+              2006,
+              2007,
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "experiment": {
+            "const": "E2"
+          },
+          "track": {
+            "const": "clean"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "seed": {
+            "const": 2001
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "experiment": {
+            "const": "E2"
+          },
+          "track": {
+            "const": "closed-affected"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "seed": {
+            "const": 2001
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "experiment": {
+            "const": "E3"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "track": {
+            "enum": [
+              "clean",
+              "primary",
+              "inconclusive-observation"
+            ]
+          },
+          "seed": {
+            "enum": [
+              3001,
+              3002,
+              3003,
+              3004,
+              3005,
+              3006,
+              3007,
+              3008,
+              3009,
+              3010,
+              3011,
+              3012,
+              3013,
+              3014,
+              3015,
+              3016,
+              3017,
+              3018,
+              3019,
+              3020
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "experiment": {
+            "const": "E3"
+          },
+          "track": {
+            "const": "clean"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "seed": {
+            "const": 3001
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "experiment": {
+            "const": "E3"
+          },
+          "track": {
+            "const": "inconclusive-observation"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "seed": {
+            "const": 3001
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixture_tree",
+        "fixture_commit",
+        "manifest_sha256",
+        "protocol_sha256",
+        "raw_schema_sha256",
+        "scorer_sha256",
+        "fault_driver_sha256",
+        "executor_sha256",
+        "treatment_sha256",
+        "worktree_head"
+      ],
+      "properties": {
+        "fixture_tree": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "fixture_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "protocol_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "raw_schema_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "scorer_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "fault_driver_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "executor_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "treatment_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "worktree_head": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "bytes"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "journal",
+        "candidates",
+        "platform",
+        "model"
+      ],
+      "properties": {
+        "journal": {
+          "$ref": "#/$defs/artifact"
+        },
+        "candidates": {
+          "$ref": "#/$defs/artifact"
+        },
+        "platform": {
+          "$ref": "#/$defs/artifact"
+        },
+        "model": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/artifact"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "steps",
+        "elapsed_ns",
+        "model_calls",
+        "input_tokens",
+        "output_tokens",
+        "spend_usd_micros"
+      ],
+      "properties": {
+        "steps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 96
+        },
+        "elapsed_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "model_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "spend_usd_micros": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "E1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "false_parent_closure",
+        "missing_named",
+        "caught",
+        "correct_parent_closure",
+        "extra_diagnoses"
+      ],
+      "properties": {
+        "false_parent_closure": {
+          "type": "boolean"
+        },
+        "missing_named": {
+          "type": "boolean"
+        },
+        "caught": {
+          "type": "boolean"
+        },
+        "correct_parent_closure": {
+          "type": "boolean"
+        },
+        "extra_diagnoses": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "E2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "intervention_reached",
+        "unaffected_both_retained",
+        "unaffected_reopened",
+        "affected_invalid_closure",
+        "rework_steps",
+        "final_pass"
+      ],
+      "properties": {
+        "intervention_reached": {
+          "type": "boolean"
+        },
+        "unaffected_both_retained": {
+          "type": "boolean"
+        },
+        "unaffected_reopened": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "affected_invalid_closure": {
+          "type": "boolean"
+        },
+        "rework_steps": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "final_pass": {
+          "type": "boolean"
+        }
+      }
+    },
+    "E3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "original_truth",
+        "original_report",
+        "effect_count",
+        "duplicate_count",
+        "correct_reconciliation",
+        "manual_repair",
+        "resolved_by_budget"
+      ],
+      "properties": {
+        "original_truth": {
+          "enum": [
+            "landed",
+            "unlanded",
+            "unknown"
+          ]
+        },
+        "original_report": {
+          "enum": [
+            "landed",
+            "unlanded",
+            "unknown",
+            "none"
+          ]
+        },
+        "effect_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duplicate_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "correct_reconciliation": {
+          "type": "boolean"
+        },
+        "manual_repair": {
+          "type": "boolean"
+        },
+        "resolved_by_budget": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
