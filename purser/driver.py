@@ -31,7 +31,9 @@ def context_pack(snapshot, assignment_id):
         if view.fields(run)["assignment"] == assignment_id:
             for oid in view.observations[run]:
                 observations.append({"id": oid, **view.fields(oid)})
+    direct = view.graph.acquired(work_id)
     return {
+        **({"work_supports": direct} if direct else {}),
         "v": 1, "revision": snapshot["revision"], "head_hash": snapshot["head_hash"],
         "commitment": {"id": scope, "statement": commitment["statement"]},
         "assignment": {"id": assignment_id, "executor": assignment["executor"]},

@@ -1,7 +1,7 @@
 """Work, verification and closure operators admitted by the local gate."""
 import hashlib
 
-from .rules import HASH, ID, Refusal, candidate, matches
+from .rules import HASH, ID, Refusal, candidate, matches, witnesses_run
 from .workview import WorkView
 
 OPS = {
@@ -215,7 +215,7 @@ class WorkAdmission:
                 self.emit("ObservationRecorded", fields, commitment=self.scope, observer=self.actor, artifact_sha256=sha)
             else:
                 observation = self.get(op["observation"], "Observation")
-                if observation["run"] != op["run"] or observation["observer"] != run["observer"]:
+                if not witnesses_run(observation, op["run"], run):
                     raise Refusal("witness_mismatch")
                 for sha in (observation["artifact_sha256"], run["definition_sha256"], run["environment_sha256"]):
                     self.batch.artifacts.read(sha)
@@ -267,11 +267,19 @@ class WorkAdmission:
             lost = [(key, row["fields"]) for key, row in view.records.items()
                     if row["commitment"] == self.scope and row["kind"] == "WorkItem"
                     and row["fields"]["state"] == "closed" and not view.closed(key)]
-            if not lost:
+            if lost:
+                for key, f in lost:
+                    state = "submitted" if f["candidate"] else "assigned" if f.get("assignment") else "open"
+                    self.emit("WorkReopened", {"id": key, "state": state})
+                continue
+            # Every positive supporting closure is now a current, independently chosen
+            # outcome. Moving one structural generation can invalidate another direct reader.
+            change = next((update for key, row in view.records.items()
+                           if row["commitment"] == self.scope and row["kind"] == "WorkItem"
+                           if (update := view.graph.transition(key)) is not None), None)
+            if change is None:
                 break
-            for key, f in lost:
-                state = "submitted" if f["candidate"] else "assigned" if f.get("assignment") else "open"
-                self.emit("WorkReopened", {"id": key, "state": state})
+            self.emit("WorkSupportUpdated", change)
         c = view.fields(self.scope)
         if c["state"] == "satisfied" and not view.closed(c["root"]):
             self.emit("CommitmentReopened", {"id": self.scope})

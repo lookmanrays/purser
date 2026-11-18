@@ -5,6 +5,8 @@ from collections import defaultdict
 class SupportGraph:
     def __init__(self, records, edges):
         self.records = records
+        self.parents = {r["fields"]["parent"] for r in records.values()
+                        if r["kind"] == "WorkItem" and r["fields"]["parent"]}
         self.outgoing = defaultdict(set)
         self.incoming = defaultdict(set)
         for edge in edges:
@@ -52,6 +54,57 @@ class SupportGraph:
                                "choice": f["choice"], "support": list(f["support"])})
         return result
 
+    def work_outcomes(self, work):
+        """Direct WorkItem support only. A missing qualifying closure has no current outcome."""
+        result = {}
+        for key in sorted(self.outgoing[work]):
+            row = self.records[key]
+            if row["kind"] == "WorkItem":
+                f = row["fields"]
+                result[key] = f.get("closed_outcome") if f["state"] == "closed" else None
+        return result
+
+    def acquired(self, work):
+        f = self.records[work]["fields"]
+        if f.get("assignment"):
+            return self.records[f["assignment"]]["fields"].get("work_supports", {})
+        return f.get("structural_supports", {})
+
+    def changed_outcomes(self, work):
+        acquired, live = self.acquired(work), self.work_outcomes(work)
+        return {key for key, previous in acquired.items()
+                if key not in live or live[key] is not None and live[key] != previous}
+
+    def transition(self, work):
+        """Fence worked generations and advance automatic ones when their acquired input changes."""
+        row = self.records[work]
+        f = row["fields"]
+        if not self.outgoing[work] and not self.acquired(work) and f["state"] != "stale":
+            return None
+        causes = set(f.get("causes", []))
+        changed = self.changed_outcomes(work)
+        if f.get("assignment"):
+            if not changed or f["state"] == "stale":
+                return None
+            state, generation, supports = "stale", f["generation"], self.acquired(work)
+            causes.update(changed)
+        else:
+            if work not in self.parents and not f.get("coverage"):
+                return None
+            prior = self.acquired(work)
+            supports = {k: outcome or prior.get(k) for k, outcome in self.work_outcomes(work).items()
+                        if outcome or k in prior}
+            recovered = f["state"] == "stale" and not self.issues(work, reassign=True)
+            if prior == supports and not recovered:
+                return None
+            renew = bool(changed or recovered)
+            generation = f["generation"] + int(renew)
+            state = "open" if recovered or (renew and f["state"] == "closed") else f["state"]
+            if recovered:
+                causes.clear()
+        return {"id": work, "commitment": row["commitment"], "state": state, "generation": generation,
+                "supports": supports, "causes": sorted(causes)}
+
     def issues(self, work, *, reassign=False):
         found = self.supports(work)
         invalid, waiting = set(), set()
@@ -61,8 +114,12 @@ class SupportGraph:
             if kind == "WorkItem":
                 if key in found and f["state"] != "closed":
                     waiting.add(key)
-                if f["state"] == "stale" and (key != work or not reassign):
-                    invalid.update([key, *f["causes"]])
+                if key != work or not reassign:
+                    changed = self.changed_outcomes(key)
+                    if changed:
+                        invalid.update([key, *changed])
+                    if f["state"] == "stale":
+                        invalid.update([key, *f["causes"]])
             elif f["state"] in ("reconsidering", "invalidated"):
                 invalid.update([key, *f["causes"]])
         # Preserve the assumption ID even when the cause was reached through a decision.
