@@ -32,6 +32,17 @@ def expected_method(kind, actor, inputs):
     return None
 
 
+def matches(frame, method, work, actor, inputs, oid):
+    if frame is None or frame.claimed or frame.method != method:
+        return False
+    actual = frame.action
+    if (actual["subject"], actual["actor"], actual["candidate"]) != (work, actor, oid):
+        return False
+    operand = {"assign_again": "assign", "revise": "adopt", "opening": "open_run",
+               "observe": "criterion", "verify": "criterion", "submit": "candidate", "decide": "request"}[method]
+    return actual["input"].get(operand) == inputs.get(operand)
+
+
 class PublicActions:
     def __init__(self, driver):
         self.driver = driver
@@ -83,13 +94,13 @@ class PublicActions:
 
     def port(self, method, kind, work, actor, inputs, operation, oid=None):
         frame = self.frame.get()
-        if (frame is None or frame.claimed or frame.method != method
-                or (frame.action["subject"], frame.action["actor"]) != (work, actor)):
+        if not matches(frame, method, work, actor, inputs, oid):
             return self.call(kind, work, actor, inputs,
                              lambda: self.port(method, kind, work, actor, inputs, operation, oid), oid)
         frame.claimed = True
         action = frame.action
         action["port_method"] = method
+        action["port_input"] = inputs
         _, action["port_before"] = self.snapshot()
         self.driver.j.persist()
         try:
@@ -130,12 +141,14 @@ class WorkPorts:
 
     def observe(self, work, label, observed):
         operation = super().observe
-        return self.public_operation("observe", "observe", work, "independent_observer", {"criterion": label},
+        return self.public_operation("observe", "observe", work, "independent_observer",
+                                     {"criterion": label, "observation": observed},
                                      lambda: operation(work, label, observed), observed["candidate"])
 
     def verify(self, work, label, observed):
         operation = super().verify
-        return self.public_operation("verify", "decide", work, "independent_verifier", {"criterion": label},
+        return self.public_operation("verify", "decide", work, "independent_verifier",
+                                     {"criterion": label, "observation": observed},
                                      lambda: operation(work, label, observed), observed["candidate"])
 
     def decide(self, work, audit):
