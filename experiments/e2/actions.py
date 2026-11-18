@@ -1,5 +1,8 @@
 """Charge public work at issue and retain publications attributed to each invocation."""
+from contextvars import ContextVar
 from dataclasses import dataclass
+from threading import RLock
+from time import monotonic_ns
 
 from experiments.e1 import capture
 
@@ -32,11 +35,13 @@ def expected_method(kind, actor, inputs):
 class PublicActions:
     def __init__(self, driver):
         self.driver = driver
-        self.frames = []
+        self.frame = ContextVar("public_work_frame", default=None)
+        self.admission = RLock()
 
     @property
     def current(self):
-        return self.frames[-1].action if self.frames else None
+        frame = self.frame.get()
+        return frame.action if frame is not None else None
 
     def record(self, request):
         action = self.current
@@ -60,32 +65,24 @@ class PublicActions:
     def call(self, kind, work, actor, inputs, operation, oid=None):
         """A second semantic operation within a callback obtains a distinct budget slot."""
         journal = self.driver.j
-        frame = None
-        _, before = self.snapshot()
         parent = self.current
-
-        def run():
-            nonlocal frame
-            action = journal.rows[-1]["payload"]
-            action["parent_attempt"] = parent["attempt"] if parent is not None else None
-            frame = Frame(action, expected_method(kind, actor, inputs))
-            self.frames.append(frame)
-            journal.persist()
-            try:
-                return operation()
-            finally:
-                self.frames.pop()
-
+        with self.admission:
+            _, before = self.snapshot()
+            action = journal.begin_action(kind, work, actor, oid, inputs, before=before,
+                    metadata={"parent_attempt": parent["attempt"] if parent is not None else None,
+                              "issued_monotonic_ns": monotonic_ns()})
+        frame = Frame(action, expected_method(kind, actor, inputs))
+        token = self.frame.set(frame)
         try:
-            return journal.action(kind, work, actor, oid, inputs, run, before=before, assets=self.driver.assets)
+            return journal.run_action(action, operation, self.driver.assets)
         finally:
-            if frame is not None:
-                action = frame.action
-                action["after"] = self.states(action)
-                journal.persist()
+            self.frame.reset(token)
+            action["finished_monotonic_ns"] = monotonic_ns()
+            action["after"] = self.states(action, capture.returned_decision(action))
+            journal.persist()
 
     def port(self, method, kind, work, actor, inputs, operation, oid=None):
-        frame = self.frames[-1] if self.frames else None
+        frame = self.frame.get()
         if (frame is None or frame.claimed or frame.method != method
                 or (frame.action["subject"], frame.action["actor"]) != (work, actor)):
             return self.call(kind, work, actor, inputs,
@@ -96,7 +93,9 @@ class PublicActions:
         _, action["port_before"] = self.snapshot()
         self.driver.j.persist()
         try:
-            return operation()
+            answer = operation()
+            action["port_return"] = answer
+            return answer
         finally:
             action["port_after"] = self.states(action)
             self.driver.j.persist()
