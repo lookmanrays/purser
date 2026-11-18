@@ -113,8 +113,9 @@ def collect_units(directory, units=None):
     units = complete if units is None else list(units)
     if rep == 1 and units != complete:
         raise ValueError("replicate 1 requires the complete ordered schedule")
-    if len(set(units)) != len(units) or not set(units) <= set(complete):
-        raise ValueError("unregistered trial identities")
+    chosen = set(units)
+    if not chosen <= set(complete) or units != [unit for unit in complete if unit in chosen]:
+        raise ValueError("trial identities must follow the registered order without repeats")
     filename = (directory / "freeze.json").resolve().relative_to(ROOT).as_posix()
     if repo("show", "HEAD:" + filename) != data:
         raise ValueError("commit the registration before collection")

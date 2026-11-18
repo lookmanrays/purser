@@ -1,5 +1,6 @@
 """Run one E3 participant and archive its caller, native and writer sources before scoring."""
 
+import json
 import platform
 import sqlite3
 import sys
@@ -7,7 +8,7 @@ import time
 from copy import deepcopy
 
 from experiments.e1.accounting import validity_for
-from experiments.e1.artifacts import MANIFEST, git
+from experiments.e1.artifacts import MANIFEST, git, read_artifact
 from experiments.e1.recovery import failure_record, input_identity
 from experiments.e1.run import _run_arm, utc
 
@@ -159,6 +160,10 @@ def retain(directory, assets, arm, saved, *, interrupted):
         for seq, row in enumerate(rows, 1):
             row["seq"] = seq
     facts["public_history_complete"] = bool(exit_source and all(p["response"] for p in archive["actions"]) and not issues)
+    scoring = load(directory / "score-clock.json")
+    if scoring is not None:
+        facts["offline_scoring"] = scoring
+        refs.extend(files_in(scoring))
     refs.extend(files_in([archive, rows, saved.get("candidates", {})]))
     facts["referenced_files"] = sorted({ref["path"]: ref for ref in refs}.values(), key=lambda ref: ref["path"])
     return saved
@@ -253,5 +258,18 @@ def run_participant(directory, assets, freeze, arm, track, seed, rank, *, progre
 def attempt(directory, assets, freeze, arm, track, seed, rank, *, progress=None):
     from .report import derive_case
     raw = run_participant(directory, assets, freeze, arm, track, seed, rank, progress=progress)
-    raw["score"] = derive_case(raw, assets.archive)
+    input_platform = raw["artifacts"]["platform"]
+    timing = {"input_platform": input_platform, "start_ns": time.monotonic_ns(), "start_utc": utc(),
+              "end_ns": None, "end_utc": None}
+    clock_file = directory / "score-clock.json"
+    write(clock_file, timing)
+    try:
+        raw["score"] = derive_case(raw, assets.archive)
+    finally:
+        timing.update(end_ns=time.monotonic_ns(), end_utc=utc())
+        write(clock_file, timing)
+    facts = json.loads(read_artifact(assets.archive, input_platform))
+    facts["offline_scoring"] = timing
+    facts["referenced_files"].append(input_platform)
+    raw["artifacts"]["platform"] = assets.put(facts, "json")
     return raw
