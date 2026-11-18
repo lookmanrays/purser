@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from experiments.e1 import scorer
-from experiments.e1.artifacts import START, extract_tree
+from experiments.e1.artifacts import extract_tree
 
 OLD = 1
 NEW = 2
@@ -33,7 +33,7 @@ def grade(report, oid, label, seed, rank, version):
 def collect(repo, candidates, seed, rank, assets, references, events, emit, issue):
     existing = {(p["candidate"], p["criterion"], p["version"]) for event in events
                 if event["kind"] == "oracle" for p in [event["payload"]]}
-    for oid in sorted(set(candidates) - {START}):
+    for oid in sorted(set(candidates)):
         try:
             with extract_tree(repo, oid) as tree:
                 for version, labels in ((OLD, scorer.LABELS), (NEW, REVISED)):

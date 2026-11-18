@@ -1,54 +1,10 @@
 """Bind the changed requirement and measured exit to the participant's durable bytes."""
 
-import json
+from experiments.e1.artifacts import git
+from experiments.e1.executor import PARENT, PATHS
+from experiments.e1.outcomes import LABELS
 
-from experiments.e1 import capture
-from experiments.e1.artifacts import encoded, git, sha
-from experiments.e1.executor import PATHS
-from experiments.e1.measurement import same
-from experiments.e1.purser_arm import OBSERVER
-
-from . import outcomes, policy
-
-
-def public_input(event, arm, seed, read, trace):
-    if event is None:
-        return None
-    p = event["payload"]
-    message = policy.notice(seed)
-    if (not same(p.get("released"), message) or p.get("released_sha256") != sha(encoded(message))
-            or p.get("observation_id") != message["id"] or p.get("seed") != seed):
-        return None
-    if not p.get("after"):
-        return None
-    if arm != "purser":
-        before = read(p["before"]["view"])["W2"].get("premise")
-        after = read(p["after"]["view"])["W2"].get("premise")
-        return (same(after, message) if before is None else None)
-    proposal = p.get("proposal")
-    if not proposal or not trace:
-        return None
-    op = {"op": "assumption.observe", "id": message["id"], "assumption": message["assumption"],
-          "finding": message["finding"]}
-    if proposal["actor_id"] != OBSERVER or not same(proposal["body"]["ops"], [op]):
-        return None
-    receipts = trace["snapshot"]["projection"]["receipts"]
-    receipt = next((r for r in receipts if r["actor_id"] == OBSERVER and r["proposal_id"] == proposal["proposal_id"]
-                    and r["digest"] == proposal["digest"]), None)
-    if not receipt:
-        return False if p["before"] == p["after"] else None
-    if receipt["disposition"] != "admitted":
-        return False
-    events = [json.loads(e) for e in trace["original_events"][p["before"]["revision"]:p["after"]["revision"]]]
-    events = [e for e in events if e["actor_id"] == OBSERVER and e["proposal_id"] == proposal["proposal_id"]]
-    checksum = p["released_sha256"]
-    expected = {"id": message["id"], "commitment": "C-notify", "assumption": message["assumption"],
-                "finding": message["finding"], "observer": OBSERVER, "artifact_sha256": checksum}
-    observed = [e for e in events if e["type"] == "PremiseObserved" and e["event_version"] == 1]
-    if len(observed) != 1 or not same(observed[0]["data"], expected):
-        return None
-    ref = trace["kernel_artifacts"].get(checksum)
-    return bool(ref and ref["sha256"] == checksum and same(read(ref), message))
+from . import outcomes
 
 
 def file_ids(repo, oid):
@@ -62,16 +18,11 @@ def file_ids(repo, oid):
     return result
 
 
-def score(journal, track, arm, seed, lookup_checkpoint, read, trace, verdicts, platform, *,
-          endpoint_known, history_complete, action_sequence_complete, known_candidates, issue=None):
+def score(history, track, verdicts, platform, *, release, qualification, endpoint_known, step_boundaries, final_subject,
+          known_candidates):
+    journal, lookup_checkpoint = history.journal, history.checkpoint
     fault = next((e for e in journal if e["kind"] == "fault"), None)
     unchanged = {}
-    try:
-        delivered = public_input(fault, arm, seed, read, trace)
-    except (KeyError, ValueError, TypeError, IndexError) as error:
-        delivered = None
-        if issue is not None:
-            issue(f"public intervention witness: {error}")
     if fault:
         p = fault["payload"]
         before = lookup_checkpoint(p.get("before")) or {}
@@ -79,19 +30,38 @@ def score(journal, track, arm, seed, lookup_checkpoint, read, trace, verdicts, p
         for subject in ("W1", "W3"):
             prior = ids.get(before.get(subject, (None, None))[1], {}).get(subject)
             later = ids.get(p.get("candidate"), {}).get(subject)
-            unchanged[subject] = prior == later if prior and later else None
+            unchanged[subject] = prior == later if prior is not None and later is not None else None
     end = platform.get("exit_candidate") or {}
     oid = end.get("head")
     final_oid = oid if oid in known_candidates and end.get("dirty") is False else None
-    facts = outcomes.assess(journal, track, lookup_checkpoint, verdicts, delivery=delivered,
-                            unchanged=unchanged, final_oid=final_oid, endpoint_known=endpoint_known,
-                            history_complete=history_complete, action_sequence_complete=action_sequence_complete)
+    facts = outcomes.assess(journal, track, lookup_checkpoint, verdicts, delivery=release, qualification=qualification,
+                            unchanged=unchanged, final_oid=final_oid if final_subject else None, endpoint_known=endpoint_known,
+                            history_complete=history.public_complete, action_sequence_complete=step_boundaries)
+    facts["clean_exposure"] = history.clean_exposure
+    facts["charged_attempts_observed"] = history.action_lower_bound
+    latest, source, location = final_oid, None, None
+    if latest:
+        source = end.get("source", "stopped_worker_clean_HEAD")
+    else:
+        for event in reversed(journal):
+            value = event["payload"]
+            if event["kind"] not in ("fault","action","public_state"):
+                continue
+            ck = value.get("checkpoint") if event["kind"] == "public_state" else value.get("after")
+            states = lookup_checkpoint(ck)
+            if states is None:
+                continue
+            subject = value.get("subject")
+            for work in dict.fromkeys([PARENT,subject]):
+                candidate = states.get(work,(None,None))[1]
+                if candidate in known_candidates:
+                    latest, source, location = candidate, "last_public_candidate", event.get("seq")
+                    break
+            if latest:
+                break
+    version = 1 if track == "clean" else 2
+    grades = [verdicts.get((latest,label,version if label in ("W2/retry","queue/composition") else 1)) for label in LABELS]
+    facts.update(last_observed_candidate=latest, last_observed_source=source, last_observed_sequence=location,
+                 last_observed_utc=end.get("observed_utc") if final_oid else None,
+                 last_observed_pass=outcomes.conjunction(g=="pass" if g in ("pass","fail") else None for g in grades))
     return facts
-
-
-def public_checkpoint(read):
-    def load(ck):
-        if not ck:
-            return None
-        return {k: capture.position(v) for k, v in read(ck["view"]).items()}
-    return load

@@ -12,8 +12,10 @@ N = len(TRIALS["seeds"])
 def value(case, key):
     if case is None:
         return None
-    if key in ("steps", "elapsed_ns"):
-        return case.raw["cost"].get(key) if case.comparable_cost else None
+    if key == "steps":
+        return case.facts.get("charged_attempts_observed") if case.comparable_steps else None
+    if key == "elapsed_ns":
+        return case.raw["cost"].get(key) if case.comparable_elapsed else None
     return case.facts.get(key)
 
 
@@ -144,13 +146,13 @@ def render_summary(cases):
             out.append(f"| {seed} | {status} | " + " | ".join([*fields, work(c), shown(value(c,"final_pass")),
                                                              cost(c,"steps"), cost(c,"elapsed_ns")]) + " |")
     out.extend(["", "## Clean control · A1 retained", "",
-                "| Arm | Exit | Final pass | Steps | Elapsed s |", "| --- | --- | --- | ---: | ---: |"])
+                "| Arm | Exit | Clean exposure | Final pass | Steps | Elapsed s |", "| --- | --- | --- | --- | ---: | ---: |"])
     clean = {arm: cases.get(("clean", TRIALS["clean_seed"], arm)) for arm in ARMS}
     for arm,c in clean.items():
-        out.append(f"| {arm} | {c.raw['terminal'] if c else 'missing'} | {shown(value(c,'final_pass'))} | {cost(c,'steps')} | {cost(c,'elapsed_ns')} |")
+        out.append(f"| {arm} | {c.raw['terminal'] if c else 'missing'} | {shown(value(c,'clean_exposure'))} | {shown(value(c,'final_pass'))} | {cost(c,'steps')} | {cost(c,'elapsed_ns')} |")
     p, b = value(clean["purser"], "steps"), value(clean["loop"], "steps")
     clean_measured = all(c is not None and c.healthy_clean for c in (clean["purser"], clean["loop"]))
-    overhead = None if not clean_measured else p > 2*b
+    overhead = p > 2*b if clean_measured and p is not None and b is not None else None
     out.extend(["", "The twice-baseline clean overhead flag is **" + shown(overhead) + "**.",
                 "", "## Already-closed affected stress control", "",
                 "At delivery the affected W2 was already closed under the old schedule. The two bad-closure columns "
@@ -167,5 +169,10 @@ def render_summary(cases):
         out.extend(["", "## Unavailable or disputed observations", ""])
         for key,c in diagnosed:
             out.append(f"- {' / '.join(str(x) for x in key)} — " + (" · ".join(c.issues) or c.raw["terminal"]))
+            candidate = value(c, "last_observed_candidate")
+            if candidate:
+                where = value(c,"last_observed_utc") or f"public event {value(c,'last_observed_sequence')}"
+                out.append(f"  Last measured candidate `{candidate}` ({value(c,'last_observed_source')}, {where}), "
+                           f"registered final criteria pass {shown(value(c,'last_observed_pass'))}.")
     out.extend(["", "Scripted model calls, tokens and spend were zero.", ""])
     return "\n".join(out)

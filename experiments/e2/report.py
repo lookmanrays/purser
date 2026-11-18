@@ -7,16 +7,18 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from experiments.e1.accounting import PublicHistory, READ_ERRORS, check_exit, journal_prefix
-from experiments.e1.artifacts import MANIFEST, REGISTRATION, START, extract_tree, sha
+from experiments.e1.accounting import READ_ERRORS, check_exit, journal_prefix, utc_time
+from experiments.e1.artifacts import MANIFEST, REGISTRATION, START, encoded, extract_tree, sha
 from experiments.e1.executor import LEAVES, PARENT, PARENT_CHECKS
 from experiments.e1.measurement import same
 from experiments.e1.outcomes import CLOSED, LABELS
 from experiments.e1.recovery import input_identity
 from experiments.e1.report import GitPacks, Objects, parse, require, wire_valid
 
-from . import evidence, measure, outcomes, policy
+from . import checkpoint, clock, evidence, measure, outcomes, policy
+from .public_history import read_participant
 from .suite import schedule, validate_freeze
+from .views import CorroboratedViews
 
 ERRORS = (*READ_ERRORS, OSError, subprocess.SubprocessError, zipfile.BadZipFile)
 
@@ -27,11 +29,25 @@ class Case:
     facts: dict
     basis: str
     issues: tuple
-    comparable_cost: bool = False
+    comparable_steps: bool = False
+    comparable_elapsed: bool = False
     healthy_clean: bool = False
+
+    @property
+    def comparable_cost(self):
+        return self.comparable_steps and self.comparable_elapsed
 
 
 def inspect_case(raw, schema, objects, packs, rank, *, rerun, measurements):
+    require(wire_valid(raw, schema, schema), "raw record violates frozen schema")
+    case = derive_case(raw, objects, packs, rank, rerun=rerun, measurements=measurements)
+    expected = outcomes.raw_score(case.facts) if raw["validity"] != "infrastructure_invalid" and raw["track"] != "clean" else None
+    if not same(expected,raw["score"]):
+        case.issues += ("frozen raw score differs from actual participant and protected observations",)
+    return case
+
+
+def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None):
     issues = []
     def issue(message):
         if message not in issues:
@@ -43,7 +59,6 @@ def inspect_case(raw, schema, objects, packs, rank, *, rerun, measurements):
             issue(f"{label}: {error}")
             return default
 
-    require(wire_valid(raw, schema, schema), "raw record violates frozen schema")
     arm, seed, track = raw["arm"], raw["seed"], raw["track"]
     artifacts = raw["artifacts"]
     journal, ordered = journal_prefix(read("journal", lambda: objects.item(artifacts["journal"])), arm, issue)
@@ -52,6 +67,16 @@ def inspect_case(raw, schema, objects, packs, rank, *, rerun, measurements):
     require(isinstance(platform, dict) and isinstance(candidates, dict), "unreadable platform or candidate manifest")
     for ref in objects.references([platform, journal]):
         read("referenced bytes", lambda: objects.blob(ref))
+    views = CorroboratedViews(arm,objects,journal,platform,issue)
+    journal = views.events(journal)
+    platform = dict(platform)
+    for key in ("initial_public","final_public"):
+        if key in platform:
+            platform[key] = views.checkpoint(platform[key])
+    if platform.get("checkpoint_measurement"):
+        measurement = dict(platform["checkpoint_measurement"])
+        measurement["checkpoint"] = views.checkpoint(measurement.get("checkpoint"))
+        platform["checkpoint_measurement"] = measurement
     repos = {}
     blobs = {}
     for oid, entry in candidates.items():
@@ -66,15 +91,27 @@ def inspect_case(raw, schema, objects, packs, rank, *, rerun, measurements):
                     issue(f"retained policy blob identities differ for {oid}")
             if oid != START and entry["parent"] not in candidates:
                 issue(f"missing archived parent of {oid}")
-    basis, endpoint_ok = check_exit(raw, journal, platform, True, issue)
-    exact = basis == "exact" and endpoint_ok and platform.get("participant_exit") is not None
-    # A fixture delivery has its own before/after transition and can race its ack in
-    # exactly the same way as a worker action. It is never in the charged action count.
-    boundaries = [dict(e, kind="action") if e["kind"] == "fault" else e for e in journal]
-    history = PublicHistory(arm, True, objects.item, issue)
-    audited = history.reconcile(boundaries, platform, incomplete=raw["validity"] != "complete")
-    events = [dict(e, kind="fault") if e["kind"] == "action" and e["payload"].get("actor") == "fixture_observer" else e
-              for e in audited]
+    pause_ok = read("participant scoring pause", lambda: (clock.validate(platform, journal, raw), True)[1], False)
+    duration = clock.active_ns if pause_ok else lambda start, end, facts: None
+    basis, endpoint_ok = check_exit(raw, journal, platform, True, issue, duration=duration)
+    history = read_participant(arm, journal, platform, views.item, issue)
+    events = history.journal
+    quiet = read("physical scoring interval", lambda: clock.quiescence(platform, history.timeline,
+                ordered and history.public_complete and history.actions_complete)) if pause_ok else None
+    if quiet is not True:
+        issue("participant activity overlaps the protected scoring interval" if quiet is False
+              else "quiescent scoring interval cannot be proven")
+    receipt = platform.get("participant_exit") or {}
+    observed_exit = (receipt.get("reason") in ("done","blocked","idle","time_limit","step_limit")
+                     and type(receipt.get("end_monotonic_ns")) is int
+                     and receipt["end_monotonic_ns"] == platform.get("end_monotonic_ns")
+                     and utc_time(receipt.get("end_utc")) is not None and receipt["end_utc"] == platform.get("end_utc"))
+    exact = basis == "exact" and endpoint_ok and observed_exit
+    boundaries = exact and ordered and history.actions_complete and history.public_complete
+    timed = quiet is True
+    in_budget = timed or clock.budget_bounded(platform, receipt.get("reason"))
+    comparable_steps = boundaries and in_budget
+    comparable_elapsed = boundaries and timed
     actual_trace = read("participant", lambda: objects.item(platform["treatment_trace"])) if platform.get("treatment_trace") else None
     if arm == "purser" and actual_trace:
         for digest, ref in actual_trace.get("kernel_artifacts", {}).items():
@@ -87,25 +124,11 @@ def inspect_case(raw, schema, objects, packs, rank, *, rerun, measurements):
         p = e["payload"]
         if p.get("trigger") != track or p.get("intervention") != "linear_to_exponential":
             issue("wrong registered intervention")
-            p["released"] = None
-    for e in events:
-        if e["kind"] != "action":
-            continue
-        p = e["payload"]
-        data = p.get("input", {})
-        label = data.get("criterion", data.get("open_run"))
-        allowed = (LEAVES[p["subject"]],) if p.get("subject") in LEAVES else PARENT_CHECKS
-        if label is not None and label not in allowed:
-            issue("charged action subject disagrees with criterion operand")
-            p["subject"] = None
-            ordered = False
-        if data.get("assign", p.get("subject")) != p.get("subject") or "adopt" in data and p.get("subject") != "W2":
-            issue("charged action subject disagrees with planning operand")
-            p["subject"] = None
-            ordered = False
-
+    if track == "clean" and history.clean_exposure is not True:
+        issue("clean member received a changed premise or instructions" if history.clean_exposure is False
+              else "clean assignment throughout the participant history cannot be proven")
     verdicts, witnesses, ambiguous = {}, {}, set()
-    for event in events:
+    for event in journal:
         if event["kind"] != "oracle":
             continue
         p = event["payload"]
@@ -142,9 +165,29 @@ def inspect_case(raw, schema, objects, packs, rank, *, rerun, measurements):
                         issue(f"reexecuted protected evidence differs for {key}")
                         verdicts.pop(key, None)
 
-    if type(platform.get("public_history_complete")) is not bool:
-        issue("public history certainty missing")
-    whole = ordered and history.complete and history.final is not None and platform.get("public_history_complete") is True
+    pause = platform.get("checkpoint_measurement")
+    admitted = None
+    if pause:
+        checked = read("old checkpoint qualification", lambda: (
+            checkpoint.validate(pause, history.checkpoint(pause["checkpoint"]), track, seed, rank, objects, blobs,
+                                witnesses, complete=raw["validity"] == "complete"), True)[1], False)
+        if checked:
+            admitted = pause.get("qualified")
+    delivered = history.fault_receipt
+    if faults:
+        incoming = faults[0]["payload"]
+        bulletin = policy.notice(seed)
+        exact_input = same(incoming.get("released"), bulletin) and incoming.get("released_sha256") == sha(encoded(bulletin))
+        if not exact_input or incoming.get("seed") != seed:
+            issue("incoming content does not establish the registered premise and seed")
+            delivered = None
+        if delivered is True and track != "clean":
+            actual = incoming.get("before")
+            expected = (pause or {}).get("checkpoint")
+            if not expected or not same(expected, incoming.get("required_before")) or not same(actual,expected):
+                issue("actual public premise did not follow the privately qualified predecessor")
+                admitted = None
+    whole = history.public_complete and history.final is not None
     end = platform.get("exit_candidate") or {}
     if end:
         tips = set(repos) - {c["parent"] for c in candidates.values()}
@@ -157,25 +200,27 @@ def inspect_case(raw, schema, objects, packs, rank, *, rerun, measurements):
         issue("done exit disagrees with the participant's final parent candidate")
         end = {}
     platform = dict(platform, policy_blobs=blobs, exit_candidate=end)
-    facts = evidence.score(events, track, arm, seed, history.checkpoint, objects.item, actual_trace, verdicts, platform,
-                           endpoint_known=exact, history_complete=whole, action_sequence_complete=ordered,
-                           known_candidates=repos, issue=issue)
-    facts["charged_attempts_observed"] = sum(e["kind"] == "action" for e in journal)
+    final_subject = (observed_exit and end.get("source") == "after_participant_exit"
+                     and utc_time(end.get("observed_utc")) is not None
+                     and utc_time(end["observed_utc"]) >= utc_time(receipt["end_utc"]))
+    facts = evidence.score(history, track, verdicts, platform, release=delivered, qualification=admitted,
+                           endpoint_known=observed_exit, step_boundaries=comparable_steps, final_subject=final_subject,
+                           known_candidates=repos)
+    facts.update(physical_exit=observed_exit, clock_pause_quiescent=quiet, complete_action_sequence=history.actions_complete,
+                 complete_public_history=whole, receipt_complete=history.receipt_complete)
     expected = outcomes.raw_score(facts) if raw["validity"] != "infrastructure_invalid" and track != "clean" else None
-    if not same(expected, raw["score"]):
-        issue("frozen raw score differs from actual participant and protected observations")
     if raw["validity"] == "complete":
         if (not whole or not exact or not history.final or history.final[PARENT][0] not in CLOSED
                 or facts["final_pass"] is None or track != "clean" and (expected is None or facts["intervention_reached"] is not True)):
             issue("completed run lacks its registered endpoint or checkpoint evidence")
-        for oid in set(candidates) - {START}:
+        for oid in candidates:
             if any((oid, label, version) not in verdicts for version, labels in ((measure.OLD, LABELS), (measure.NEW, measure.REVISED))
                    for label in labels):
                 issue(f"completed run lacks a protected candidate observation for {oid}")
-    healthy = (track == "clean" and exact and ordered and whole and raw["terminal"] == "done"
+    healthy = (track == "clean" and history.clean_exposure is True and whole and observed_exit and raw["terminal"] == "done"
                and history.final[PARENT][0] in CLOSED and history.final[PARENT][1] == end.get("head")
                and facts["final_pass"] is True)
-    return Case(raw, facts, basis, tuple(issues), comparable_cost=exact and ordered, healthy_clean=healthy)
+    return Case(raw, facts, basis, tuple(issues), comparable_steps, comparable_elapsed, healthy)
 
 
 def inspect_series(directory, *, strict=False, rerun=False):

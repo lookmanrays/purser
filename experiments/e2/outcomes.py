@@ -16,13 +16,30 @@ def conjunction(values):
     return False if False in values else True if all(v is True for v in values) else None
 
 
+def checkpoint_eligibility(before, oid, track, passed, unchanged, submitted):
+    required = [submitted]
+    for subject in ("W1", "W3", "W2"):
+        state, candidate = before.get(subject, (None, None))
+        if state is None:
+            required.append(None)
+        else:
+            needs_closed = subject != "W2" or track == "closed-affected"
+            required.append((state in CLOSED) == needs_closed)
+        required.append(passed(oid, LEAVES[subject]))
+        if subject == "W2":
+            required.append(candidate == oid if subject in before and oid else None)
+        else:
+            required.extend([passed(candidate, LEAVES[subject]), unchanged.get(subject)])
+    return conjunction(required)
+
+
 def raw_score(facts):
     # Frozen wire fields, other than rework, cannot express unknown. The independent
     # reporter retains every individually observed fact even when this object is null.
     return {k: facts[k] for k in FIELDS} if all(facts[k] is not None for k in FIELDS if k != "rework_steps") else None
 
 
-def assess(journal, track, checkpoint, verdicts, *, delivery, unchanged, final_oid,
+def assess(journal, track, checkpoint, verdicts, *, delivery, qualification, unchanged, final_oid,
            endpoint_known, history_complete, action_sequence_complete):
     def passed(oid, label, version):
         actual_version = version if label in measure.REVISED else measure.OLD
@@ -32,14 +49,14 @@ def assess(journal, track, checkpoint, verdicts, *, delivery, unchanged, final_o
     phase = measure.OLD if track == "clean" else measure.NEW
     final_pass = conjunction(passed(final_oid, label, phase) for label in LABELS) if final_oid else None
     facts = dict.fromkeys(FIELDS)
-    facts.update(final_pass=final_pass, final_candidate=final_oid, rework_observed=0,
+    facts.update(final_pass=final_pass, final_candidate=final_oid, rework_observed=None,
                  stale_at_delivery=None, new_bad_closure=None, closure_observations=[], reopened_subjects=[],
                  rework_actions=[], checkpoint_candidate=None, checkpoint_work=None)
     faults = [e for e in journal if e["kind"] == "fault"]
     if track == "clean":
         return facts
     if not faults:
-        facts["intervention_reached"] = False if endpoint_known and history_complete else None
+        facts["intervention_reached"] = False if delivery is False or endpoint_known and history_complete else None
         return facts
     fault = faults[0]
     p = fault["payload"]
@@ -50,21 +67,14 @@ def assess(journal, track, checkpoint, verdicts, *, delivery, unchanged, final_o
         if len(faults) == 1 and delivery is False:
             facts["intervention_reached"] = False
         return facts
-    required = [bool(before) or None]
-    for subject in ("W1", "W3"):
-        state, candidate = before.get(subject, (None, None))
-        required += [state in CLOSED if state is not None else None, passed(candidate, LEAVES[subject], measure.OLD),
-                     passed(oid, LEAVES[subject], measure.OLD), unchanged.get(subject)]
-    state, candidate = before.get("W2", (None, None))
-    required.extend([state in CLOSED if track == "closed-affected" else state not in CLOSED
-                     if state is not None else None, candidate == oid if candidate and oid else None,
-                     passed(oid, LEAVES["W2"], measure.OLD)])
     submitted = any(e["kind"] == "action" and e["payload"].get("action") == "submit"
                     and e["payload"].get("subject") == "W2" and e["payload"].get("candidate") == oid
                     and (checkpoint(e["payload"].get("after")) or {}).get("W2", (None, None))[1] == oid
                     for e in journal if e.get("seq", 0) < fault["seq"])
-    required.append(True if submitted else False if history_complete else None)
-    reached = conjunction(required)
+    submission = True if submitted else False if history_complete else None
+    reached = checkpoint_eligibility(before, oid, track, lambda item,label: passed(item,label,measure.OLD),
+                                      unchanged, submission)
+    reached = conjunction([reached, qualification])
     facts["intervention_reached"] = reached
 
     previous = before
@@ -77,7 +87,9 @@ def assess(journal, track, checkpoint, verdicts, *, delivery, unchanged, final_o
         payload = e["payload"]
         if e["kind"] == "action" and payload.get("action") in REWORK and payload.get("subject") in WORK:
             facts["rework_actions"].append(payload["attempt"])
-        if e["kind"] not in ("fault", "action", "public_state"):
+        # Nested calls can return to an older outer checkpoint. Only a physical
+        # publication or the incoming delivery advances visible participant state.
+        if e["kind"] not in ("fault", "public_state"):
             continue
         ck = payload.get("checkpoint") if e["kind"] == "public_state" else payload.get("after")
         states = checkpoint(ck)
