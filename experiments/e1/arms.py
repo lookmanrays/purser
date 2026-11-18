@@ -56,11 +56,14 @@ class Plan:
         self.publish(plans)
         return {"state": row["state"]}
 
-    def context(self, work):
+    def _plan_row(self, work):
         row = self.read()[work]
         # The controller's receipt identifies a write on readback. It is outside the released context.
         row.pop("_publication", None)
         return row
+
+    def context(self, work):
+        return self._plan_row(work)
 
     def assign_again(self, work):
         return self.update(work, state="open", candidate=None, verified={})
@@ -69,13 +72,13 @@ class Plan:
         return self.update(work, state="submitted", candidate=oid, verified={})
 
     def opening(self, work, label):
-        return {"criterion": label, "candidate": self.context(work)["candidate"]}
+        return {"criterion": label, "candidate": self._plan_row(work)["candidate"]}
 
     def observe(self, work, label, observed):
         return {"criterion": label, "candidate": observed["candidate"], "observed": observed["observed"]}
 
     def verify(self, work, label, observed):
-        checked = self.context(work)["verified"]
+        checked = self._plan_row(work)["verified"]
         checked[label] = observed["verdict"]
         diagnosis = [label] if observed["verdict"] in ("fail", "inconclusive") else []
         return self.update(work, verified=checked, diagnosis=diagnosis)
@@ -87,7 +90,7 @@ class Plan:
         if work == PARENT:
             missing.update(LEAVES[k] for k in ORDER if not is_closed(plans[k]["state"]))
         self.update(work, state=plans[work]["state"] if missing else "closed", diagnosis=sorted(missing))
-        return {"diagnosis": sorted(missing), "claim": self.context(work)}
+        return {"diagnosis": sorted(missing), "claim": self._plan_row(work)}
 
     def public_view(self):
         original = self.file.read_bytes()

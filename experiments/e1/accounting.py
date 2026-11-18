@@ -142,7 +142,7 @@ def check_exit(raw, journal, platform, modern, issue, *, duration=None):
     return (basis if clock_ok and steps_ok else "unavailable"), endpoint_ok
 
 
-def journal_prefix(journal, arm, issue):
+def journal_prefix(journal, arm, issue, *, allowed_actions=ACTIONS):
     """Read every structurally identifiable observation, flagging gaps in chronology and action identity."""
     if type(journal) is not list:
         issue("unavailable observation journal")
@@ -181,7 +181,7 @@ def journal_prefix(journal, arm, issue):
                 ordered = False
             attempt = max(attempt, number) if type(number) is int and number > 0 else attempt + 1
             action, actor = p.get("action"), p.get("actor")
-            if (repeated or type(action) is not str or actor not in ACTIONS.get(action, ()) or p.get("arm") != arm
+            if (repeated or type(action) is not str or actor not in allowed_actions.get(action, ()) or p.get("arm") != arm
                     or arm == "loop" and actor in ("independent_verifier", "independent_observer")
                     or not same(p.get("attempt"), attempt) or p.get("action_id") != f"action-{attempt}"
                     or p.get("subject") not in WORK or type(p.get("input")) is not dict

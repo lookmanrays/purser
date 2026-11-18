@@ -4,33 +4,45 @@ from experiments.e1.accounting import require
 from experiments.e1.artifacts import encoded, sha
 from experiments.e1.executor import PARENT
 from experiments.e1.measurement import same
-from experiments.e1.purser_arm import EXECUTOR, IDS, OBSERVER, VERIFIER
+from experiments.e1.purser_arm import EXECUTOR, IDS
 from purser.kernel.wire import digest
 
 from . import policy
+from .operations import PORTS, method_for
 from .public_sources import PLAN_VERSION
 
 
-# The public roles separate authority to run, observe, grade and close the same candidate.
-PORTS = {
-    "assign_again": ("plan", "planner", "assign", "work.assign", "planner:study", "WorkAssigned"),
-    "submit": ("submit", "executor", "candidate", "result.submit", EXECUTOR, "ResultSubmitted"),
-    "opening": ("plan", "planner", "open_run", "run.open", "planner:study", "RunOpened"),
-    "observe": ("observe", "independent_observer", "criterion", "observation.record", OBSERVER, "ObservationRecorded"),
-    "verify": ("decide", "independent_verifier", "criterion", "evidence.record", VERIFIER, "EvidenceRecorded"),
-    "decide": ("decide", "closure", "request", "work.close", "closure:study", "WorkClosed"),
-    "revise": ("plan", "planner", "adopt", "decision.record", "planner:study", "DecisionRecorded"),
-    "receive": ("fault", "fixture_observer", None, "assumption.observe", OBSERVER, "PremiseObserved"),
-}
 PLAN_WRITES = {"assign_again", "submit", "verify", "decide", "revise", "receive"}
 
 
 def expected(action):
-    for method, (kind, actor, operand, *_) in PORTS.items():
-        if (action.get("action", "fault"), action.get("actor")) == (kind, actor):
-            if operand is None or operand in action.get("input", {}):
-                return method
-    return None
+    return method_for(action["action"], action["actor"], action["input"])
+
+
+def work_request(action, method):
+    require(method is not None, "unregistered work request")
+    requested = {k: action[k] for k in ("action", "actor", "subject", "candidate", "input")}
+    requested["method"] = method
+    require(same(action.get("work_request"), requested), "issued work request and action differ")
+    if "work_started" in action:
+        require(same(action["work_started"], requested), "physical work entry differs from the admitted request")
+
+
+def delivered(action, read):
+    """Return the physical receiver's evidence independently of preparation or worker success."""
+    receipt = action.get("delivery")
+    if receipt is None:
+        return None, None
+    require(type(receipt) is dict and type(receipt.get("attempt")) is int
+            and receipt["attempt"] == action["attempt"], "delivery identifies another logical request")
+    state = receipt.get("state")
+    if state in ("unknown", "not_delivered"):
+        return False if state == "not_delivered" else None, None
+    require(state == "received", "unknown public handoff disposition")
+    ref = receipt["payload"]
+    received = read(ref)
+    require(receipt["sha256"] == ref["sha256"] == sha(encoded(received)), "receiver payload digest differs")
+    return True, received
 
 
 def request_key(request):
@@ -75,6 +87,10 @@ def operation(action, method, request, before, pub):
             graded = inputs.get("observation", {})
             require(op["verdict"] == graded.get("verdict", action["input"].get("verdict")),
                     "verifier verdict differs from candidate input")
+            if "observation" in inputs:
+                report = {k: v for k, v in graded.items() if k != "verdict"}
+                require(observation.get("artifact_sha256") == sha(encoded(report)),
+                        "graded verifier input differs from original observation")
     elif method == "revise":
         choice = inputs.get("notice", {}).get("retry_schedule", policy.EXPONENTIAL)
         require(work == "W2" and inputs["adopt"] == policy.OBSERVATION and
@@ -181,6 +197,12 @@ def plan_response(action, method, reply):
             continue
         answer = action[field]
         if method == "verify" and field == "return":
+            if "diagnosis" in answer:
+                inputs = action.get("port_input", action["input"])
+                label = inputs["criterion"]
+                verdict = inputs.get("observation", {}).get("verdict", action["input"].get("verdict"))
+                require(same(answer["diagnosis"], [] if verdict == "pass" else [label]),
+                        "returned plan diagnosis differs from the original verdict")
             answer = {k: v for k, v in answer.items() if k != "diagnosis"}
         require(same(answer, reply), f"{field} differs from actual plan publication")
 

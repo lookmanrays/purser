@@ -11,6 +11,7 @@ from pathlib import Path
 
 from purser.kernel.artifacts import Artifacts as KernelArtifacts
 from purser.kernel.store import Store
+from purser.kernel.wire import KernelError
 
 from experiments.e1 import capture
 from experiments.e1.accounting import kernel_rows, validity_for
@@ -36,6 +37,21 @@ def definitions():
     return defs, env
 
 
+def kernel_witnesses(snapshot):
+    """Observation admission installs these bytes. Initial study enrollment only pins digests."""
+    records = {record["id"]: record for record in snapshot["projection"]["records"]}
+    required = set()
+    for record in records.values():
+        if record["kind"] != "Observation":
+            continue
+        fields = record["fields"]
+        required.add(fields["artifact_sha256"])
+        if "run" in fields:
+            run = records[fields["run"]]["fields"]
+            required.update((run["definition_sha256"], run["environment_sha256"]))
+    return required
+
+
 def participant(directory, assets, arm):
     if arm != "purser":
         data = (directory / "plan.json").read_bytes()
@@ -45,8 +61,22 @@ def participant(directory, assets, arm):
     snap = store.snapshot()
     trace = retained_kernel(store, snap)
     kernel_files = KernelArtifacts(store.path)
-    trace["kernel_artifacts"] = {p.name: assets.put(kernel_files.read(p.name), "bin")
-                                 for p in sorted(kernel_files.directory.iterdir()) if len(p.name) == 64}
+    names = kernel_witnesses(snap)
+    missing, retained = {}, {}
+    try:
+        names.update(p.name for p in kernel_files.directory.iterdir() if len(p.name) == 64)
+    except FileNotFoundError:
+        pass  # The kernel creates this directory on its first stored witness.
+    except OSError as error:
+        missing["directory"] = str(error)
+    for digest in sorted(names):
+        try:
+            retained[digest] = assets.put(kernel_files.read(digest), "bin")
+        except (OSError, KernelError) as error:
+            missing[digest] = str(error)
+    trace["kernel_artifacts"] = retained
+    if missing:
+        trace["missing_kernel_artifacts"] = missing
     return kernel_rows(snap["projection"]), {"revision": snap["revision"], "head_hash": snap["head_hash"]}, trace
 
 
@@ -62,6 +92,8 @@ def retain(directory, assets, arm, progress, seed, rank, issue):
         public, identity, trace = participant(directory, assets, arm)
         platform["treatment_trace"] = assets.put(trace, "json")
         refs.append(platform["treatment_trace"])
+        for digest, reason in trace.get("missing_kernel_artifacts", {}).items():
+            issue(f"kernel artifact {digest}", ValueError(reason))
         latest = next((e for e in reversed(rows) if e["kind"] in ("action", "fault")), None)
         last = latest["payload"] if latest else None
         final = capture.checkpoint(assets, public, identity)
@@ -150,7 +182,7 @@ def attempt(directory, assets, freeze, arm, track, seed, rank, *, progress=None)
         issue("participant", error)
     finally:
         j.stop()
-    if reason in ("blocked", "idle", "done") and clock.active_ns(j.start,j.end,facts) > clock.LIMIT:
+    if reason in ("blocked", "idle", "done", "step_limit") and clock.active_ns(j.start,j.end,facts) > clock.LIMIT:
         reason = "time_limit"
     if reason is not None:
         facts["participant_exit"] = {"reason": reason, "end_monotonic_ns": j.end, "end_utc": j.ended}

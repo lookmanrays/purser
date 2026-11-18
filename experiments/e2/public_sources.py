@@ -4,6 +4,7 @@ import sqlite3
 from contextlib import closing
 from dataclasses import dataclass, field
 
+from purser.driver import context_pack
 from purser.kernel.projector import apply_event, empty_projection
 from purser.kernel.store import _batches
 from experiments.e1.accounting import READ_ERRORS, WORK, digest, kernel_rows, public_rows, require
@@ -23,6 +24,7 @@ class Publication:
     receipt: dict | None = None
     events: tuple = ()
     records: dict = field(default_factory=dict)
+    snapshot: dict | None = None
     attempt: int | str | None = None
 
 
@@ -45,17 +47,29 @@ def view_ref(rows):
 
 
 class Originals:
-    def __init__(self, arm, platform, read, issue):
+    def __init__(self, arm, platform, read, issue, *, unavailable=None):
         self.arm, self.read, self.issue = arm, read, issue
+        unavailable = unavailable or issue
         self.publications, self.index, self.views = [], {}, {}
+        self.plan_heads = {}
         self.trace, self.complete, self.initial, self.last = None, False, None, None
+        self.initial_linear = None
         try:
-            self.trace = read(platform["treatment_trace"])
-            if arm == "purser":
-                self.kernel(self.trace)
+            if platform.get("treatment_trace") is None:
+                unavailable("original participant trace unavailable")
             else:
-                self.plan(self.trace)
-            self.complete = True
+                self.trace = read(platform["treatment_trace"])
+            if self.trace is not None and arm == "purser":
+                self.kernel(self.trace)
+                self.complete = True
+            elif self.trace is not None:
+                # Even a pre-versioned plan has an original published head.
+                self.remember_plan(self.trace["plan"])
+                if "plan_versions" in self.trace:
+                    self.plan(self.trace)
+                    self.complete = True
+                else:
+                    unavailable("original versioned plan history unavailable")
         except READ_ERRORS as error:
             self.issue(f"original participant history unavailable: {error}")
         if self.publications:
@@ -66,21 +80,44 @@ class Originals:
         expected = dict.fromkeys(WORK, (start_state, None))
         # The first point at which all four registered assignments exist ends kernel setup.
         # The plan's second publication installs the agreed linear W2 task.
-        setup = (next((i for i, v in enumerate(self.publications) if v.states == expected), None)
-                 if arm == "purser" else 1)
-        if self.initial is None or self.initial != setup or self.publications[self.initial].states != expected:
+        self.setup = (next((i for i, v in enumerate(self.publications) if v.states == expected), None)
+                      if arm == "purser" else 1 if len(self.publications) >= 2 else None)
+        if self.initial is None or self.initial != self.setup or self.publications[self.initial].states != expected:
             self.complete = False
-            self.issue("initial public release does not match original completed participant setup")
+            (self.issue if self.publications and self.initial is not None else unavailable)(
+                "initial public release does not match original completed participant setup")
         if self.last is None or end != self.last:
             self.complete = False
-            self.issue("final public checkpoint lacks an identical original participant head")
+            (self.issue if self.publications and platform.get("final_public") else unavailable)(
+                "final public checkpoint lacks an identical original participant head")
+        if self.initial is not None:
+            from . import policy
+            try:
+                packet = self.context(self.publications[self.initial].checkpoint, "W2")
+                if self.arm == "purser":
+                    choice, = packet["decisions"]
+                    self.initial_linear = (choice["choice"] == policy.LINEAR and choice["id"] == policy.ORIGINAL
+                                           and choice["support"] == [policy.ASSUMPTION])
+                else:
+                    self.initial_linear = (packet["retry_choice"] == policy.LINEAR and packet["criterion"] == "W2/retry"
+                                           and packet["premise"] is None)
+                require(self.initial_linear, "initial W2 basis differs from registered A1")
+            except READ_ERRORS as error:
+                self.issue(f"initial public retry instructions: {error}")
 
     def append(self, ck, rows, **fields):
         key = identity(self.arm, ck)
         require(key is not None and key not in self.index, "duplicate or invalid publication identity")
         ck = dict(ck, view=view_ref(rows))
+        publication = Publication(ck, rows, public_rows(rows, self.arm), **fields)
         self.index[key] = len(self.publications)
-        self.publications.append(Publication(ck, rows, public_rows(rows, self.arm), **fields))
+        self.publications.append(publication)
+        if self.arm != "purser":
+            self.plan_heads[key] = rows
+
+    def remember_plan(self, rows):
+        public_rows(rows, self.arm)
+        self.plan_heads[sha(encoded(rows))] = rows
 
     def kernel(self, trace):
         raw = trace["original_events"]
@@ -88,7 +125,8 @@ class Originals:
         projection = empty_projection()
         with closing(sqlite3.connect(":memory:")) as db:
             db.execute("CREATE TABLE events (revision INTEGER PRIMARY KEY, body BLOB NOT NULL)")
-            db.executemany("INSERT INTO events VALUES (?, ?)", ((i, event.encode()) for i, event in enumerate(raw, 1)))
+            db.executemany("INSERT INTO events VALUES (?, ?)",
+                           ((i, event.encode() if type(event) is str else b"") for i, event in enumerate(raw, 1)))
             for batch in _batches(db):
                 tail = batch[-1]
                 end = tail["revision"]
@@ -104,7 +142,8 @@ class Originals:
                 if set(rows) == set(WORK):
                     records = {r["id"]: r["fields"] for r in projection["records"]}
                     self.append({"revision": end, "head_hash": tail["hash"]}, rows, receipt=receipt,
-                                events=tuple(batch), records=records)
+                                events=tuple(batch), records=records,
+                                snapshot={"revision": end, "head_hash": tail["hash"], "projection": projection})
         require(self.publications and same(trace["snapshot"], {"revision": end, "head_hash": tail["hash"],
                                                                 "projection": projection}),
                 "final SQLite snapshot disagrees with original replay")
@@ -127,6 +166,18 @@ class Originals:
     def position(self, ck):
         return self.index.get(identity(self.arm, ck))
 
+    def context(self, ck, work):
+        key = identity(self.arm, ck)
+        require(work in WORK and key is not None, "unidentified worker context source")
+        if self.arm == "purser":
+            pub = self.publications[self.index[key]]
+            return context_pack(pub.snapshot, pub.records[work]["assignment"])
+        # A complete source plan is independently addressable even if another
+        # generation is unavailable.
+        if key not in self.plan_heads:
+            self.lookup(ck)
+        return {k: v for k, v in self.plan_heads[key][work].items() if k not in (PLAN_VERSION, "_publication")}
+
     def lookup(self, ck):
         key = identity(self.arm, ck)
         if key is None:
@@ -135,7 +186,11 @@ class Originals:
         original = self.publications[position] if position is not None else None
         ref = ck.get("view")
         if ref is None:
-            return original.states if original else None
+            if original is not None:
+                return original.states
+            if key in self.plan_heads:
+                return public_rows(self.plan_heads[key], self.arm)
+            return None
         cache_key = encoded(ck)
         if cache_key in self.views:
             return self.views[cache_key]
@@ -149,11 +204,15 @@ class Originals:
                 require(same(view_ref(rows), ref), "unmatched view content address")
                 if original:
                     require(same(rows, original.rows), "public view disagrees with replay")
+                elif self.complete:
+                    raise ValueError("checkpoint absent from complete published participant history")
                 elif self.arm != "purser":
                     require(sha(encoded(rows)) == key, "public plan view disagrees with head")
                 elif self.publications:
                     raise ValueError("checkpoint absent from original kernel history")
                 states = public_rows(rows, self.arm)
+                if self.arm != "purser":
+                    self.plan_heads[key] = rows
         except READ_ERRORS as error:
             self.issue(f"invalid public checkpoint: {error}")
         self.views[cache_key] = states

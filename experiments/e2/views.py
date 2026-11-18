@@ -1,87 +1,55 @@
-"""Recover a missing checkpoint view only from an independently matching public identity."""
+"""Identify redundant public views using the same originals as the participant reader."""
 
-from experiments.e1.accounting import READ_ERRORS, kernel_history, public_rows
-from experiments.e1.artifacts import encoded, sha
+from experiments.e1.artifacts import encoded
 from experiments.e1.measurement import same
+
+from .public_sources import Originals, identity, view_ref
+
+
+CHECKPOINT_FIELDS = ("before", "after", "checkpoint", "required_before", "pre_issue_head",
+                     "port_before", "port_after", "context_source")
 
 
 class CorroboratedViews:
-    def __init__(self, arm, objects, source, platform, issue):
+    def __init__(self, arm, objects, source, platform, issue, *, unavailable=None):
         self.arm, self.objects, self.issue = arm, objects, issue
+        self.originals = Originals(arm, platform, objects.item, issue, unavailable=unavailable)
         self.known, self.derived = {}, {}
-        self.original_kernel = False
-        checkpoints = [platform.get("initial_public"), platform.get("final_public")]
-        measure = platform.get("checkpoint_measurement") or {}
-        checkpoints.append(measure.get("checkpoint"))
-        for e in source:
-            checkpoints.extend(e["payload"].get(k) for k in ("before","after","checkpoint","required_before"))
-        trace = None
-        ref = platform.get("treatment_trace")
-        if ref:
-            try:
-                trace = objects.item(ref)
-            except READ_ERRORS:
-                pass
-        if arm == "purser" and trace:
-            try:
-                revisions = {ck["revision"] for ck in checkpoints if type(ck) is dict and type(ck.get("revision")) is int}
-                verified = kernel_history(trace,revisions)
-                self.original_kernel = True
-                for rev, (head,rows,_) in verified.items():
-                    self.remember((rev,head),rows)
-            except READ_ERRORS:
-                # The full original history is independently checked by PublicHistory.
-                pass
+        for point in self.originals.publications:
+            self.remember(identity(arm, point.checkpoint), point.rows)
         if arm != "purser":
-            if trace and "plan" in trace:
-                plan = trace["plan"]
-                self.remember(sha(encoded(plan)),plan)
+            checkpoints = [platform.get("initial_public"), platform.get("final_public"),
+                           (platform.get("checkpoint_measurement") or {}).get("checkpoint")]
+            checkpoints.extend(e["payload"][key] for e in source for key in CHECKPOINT_FIELDS if key in e["payload"])
             for ck in checkpoints:
-                identity = self.identity(ck)
-                if identity is None or identity in self.known:
-                    continue
-                try:
-                    public = objects.item(ck["view"])
-                    if sha(encoded(public)) == identity:
-                        public_rows(public,arm)
-                        self.remember(identity,public)
-                except READ_ERRORS:
-                    pass
+                key = identity(arm, ck)
+                if key is not None and key not in self.originals.plan_heads:
+                    self.originals.lookup(ck)
+            for key, rows in self.originals.plan_heads.items():
+                self.remember(key, rows)
 
-    def identity(self, ck):
-        if type(ck) is not dict:
-            return None
-        if self.arm == "purser":
-            rev = ck.get("revision")
-            return (rev,ck["head_hash"]) if type(rev) is int and type(ck.get("head_hash")) is str else None
-        return ck.get("plan_sha256")
-
-    def remember(self, identity, rows):
-        raw = encoded(rows)
-        digest = sha(raw)
-        ref = {"path": f"objects/{digest}.json", "sha256": digest, "bytes": len(raw)}
-        self.known[identity] = ref
+    def remember(self, key, rows):
+        ref = view_ref(rows)
+        self.known[key] = ref
         self.derived[encoded(ref)] = rows
 
     def item(self, ref):
         key = encoded(ref)
-        if key in self.derived:
-            return self.derived[key]
-        return self.objects.item(ref)
+        return self.derived[key] if key in self.derived else self.objects.item(ref)
 
     def checkpoint(self, ck):
-        ref = self.known.get(self.identity(ck))
-        if ref is None or same(ck.get("view"),ref):
+        ref = self.known.get(identity(self.arm, ck))
+        if ref is None or same(ck.get("view"), ref):
             return ck
         self.issue("public view reference differs from corroborated participant revision or plan digest")
-        return dict(ck,view=ref)
+        return dict(ck, view=ref)
 
     def events(self, source):
         normalized = []
-        for e in source:
-            p = dict(e["payload"])
-            for key in ("before","after","checkpoint","required_before"):
-                if key in p:
-                    p[key] = self.checkpoint(p[key])
-            normalized.append(dict(e,payload=p))
+        for event in source:
+            payload = dict(event["payload"])
+            for key in CHECKPOINT_FIELDS:
+                if key in payload:
+                    payload[key] = self.checkpoint(payload[key])
+            normalized.append(dict(event, payload=payload))
         return normalized

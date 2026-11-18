@@ -14,7 +14,8 @@ DIRECTORIES = ("purser", "experiments/e1", "experiments/e2")
 MAPPING = {
     "setup": "Provision identical fixture, initial assignments, old decision and scoped authority before release.",
     "plan": "Release one schedule, adopt the identified change, assign its work, or open one verification run.",
-    "context": "Release one assignment's public work and current decision.",
+    "context": "Admit one requested scoped work packet or independent public tool inspection. "
+               "Record its original source and its witnessed delivery separately.",
     "edit": "Apply the current scoped task to its one policy file.",
     "check": "Perform worker checks or review the immutable submission.",
     "submit": "Publish one sealed candidate on its assignment.",
@@ -54,28 +55,22 @@ def source_pin(rev=None):
     names = [p for p in repo("ls-tree", "-r", "--name-only", rev, "--", *DIRECTORIES).decode().splitlines()
              if p.endswith(".py")]
     files = {p: sha(repo("show", f"{rev}:{p}")) for p in names}
-    def group(paths):
-        return sha(encoded({k: files[k] for k in sorted(paths)}))
-    study = [p for p in files if p.startswith("experiments/")]
-    kernel = [p for p in files if p.startswith("purser/")]
-    def modules(area, *names):
-        return [f"experiments/{area}/{n}.py" for n in names]
-    common = modules("e1", "artifacts", "measurement", "probe", "executor", "outcomes", "capture", "accounting",
-                     "run", "observer", "arms", "purser_arm", "report", "recovery", "scorer", "suite")
-    participant = modules("e2", "driver", "actions", "policy", "head", "plan_versions", "checkpoint", "clock", "measure",
-                          "evidence", "outcomes", "trial")
-    readback = modules("e2", "public_history", "public_sources", "attribution", "views", "report", "summary", "suite")
-    protected = common + participant + readback + kernel
-    executor = common + participant + readback
+    # The participant, protected checkpoint and reporter load each other at runtime.
+    # Pin the complete joined source for each named entry, including future modules.
+    closure = sha(encoded(files))
+    def entrypoint(name):
+        return sha(encoded({"entrypoint": name, "source_sha256": closure}))
     return {"suite": MANIFEST["id"], "experiment": "E2", "source_files": files, "source_commit": rev,
             "fixture_tree": FIXTURE["tree_sha1"], "fixture_commit": FIXTURE["commit_sha1"],
             "manifest_sha256": sha((REGISTRATION / "manifest.json").read_bytes()),
             "protocol_sha256": sha((REGISTRATION / "protocol.md").read_bytes()),
             "raw_schema_sha256": sha((REGISTRATION / "raw.schema.json").read_bytes()),
-            "scorer_sha256": group(protected), "fault_driver_sha256": group(executor),
-            "executor_sha256": group(executor), "controller_sha256": group(study),
-            "treatments": {a: sha(encoded({"arm": a, "source": group(executor + (kernel if a == "purser" else []))}))
-                           for a in ARMS}, "action_mapping": MAPPING, "schedule": [list(unit) for unit in schedule()]}
+            "scorer_sha256": entrypoint("experiments.e2.report.derive_case"),
+            "fault_driver_sha256": entrypoint("experiments.e2.driver.Driver.receive"),
+            "executor_sha256": entrypoint("experiments.e2.driver.Driver.execute"),
+            "controller_sha256": entrypoint("experiments.e2.suite.collect_units"),
+            "treatments": {a: entrypoint("experiments.e2.trial.attempt/" + a) for a in ARMS},
+            "action_mapping": MAPPING, "schedule": [list(unit) for unit in schedule()]}
 
 
 def freeze_series(directory, *, replicate=1, reason=None):

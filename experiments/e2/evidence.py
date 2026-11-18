@@ -1,10 +1,9 @@
 """Bind the changed requirement and measured exit to the participant's durable bytes."""
 
-from experiments.e1.artifacts import git
-from experiments.e1.executor import PARENT, PATHS
-from experiments.e1.outcomes import LABELS
+from experiments.e1.artifacts import START, git
+from experiments.e1.executor import PATHS
 
-from . import outcomes
+from . import measure, outcomes
 
 
 def file_ids(repo, oid):
@@ -18,50 +17,65 @@ def file_ids(repo, oid):
     return result
 
 
-def score(history, track, verdicts, platform, *, release, qualification, endpoint_known, step_boundaries, final_subject,
-          known_candidates):
-    journal, lookup_checkpoint = history.journal, history.checkpoint
-    fault = next((e for e in journal if e["kind"] == "fault"), None)
+def published_submissions(history):
+    """An issued or refused submit has no published candidate of its own."""
+    return [p for e in history.journal if e["kind"] == "action" for p in (e["payload"],)
+            if p.get("publicly_submitted") is True]
+
+
+def submitted_at(history, ck, work, oid, attempt=None):
+    boundary = history.source.position(ck)
+    if boundary is None:
+        return None
+    for action in published_submissions(history):
+        commit = history.source.position(action.get("submission_publication"))
+        if (commit is not None and commit <= boundary and action.get("subject") == work
+                and action.get("candidate") == oid and (attempt is None or action.get("attempt") == attempt)):
+            return True
+    return False if history.public_complete and history.actions_complete else None
+
+
+def score(history, track, verdicts, platform, *, release, qualification, submitted, endpoint_known,
+          step_boundaries, final_subject, known_candidates):
+    from .checkpoint import unchanged_policy
+
+    journal = history.journal
+    fault = next((e for e in journal if e["kind"] == "fault" and e["payload"].get("publicly_delivered") is True), None)
     unchanged = {}
     if fault:
         p = fault["payload"]
-        before = lookup_checkpoint(p.get("before")) or {}
+        before = history.checkpoint(p.get("before")) or {}
         ids = platform.get("policy_blobs", {})
         for subject in ("W1", "W3"):
-            prior = ids.get(before.get(subject, (None, None))[1], {}).get(subject)
-            later = ids.get(p.get("candidate"), {}).get(subject)
-            unchanged[subject] = prior == later if prior is not None and later is not None else None
+            prior = before.get(subject, (None, None))[1]
+            unchanged[subject] = unchanged_policy(ids, subject, prior, p.get("candidate"))
     end = platform.get("exit_candidate") or {}
-    oid = end.get("head")
-    final_oid = oid if oid in known_candidates and end.get("dirty") is False else None
-    facts = outcomes.assess(journal, track, lookup_checkpoint, verdicts, delivery=release, qualification=qualification,
-                            unchanged=unchanged, final_oid=final_oid if final_subject else None, endpoint_known=endpoint_known,
+    head = end.get("head")
+    observed_head = head if head in known_candidates and end.get("dirty") is False else None
+    facts = outcomes.assess(journal, track, history.checkpoint, verdicts, delivery=release,
+                            qualification=qualification, submitted=submitted, unchanged=unchanged,
+                            final_oid=observed_head if final_subject else None, endpoint_known=endpoint_known,
                             history_complete=history.public_complete, action_sequence_complete=step_boundaries)
     facts["clean_exposure"] = history.clean_exposure
     facts["charged_attempts_observed"] = history.action_lower_bound
-    latest, source, location = final_oid, None, None
+    latest, source, publication = observed_head, None, None
     if latest:
-        source = end.get("source", "stopped_worker_clean_HEAD")
+        source = end.get("source")
     else:
-        for event in reversed(journal):
-            value = event["payload"]
-            if event["kind"] not in ("fault","action","public_state"):
-                continue
-            ck = value.get("checkpoint") if event["kind"] == "public_state" else value.get("after")
-            states = lookup_checkpoint(ck)
-            if states is None:
-                continue
-            subject = value.get("subject")
-            for work in dict.fromkeys([PARENT,subject]):
-                candidate = states.get(work,(None,None))[1]
-                if candidate in known_candidates:
-                    latest, source, location = candidate, "last_public_candidate", event.get("seq")
-                    break
-            if latest:
-                break
-    version = 1 if track == "clean" else 2
-    grades = [verdicts.get((latest,label,version if label in ("W2/retry","queue/composition") else 1)) for label in LABELS]
-    facts.update(last_observed_candidate=latest, last_observed_source=source, last_observed_sequence=location,
-                 last_observed_utc=end.get("observed_utc") if final_oid else None,
-                 last_observed_pass=outcomes.conjunction(g=="pass" if g in ("pass","fail") else None for g in grades))
+        submissions = [(history.source.position(p.get("submission_publication")), p)
+                       for p in published_submissions(history) if p.get("candidate") in known_candidates]
+        known_order = [(position, p) for position, p in submissions if position is not None]
+        if known_order:
+            publication, action = max(known_order, key=lambda item: item[0])
+            latest, source = action["candidate"], "last_witnessed_public_submission"
+        elif len(known_candidates) == 1:
+            latest, = known_candidates
+            source = "sealed_starting_fixture" if latest == START else "sole_surviving_sealed_candidate"
+    phase = measure.OLD if track == "clean" else measure.NEW
+    grades = outcomes.criteria(latest, verdicts, phase)
+    facts.update(exit_git_head=head, exit_git_dirty=end.get("dirty"), last_observed_candidate=latest,
+                 last_observed_source=source, last_observed_publication=publication,
+                 last_observed_utc=end.get("observed_utc") if observed_head else None,
+                 last_observed_pass=outcomes.all_pass(grades), last_observed_criteria=grades,
+                 sealed_candidate_criteria={oid: outcomes.criteria(oid, verdicts, phase) for oid in known_candidates})
     return facts

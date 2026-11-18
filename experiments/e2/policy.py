@@ -55,7 +55,7 @@ class PlanArm(WorkPorts, Plan):
                                      lambda: self.adopt(message))
 
     def adopt(self, message):
-        row = self.context("W2")
+        row = self._plan_row("W2")
         if row["premise"] != message or row["criterion"] != message["criterion"]:
             raise ValueError("plan has no matching new requirement")
         return self.update("W2", retry_choice=message["retry_schedule"])
@@ -79,10 +79,15 @@ class PlanArm(WorkPorts, Plan):
         writes = method in ("assign_again", "submit", "verify", "decide", "revise")
         return super().public_operation(method, kind, work, actor, inputs, mutate if writes else operation, oid)
 
-    def context(self, work):
-        row = super().context(work)
+    def _plan_row(self, work):
+        row = super()._plan_row(work)
         row.pop(plan_versions.KEY, None)
         return row
+
+    def _context_from_publication(self, work):
+        rows, identity = self.public_view()
+        packet = {key: value for key, value in rows[work].items() if key not in ("_publication", plan_versions.KEY)}
+        return rows, identity, packet
 
     @staticmethod
     def choice(context):
@@ -92,6 +97,13 @@ class PlanArm(WorkPorts, Plan):
 class KernelArm(WorkPorts, Treatment):
     def __init__(self, directory, definitions, environment):
         super().__init__(directory, definitions, environment, before_assignments=self.setup_decision, tasks=TASK_TITLES)
+
+    def _context_from_publication(self, work):
+        from experiments.e1.accounting import kernel_rows
+        from purser.driver import context_pack
+        snap = self.store.snapshot()
+        return (kernel_rows(snap["projection"]), {"revision": snap["revision"], "head_hash": snap["head_hash"]},
+                context_pack(snap, self.assignments[work]))
 
     @staticmethod
     def setup_decision(arm):

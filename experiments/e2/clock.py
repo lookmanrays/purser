@@ -3,6 +3,7 @@
 import signal
 import time
 from contextlib import contextmanager
+from threading import RLock
 
 from experiments.e1.accounting import utc_time
 from experiments.e1.artifacts import MANIFEST
@@ -25,8 +26,26 @@ def active_ns(start, end, platform):
 
 
 class ParticipantClock(Journal):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.activity_lock = RLock()
+
     def elapsed(self):
         return active_ns(self.start, time.monotonic_ns(), self.platform)
+
+    def persist(self):
+        with self.activity_lock:
+            super().persist()
+
+    def event(self, kind, payload):
+        with self.activity_lock:
+            if kind in ("action", "fault"):
+                payload["issued_monotonic_ns"] = self._issue()
+            super().event(kind, payload)
+
+    def stop(self):
+        with self.activity_lock:
+            super().stop()
 
     def resume_deadline(self):
         remaining = LIMIT - self.elapsed()
@@ -34,35 +53,62 @@ class ParticipantClock(Journal):
             raise Cutoff("time_limit")
         signal.setitimer(signal.ITIMER_REAL, remaining / 1e9)
 
-    def public_activity(self, issued):
+    def _issue(self):
+        if not self.released or self.end is not None:
+            raise RuntimeError("participant work issued outside the released session")
+        issued = time.monotonic_ns()
+        if active_ns(self.start, issued, self.platform) >= LIMIT:
+            raise Cutoff("time_limit")
         pause = self.platform.get("checkpoint_measurement")
         if pause and pause["end_monotonic_ns"] is None and pause.get("first_public_activity_ns") is None:
             pause["first_public_activity_ns"] = issued
             self.resume_deadline()
-            self.persist()
+        return issued
 
     def begin_action(self, *args, metadata=None, **kwargs):
-        self.public_activity(metadata["issued_monotonic_ns"])
-        return super().begin_action(*args, metadata=metadata, **kwargs)
+        with self.activity_lock:
+            return super().begin_action(*args, metadata=metadata, **kwargs)
 
     @contextmanager
     def measuring_checkpoint(self, observation):
-        start = time.monotonic_ns()
-        if start - self.start >= LIMIT:
-            raise Cutoff("time_limit")
-        if self.platform.get("checkpoint_measurement") is not None:
-            raise ValueError("repeated checkpoint measurement")
-        signal.setitimer(signal.ITIMER_REAL, 0)
-        observation.update(start_monotonic_ns=start, start_utc=utc(), end_monotonic_ns=None, end_utc=None,
-                           preceding_events=len(self.rows), preceding_actions=self.steps)
-        self.platform["checkpoint_measurement"] = observation
-        try:
+        with self.activity_lock:
+            start = time.monotonic_ns()
+            if start - self.start >= LIMIT:
+                raise Cutoff("time_limit")
+            if self.platform.get("checkpoint_measurement") is not None:
+                raise ValueError("repeated checkpoint measurement")
+            already_active = any(e["kind"] in ("action", "fault") and
+                                 "finished_monotonic_ns" not in e["payload"] for e in self.rows)
+            observation.update(start_monotonic_ns=start, start_utc=utc(), end_monotonic_ns=None, end_utc=None,
+                               preceding_events=len(self.rows), preceding_actions=self.steps,
+                               first_public_activity_ns=start if already_active else None)
+            self.platform["checkpoint_measurement"] = observation
+            if not already_active:
+                signal.setitimer(signal.ITIMER_REAL, 0)
             self.persist()
+        try:
             yield
         finally:
-            observation.update(end_monotonic_ns=time.monotonic_ns(), end_utc=utc())
-            self.persist()
-            self.resume_deadline()
+            with self.activity_lock:
+                observation.update(end_monotonic_ns=time.monotonic_ns(), end_utc=utc())
+                try:
+                    self.resume_deadline()
+                finally:
+                    self.persist()
+
+
+def begin_notice(journal, payload):
+    if not isinstance(journal, ParticipantClock):
+        payload["issued_monotonic_ns"] = time.monotonic_ns()
+    journal.event("fault", payload)
+
+
+def finish_activity(journal, payload):
+    if isinstance(journal, ParticipantClock):
+        with journal.activity_lock:
+            payload["finished_monotonic_ns"] = time.monotonic_ns()
+    else:
+        payload["finished_monotonic_ns"] = time.monotonic_ns()
 
 
 def validate(platform, journal, raw):
@@ -94,37 +140,64 @@ def validate(platform, journal, raw):
     before = journal[:count]
     live = [e for e in before if e["kind"] == "action"]
     required_action = "decide" if raw["track"] == "closed-affected" else "submit"
-    require(len(live) == actions and live[-1]["payload"].get("action") == required_action
-            and live[-1]["payload"].get("subject") == "W2"
-            and live[-1]["payload"].get("candidate") == pause["candidate"]
-            and live[-1]["payload"].get("after") == pause["checkpoint"], "scoring pause is not at old W2 publication")
+    require(len(live) == actions and any(e["payload"].get("action") == required_action
+            and e["payload"].get("subject") == "W2" and e["payload"].get("candidate") == pause["candidate"]
+            for e in live), "scoring pause lacks the old W2 attempt")
     moment = left - start
     require(all(e["offset_ns"] <= moment for e in before), "participant history crosses into pause")
     require(all(e["offset_ns"] >= moment for e in journal[count:]), "post-measurement event predates checkpoint")
 
 
-def quiescence(platform, timeline, complete):
-    """Prove or disprove that all physically issued work and incoming observations missed the exclusion."""
-    pause = platform.get("checkpoint_measurement")
-    if pause is None:
-        return True
-    left, right = pause["start_monotonic_ns"], pause["end_monotonic_ns"]
+def first_overlap(platform, timeline, complete):
+    """Return the first proven instant of overlap and whether its ordering is complete."""
+    pause = platform["checkpoint_measurement"]
     start, end = platform["start_monotonic_ns"], platform["end_monotonic_ns"]
-    available = complete and right is not None
+    left, right = pause["start_monotonic_ns"], pause["end_monotonic_ns"]
+    observed_until = end if right is None else right
+    first = None
     for entry in timeline:
         issued, finished = entry.get("issued_monotonic_ns"), entry.get("finished_monotonic_ns")
         if type(issued) is not int or issued < start or issued > end:
-            available = False
+            complete = False
             continue
-        if type(finished) is not int or not issued <= finished <= end:
-            # An issued but unreturned call can still prove overlap from its issue.
-            finished = None
-            available = False
-        if left <= issued < (right if right is not None else end) or issued < left and finished is not None and finished > left:
-            return False
-    if pause.get("first_public_activity_ns") is not None:
+        if issued >= observed_until:
+            continue
+        if issued < left:
+            if type(finished) is not int or not issued <= finished <= end:
+                complete = False
+                continue
+            if finished <= left:
+                continue
+        overlap = max(left, issued)
+        first = overlap if first is None else min(first, overlap)
+    return first, complete
+
+
+def quiescence(platform, timeline, complete):
+    """Report physical work in the protected scoring period, including actively charged work."""
+    pause = platform.get("checkpoint_measurement")
+    if pause is None:
+        return True
+    first, complete = first_overlap(platform, timeline, complete)
+    if first is not None:
         return False
-    return True if available else None
+    return True if complete and pause["end_monotonic_ns"] is not None else None
+
+
+def exclusion_accounted(platform, timeline, complete):
+    """An exact credit ends when the first independently witnessed public activity begins."""
+    pause = platform.get("checkpoint_measurement")
+    if pause is None:
+        return True
+    first, complete = first_overlap(platform, timeline, complete)
+    charged = pause.get("first_public_activity_ns")
+    if first is not None and (charged is None or first < charged):
+        return False
+    if first == charged == pause["start_monotonic_ns"]:
+        return True  # The whole interval was active from entry.
+    if not complete or pause["end_monotonic_ns"] is None:
+        return None
+    return first == charged
 
 
 def budget_bounded(platform, reason):
@@ -135,6 +208,11 @@ def budget_bounded(platform, reason):
     high = end - start
     if reason in ("done", "blocked", "idle", "step_limit"):
         return high <= LIMIT
-    pause = platform.get("checkpoint_measurement") or {}
-    left, right = pause.get("start_monotonic_ns",start), pause.get("end_monotonic_ns",end)
-    return reason == "time_limit" and type(right) is int and high - (right-left) >= LIMIT
+    if reason != "time_limit":
+        return False
+    pause = platform.get("checkpoint_measurement")
+    if pause is None:
+        return high >= LIMIT
+    left, right = pause.get("start_monotonic_ns"), pause.get("end_monotonic_ns")
+    return (type(left) is int and type(right) is int and start <= left <= right <= end
+            and high - (right - left) >= LIMIT)

@@ -1,34 +1,44 @@
 """Run the common participant policy; the observer never sees the protected grader."""
 
 import json
-import time
 from contextlib import nullcontext
 from pathlib import Path
 
 from experiments.e1 import capture, observer
 from experiments.e1.artifacts import encoded, read_artifact, sha
-from experiments.e1.executor import LEAVES, ORDER, PARENT, PARENT_CHECKS
+from experiments.e1.executor import LEAVES, PARENT, PARENT_CHECKS
 from experiments.e1.outcomes import is_closed
 from experiments.e1.run import Driver as ActionDriver
 
-from . import checkpoint, head, policy
+from . import checkpoint, clock, head, policy
 from .actions import PublicActions
+from .operations import PORTS, method_for
+from .worker_tools import WorkerTools
 
 
 class Driver(ActionDriver):
-    def __init__(self, candidates, adapter, journal, assets, seed, track, rank):
+    def __init__(self, candidates, adapter, journal, assets, seed, track, rank=1):
         super().__init__(candidates, adapter, journal, assets, seed, "clean")
         self.track, self.rank = track, rank
         self.phase = policy.LINEAR
         self.actions = PublicActions(self)
         self.adapter.work_actions = self.actions
+        self.tools = WorkerTools(self.actions, adapter, candidates)
+        self.j.platform["work_admission_version"] = 2
+        self._notice_claimed = False
 
     def call(self, action, work, actor, inputs, operation, oid=None):
-        return self.actions.call(action, work, actor, inputs, operation, oid)
+        method = method_for(action, actor, inputs)
+        def dispatch():
+            if method in PORTS or method == "context":
+                return self.actions.controller_transport(self.adapter, method, operation)
+            self.actions.start_work()
+            return operation()
+        return self.actions.call(action, work, actor, inputs, dispatch, oid)
 
     def submit_work(self, work):
         adapter = self.adapter
-        context = self.call("context", work, "executor", {"work": work}, lambda: adapter.context(work))
+        context = self.tools.context(work)
         if context["work"]["id"] != work:
             raise ValueError("assignment does not identify the requested work")
         if work == "W2":
@@ -36,12 +46,8 @@ class Driver(ActionDriver):
             if self.phase not in policy.CHOICES:
                 raise ValueError("unknown public W2 retry choice")
         if work in LEAVES:
-            def edit():
-                policy.edit(self.candidates.work, work, self.phase)
-                return {"edited": work}
-            self.call("edit", work, "executor", {"work": work, "schedule": self.phase}, edit)
-        checks = self.call("check", work, "executor", {"check": "public task checks", "schedule": self.phase},
-                           lambda: policy.worker_check(self.candidates.work, work, self.phase))
+            self.tools.edit(work, self.phase)
+        checks = self.tools.check(work, self.phase)
         oid = self.candidates.commit(f"Notification work {work}")
         self.seen.add(oid)
         self.call("submit", work, "executor", {"candidate": oid, "claim": checks["worker_claim"]},
@@ -52,23 +58,24 @@ class Driver(ActionDriver):
         candidates, adapter = self.candidates, self.adapter
         with candidates.export(oid) as exported:
             root = Path(exported)
-            audit = self.call("check", work, "plan_reviewer", {"check": "review submitted candidate", "schedule": self.phase},
-                              lambda: policy.review(candidates.archive, oid, root, work, self.phase), oid)
+            audit = self.tools.review(work, oid, self.phase, root)
             if self.j.arm != "loop":
                 for label in (LEAVES[work],) if work in LEAVES else PARENT_CHECKS:
                     self.call("plan", work, "planner", {"open_run": label}, lambda: adapter.opening(work, label), oid)
                     def observe():
+                        self.actions.start_work()
                         report = policy.inspect(candidates.archive, oid, root, label, self.phase)
                         ref = self.assets.put(report, "json")
                         self.j.platform["referenced_files"].append(ref)
-                        reply = adapter.observe(work, label, report)
+                        reply = self.actions.forward(adapter, "observe", work, label, report)
                         return {"witness": ref, "response": reply}
                     observed = self.call("observe", work, "independent_observer",
                                          {"criterion": label, "schedule": self.phase}, observe, oid)
                     report = json.loads(read_artifact(self.assets.archive, observed["witness"]))
                     graded = dict(report, verdict=observer.verdict(report, label, oid))
                     def verify():
-                        reply = adapter.verify(work, label, graded)
+                        self.actions.start_work()
+                        reply = self.actions.forward(adapter, "verify", work, label, graded)
                         return {**reply, "diagnosis": [] if graded["verdict"] == "pass" else [label]}
                     self.call("decide", work, "independent_verifier", {"criterion": label, "witness": observed["witness"],
                               "verdict": graded["verdict"]}, verify, oid)
@@ -78,12 +85,9 @@ class Driver(ActionDriver):
 
     def receive(self, oid):
         message = policy.notice(self.seed)
-        qualification = self.j.platform.get("checkpoint_measurement")
-        expected = qualification["checkpoint"] if qualification and qualification.get("qualified") is True else None
         from .plan_versions import HeadMoved
         try:
-            with head.expect(self.adapter, expected) if expected else nullcontext():
-                self.adapter.receive(message)
+            self.adapter.receive(message)
         except HeadMoved:
             return None
         return message
@@ -92,14 +96,24 @@ class Driver(ActionDriver):
         """Observe the exposed incoming port, including a copied port with no driver call."""
         from .plan_versions import HeadMoved
         rows, identity = adapter.public_view()
-        issued = time.monotonic_ns()
-        self.j.public_activity(issued)
-        event = {"required_before": head.required(), "intervention": "linear_to_exponential",
+        qualification = self.j.platform.get("checkpoint_measurement") or {}
+        if isinstance(adapter, policy.KernelArm):
+            same_source = isinstance(self.adapter, policy.KernelArm) and adapter.store.path == self.adapter.store.path
+        else:
+            same_source = isinstance(self.adapter, policy.PlanArm) and adapter.file == self.adapter.file
+        with self.actions.admission:
+            expected = None
+            if (self.track != "clean" and qualification.get("qualified") is True and not self._notice_claimed
+                    and same_source and adapter._binding is self.adapter._binding and message == policy.notice(self.seed)
+                    and capture.position(rows["W2"])[1] == qualification["candidate"]):
+                expected = qualification["checkpoint"]
+                self._notice_claimed = True
+        event = {"required_before": expected, "intervention": "linear_to_exponential",
                  "observation_id": message["id"], "seed": self.seed, "trigger": self.track,
                  "released": message, "released_sha256": sha(encoded(message)),
                  "before": capture.checkpoint(self.assets, rows, identity), "candidate": capture.position(rows["W2"])[1],
-                 "subject": "W2", "actor": "fixture_observer", "attempt": message["id"], "issued_monotonic_ns": issued}
-        self.j.event("fault", event)
+                 "subject": "W2", "actor": "fixture_observer", "attempt": message["id"]}
+        clock.begin_notice(self.j, event)
         if isinstance(adapter, policy.KernelArm):
             previous = adapter.on_proposal
             def record(proposal):
@@ -107,7 +121,10 @@ class Driver(ActionDriver):
                 self.j.persist()
             adapter.on_proposal = record
         try:
-            reply = operation()
+            if self.track != "clean" and expected is None:
+                raise HeadMoved("no available qualified predecessor for this notice")
+            with head.expect(adapter, expected) if expected else nullcontext():
+                reply = operation()
             event["return"] = reply
             return reply
         except HeadMoved:
@@ -117,7 +134,7 @@ class Driver(ActionDriver):
             event["return"] = {"failure": str(error)}
             raise
         finally:
-            event["finished_monotonic_ns"] = time.monotonic_ns()
+            clock.finish_activity(self.j, event)
             if isinstance(adapter, policy.KernelArm):
                 adapter.on_proposal = previous
             event["response_evidence"] = self.assets.put(capture.response_evidence(event), "json")
@@ -128,7 +145,7 @@ class Driver(ActionDriver):
             capture.states(rows, event["after"], self.previous, self.j.event, action=event)
 
     def execute(self):
-        self.call("plan", PARENT, "planner", {"schedule": list(ORDER)}, lambda: {"work_order": list(ORDER)})
+        self.tools.schedule()
         for work in ("W1", "W3"):
             if not self.finish(work, self.submit_work(work)):
                 return "blocked"
