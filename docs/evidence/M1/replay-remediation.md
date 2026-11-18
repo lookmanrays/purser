@@ -1,0 +1,9 @@
+# M1 replay and retained history
+
+The store worker identified the complete-suffix case while qualifying M1-A. An independent verifier reproduced it on integrated candidate `8956aabc812ad15e46fc843ae66f5224483c9bf1`. Removing revisions 5–8 of the public fixture left a valid prefix at 4 and a previously published head at 8. Replay accepted 4 and overwrote the surviving evidence that revision 8 had existed.
+
+**Invariant and authority.** I2 requires the journal to reconstruct all accepted state. A surviving retained head supplies an independent comparison for the prefix it names. Batch and link verification alone authenticate the internal consistency of the available prefix. This first finding belongs to the M1 replay/publication cluster. No Reset has been issued in this cluster or this delivery session.
+
+**Affected paths.** The Store API has four surfaces. Initialization of an existing store, current reads and admission compare the materialized head and projection with the folded log. Replay deliberately rebuilds damaged derived rows. Its former unconditional publication also discarded a contradictory retained head. The regression set includes a whole missing suffix, a different correctly chained history at the retained revision, a damaged batch, an older valid anchor, and a fresh store containing only original events. Concurrent readers must see one completed state when rebuild succeeds or fails.
+
+**Treatment.** The store checks a surviving head against its actual complete position in the original log before publishing the rebuilt projection, using the same SQLite write transaction. It can rebuild from the genesis of a newly initialized log-only restore. A self-consistent rollback of both history and checkpoint requires a head retained elsewhere to detect. External backup qualification remains with M7. Acceptance requires a fresh independent run on the integrated correction.
