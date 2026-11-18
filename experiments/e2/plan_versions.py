@@ -75,8 +75,7 @@ def publish(path, rows, attempt):
     write_atomic(path, contents)
 
 
-def retain(directory, assets):
-    head = (directory / "plan.json").read_bytes()
+def retain(directory, assets, head):
     cursor = sha(head)
     history = []
     while cursor:

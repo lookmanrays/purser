@@ -38,7 +38,7 @@ def participant(directory, assets, arm):
     if arm != "purser":
         data = (directory / "plan.json").read_bytes()
         rows = json.loads(data)
-        return rows, {"plan_sha256": sha(data)}, {"plan": rows, "plan_versions": plan_versions.retain(directory, assets)}
+        return rows, {"plan_sha256": sha(data)}, {"plan": rows, "plan_versions": plan_versions.retain(directory, assets, data)}
     store = Store(directory / "kernel.sqlite")
     snap = store.snapshot()
     trace = retained_kernel(store, snap)
