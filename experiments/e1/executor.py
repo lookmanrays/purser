@@ -1,7 +1,7 @@
 """Common worker policy and the controlled E1 submission faults."""
 
 from .artifacts import FIXTURE, REGISTRATION
-from .measurement import probe
+from .measurement import probe, same
 
 ORDER = ("W1", "W3", "W2")
 PATHS = dict(zip(("W1", "W2", "W3"), FIXTURE["public_paths"], strict=True))
@@ -38,7 +38,7 @@ def local_check(root, work, skip=False):
         case["ids"] = ["one", "one"]
     actual = probe(root, cases=[case])
     expected = {"W1": 0, "W2": 2, "W3": 1}[work]
-    ok = ok and isinstance(actual, list) and actual[0]["enqueued"] == expected
+    ok = ok and isinstance(actual, list) and same(actual[0].get("enqueued"), expected)
     return {"pass": ok, "legacy": legacy, "extended": actual,
             "worker_claim": "done, tests pass" if ok else "check failed"}
 

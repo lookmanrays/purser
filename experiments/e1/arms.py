@@ -4,7 +4,7 @@ import json
 
 from .artifacts import FIXTURE, changes, encoded, sha
 from .executor import LEAVES, ORDER, PARENT, PARENT_CHECKS, PATHS, TASKS, local_check
-from .measurement import probe
+from .measurement import probe, same
 
 
 def self_review(repo, oid, root, work):
@@ -21,8 +21,8 @@ def self_review(repo, oid, root, work):
     case = {"channel": "inbox", "ids": ["n", "n"], "disabled": [], "attempts": 2,
             "base": 1, "times": [0, 1]}
     actual = probe(root, cases=[case])
-    expected = [{"enqueued": 2, "samples": [[["n", "inbox", 0]], [["n", "inbox", 1]]], "pending": 0}]
-    missing = [label for label, ok in zip(PARENT_CHECKS, (not outside, legacy["pass"], actual == expected))
+    expected = [{"enqueued": 2, "samples": [[["n", "inbox", 0]], [["n", "inbox", 1_000_000]]], "pending": 0}]
+    missing = [label for label, ok in zip(PARENT_CHECKS, (not outside, legacy["pass"], same(actual, expected)))
                if not ok]
     return {"missing": missing, "changes": delta, "legacy": legacy, "smoke": actual}
 
