@@ -137,7 +137,9 @@ def publish(path, registration, members, key, marker, staged, raw):
     members.update(("freeze.json", name, started))
 
 
-def collect_cases(directory, pinned, registration, units, run_case):
+def collect_cases(directory, pinned, registration, units, run_case, *, recover=None, failure=None):
+    recover = recover or run.reconcile_interrupted
+    failure = failure or failure_record
     path = directory / "raw.zip"
     members = archive_members(path, registration)
     for track, seed, rank, arm in units:
@@ -177,10 +179,10 @@ def collect_cases(directory, pinned, registration, units, run_case):
                 progress = json.loads(progress_file.read_bytes()) if progress_file.exists() else {}
                 if working.exists():
                     try:
-                        progress = run.reconcile_interrupted(working, assets, arm, progress, seed=seed, rank=rank)
+                        progress = recover(working, assets, arm, progress, seed=seed, rank=rank)
                     except Exception as inspection:
                         reason += f" (recovery inspection failed: {type(inspection).__name__}: {inspection})"
-                raw = failure_record(assets, pinned, arm, track, seed, rank, reason=reason, progress=progress)
+                raw = failure(assets, pinned, arm, track, seed, rank, reason=reason, progress=progress)
             write_atomic(raw_file, encoded(raw))
         publish(path, registration, members, key, marker, staged, raw)
         shutil.rmtree(stage)

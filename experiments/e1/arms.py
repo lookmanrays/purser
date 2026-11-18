@@ -30,11 +30,11 @@ def self_review(repo, oid, root, work):
 
 
 class Plan:
-    def __init__(self, directory):
+    def __init__(self, directory, *, tasks=TASKS):
         self.file = directory / "plan.json"
         self.invocation = None
         write_atomic(self.file, encoded({work: {"state": "open", "candidate": None, "verified": {},
-                                                "work": {"id": work, "title": TASKS[work]}}
+                                                "work": {"id": work, "title": tasks[work]}}
                                          for work in (*ORDER, PARENT)}))
 
     def read(self):
