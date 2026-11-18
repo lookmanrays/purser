@@ -69,10 +69,14 @@ def publish(path, rows, attempt):
     versions.mkdir(exist_ok=True)
     prior = path.read_bytes() if path.exists() else None
     number = json.loads(prior)[PARENT][KEY]["number"] + 1 if prior else 1
-    rows[PARENT][KEY] = {"number": number, "previous": sha(prior) if prior else None, "attempt": attempt}
+    stamp(rows, number, sha(prior) if prior else None, attempt)
     contents = encoded(rows)
     write_atomic(versions / sha(contents), contents)
     write_atomic(path, contents)
+
+
+def stamp(rows, number, previous, attempt):
+    rows[PARENT][KEY] = {"number": number, "previous": previous, "attempt": attempt}
 
 
 def retain(directory, assets, head):

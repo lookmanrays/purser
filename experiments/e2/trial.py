@@ -160,10 +160,12 @@ def retain(directory, assets, arm, progress, seed, rank, issue, *, interrupted=F
                 git_issue(f"original candidate {oid} was missing its staged pack {entry['pack']['path']}")
     objects = Objects(assets.archive)
     originals = Originals(arm, platform, objects.item, lambda _: None, journal=rows, objects=objects)
-    named = candidate_evidence.original_oids(arm, platform, objects, originals, rows, start, git_issue)
     platform["policy_blobs"] = {}
     with tempfile.TemporaryDirectory(prefix="purser-e2-observe-packs-") as temp:
-        catalog = candidate_evidence.Catalog(objects, GitPacks(Path(temp)))
+        catalog = candidate_evidence.Catalog(objects, GitPacks(Path(temp)),
+                                             local_repos=(directory / "private-objects", directory / "worker"))
+        named = candidate_evidence.original_oids(arm, platform, objects, originals, rows, start, git_issue,
+                                                 lookup=catalog.repository_for, seed=seed, native_producer=True)
         original = mapping
         if platform.get("original_candidate_map") is not None:
             try:

@@ -2,10 +2,9 @@
 from contextlib import nullcontext
 from pathlib import Path
 
-from experiments.e1.artifacts import git
-from experiments.e1.executor import ORDER, PARENT, PATHS
+from experiments.e1.executor import ORDER, PARENT
 
-from . import policy
+from . import git_reads, policy
 from .actions import Delivery, local_receiver
 
 
@@ -52,23 +51,24 @@ class WorkerTools:
             if tool in ("status", "replay", "frontier") and work != PARENT:
                 raise ValueError("a workspace-wide query has the parent subject")
             if tool == "plan":
-                rows, _ = self._participant.public_view()
+                rows, head = self._participant.public_view()
                 value = rows[work]
-                return {k: v for k, v in value.items() if k not in ("_publication", policy.plan_versions.KEY)}
-            if tool in ("git", "git_history", "git_diff"):
+                packet = {k: v for k, v in value.items() if k not in ("_publication", policy.plan_versions.KEY)}
+                if isinstance(self._participant, policy.PlanArm):
+                    from experiments.e1.capture import checkpoint
+                    action = self._actions.current
+                    assets = self._actions.driver.assets
+                    action["context_source"] = checkpoint(assets, rows, head)
+                    action["prepared_context"] = assets.put(packet, "json")
+                    self._actions.driver.j.persist()
+                return packet
+            if tool in git_reads.TOOLS:
                 oid = candidate or self._candidates.head
                 if oid not in self._candidates.entries:
                     raise ValueError("unknown study candidate")
-                path = [] if work == PARENT else [PATHS[work]]
-                repo = self._candidates.archive
-                if tool == "git_history":
-                    return git(repo, "log", "--format=%H", oid, "--", *path).decode().splitlines()
-                if tool == "git_diff":
-                    from experiments.e1.artifacts import START
-                    return git(repo, "diff", "--no-ext-diff", START, oid, "--", *path).decode()
-                if path:
-                    return git(repo, "cat-file", "blob", f"{oid}:{path[0]}").decode()
-                return git(repo, "ls-tree", "-r", oid).decode()
+                value = git_reads.result(self._candidates.archive, tool, work, oid)
+                git_reads.record(self._actions, oid, value, default_receiver=receiver is None)
+                return value
             if tool not in ("status", "why", "frontier", "replay") or not isinstance(self._participant, policy.KernelArm):
                 raise ValueError("tool unavailable to this participant")
             store = self._participant.store

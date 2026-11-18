@@ -94,6 +94,8 @@ class Originals:
         self.unavailable = unavailable or issue
         self.publications, self.index, self.views = [], {}, {}
         self.plan_heads, self._stamps, self._children = {}, {}, defaultdict(set)
+        self.plan_observations, self._plan_contexts = {}, {}
+        self.plan_order = None
         self._generations, self._forks = defaultdict(set), set()
         self._detached_kernel, self._ambiguous_kernel = {}, set()
         self.trace, self.complete, self.initial, self.last = None, False, None, None
@@ -121,7 +123,7 @@ class Originals:
         if arm == "purser":
             self._kernel(sources, platform, journal, objects, observed.values())
         else:
-            self._plans(sources, observed.values(), objects, platform.get("initial_public"))
+            self._plans(sources, observed.values(), objects, platform.get("initial_public"), journal)
 
         self.index = {identity(arm, p.checkpoint): i for i, p in enumerate(self.publications)}
         self.last = len(self.publications) - 1 if self.publications else None
@@ -148,7 +150,8 @@ class Originals:
                 final_revision = self.publications[end].snapshot["revision"]
                 extra = any(ck["revision"] > final_revision for ck in observed.values())
             else:
-                extra = any(key not in self.index for key in self.plan_heads)
+                extra = any(identity(arm, ck) not in self.index for ck in observed.values())
+                extra |= any(key not in self.index for key in self.plan_heads)
             if extra:
                 self.issue("final checkpoint differs from other captured participant heads")
         self.complete = began and end is not None and end == self.last and not (extra or self._forks)
@@ -234,15 +237,16 @@ class Originals:
         if key in self.plan_heads:
             return
         public_rows(rows, self.arm)
-        self.plan_heads[key] = rows
         stamp = rows[PARENT].get(PLAN_VERSION)
         if stamp is None:
+            self.plan_heads[key] = rows
             return
         require(type(stamp) is dict and type(stamp.get("number")) is int and stamp["number"] > 0
                 and "previous" in stamp and "attempt" in stamp
                 and (stamp["previous"] is None if stamp["number"] == 1 else digest(stamp["previous"], 64)),
                 "invalid versioned plan publication")
         require(stamp["attempt"] is None or type(stamp["attempt"]) in (int, str), "invalid plan publication attempt")
+        self.plan_heads[key] = rows
         self._stamps[key] = stamp
         number, parent = stamp["number"], stamp["previous"]
         self._generations[number].add(key)
@@ -257,10 +261,11 @@ class Originals:
             if self._stamps[child]["number"] != number + 1:
                 self.issue(f"nonconsecutive plan publication {child}")
 
-    def _plans(self, sources, observed, objects, initial):
+    def _plans(self, sources, observed, objects, initial, journal):
         # A list can supply missing original bytes. Its entries belong to this
         # history only if a case head reaches them by its own predecessor hashes.
         copies, anchors = {}, set()
+        sizes = defaultdict(set)
         for label, trace, expected in sources:
             try:
                 rows = trace["plan"]
@@ -297,6 +302,8 @@ class Originals:
                 anchors.add(key)
             elif isinstance(ref, dict) and ref.get("sha256") == key and ref.get("path") == f"objects/{key}.json":
                 anchors.add(key)
+                if type(ref.get("bytes")) is int and ref["bytes"] >= 0:
+                    sizes[key].add(ref["bytes"])
                 if key in self.plan_heads and same(view_ref(self.plan_heads[key]), ref):
                     continue
                 try:
@@ -337,6 +344,10 @@ class Originals:
             if parent is not None:
                 pending.append(parent)
 
+        from .plan_evidence import ObservedPlans
+        scoped = ObservedPlans(self, journal)
+        scoped.recover(visited, sizes, initial)
+        self.plan_observations, self._plan_contexts = scoped.states, scoped.contexts
         roots = self._generations.get(1, ())
         released = identity(self.arm, initial)
         if len(roots) == 1:
@@ -354,6 +365,10 @@ class Originals:
         return Publication({"plan_sha256": key, "view": view_ref(rows)}, rows, public_rows(rows, self.arm),
                            attempt=self._stamps.get(key, {}).get("attempt"))
 
+    def plan_at(self, ck):
+        key = identity(self.arm, ck)
+        return self._plan_point(key) if key in self.plan_heads else None
+
     def position(self, ck):
         return self.index.get(identity(self.arm, ck))
 
@@ -365,6 +380,31 @@ class Originals:
         if parent in self._stamps and self._stamps[parent]["number"] == stamp["number"] - 1:
             return self._plan_point(parent), self._plan_point(key)
         return None
+
+    def plan_writes(self, attempt, before, after):
+        """Find publications of this call in its observed store interval, including detached edges."""
+        first, last = identity(self.arm, before), identity(self.arm, after)
+        for key, stamp in self._stamps.items():
+            if stamp["attempt"] != attempt or key == first:
+                continue
+            ck = {"plan_sha256": key}
+            if first != stamp["previous"] and self.compare(before, ck) != -1:
+                continue
+            if last is not None and key != last and self.compare(ck, after) != -1:
+                continue
+            yield self._plan_point(key)
+
+    def transitions(self):
+        """Each evidenced post-setup transition, with a prefix position only when established."""
+        if self.setup is not None:
+            for index in range(self.setup + 1, len(self.publications)):
+                yield index, self.publications[index - 1], self.publications[index]
+        if self.arm != "purser":
+            for key, stamp in self._stamps.items():
+                if key not in self.index and stamp["number"] > 2:
+                    edge = self.plan_edge({"plan_sha256": key})
+                    if edge:
+                        yield None, *edge
 
     def _linked_plans(self, key):
         while key in self.plan_heads:
@@ -387,12 +427,25 @@ class Originals:
             last = key
         return self._plan_point(last).checkpoint if last is not None else None
 
+    def order_plan_calls(self, actions, faults, platform, uncertain_clocks):
+        from .plan_order import PlanOrder, publication_bounds
+        bounds = publication_bounds(self.arm, actions, faults, platform)
+        trusted = bounds
+        if uncertain_clocks:
+            trusted = publication_bounds(self.arm, (a for a in actions if a["attempt"] not in uncertain_clocks),
+                                         faults, platform)
+        self.plan_order = PlanOrder(self._stamps, bounds, self.issue, trusted=trusted)
+
     def compare(self, first, second):
-        """Order comparable store heads. Missing links and divergent branches are indeterminate."""
+        """Order heads when predecessor links or physically bounded publications establish precedence."""
+        key, other = identity(self.arm, first), identity(self.arm, second)
+        if key == other and key in self.plan_observations:
+            return 0
+        if self.plan_order is not None:
+            return self.plan_order.compare(key, other)
         left, right = self.position(first), self.position(second)
         if left is not None and right is not None:
             return (left > right) - (left < right)
-        key, other = identity(self.arm, first), identity(self.arm, second)
         if key is not None and key == other and (key in self.plan_heads or key in self._detached_kernel):
             return 0
         if key not in self._stamps or other not in self._stamps:
@@ -422,6 +475,8 @@ class Originals:
                     oids.add(candidate["digest"])
         for rows in self.plan_heads.values():
             oids.update(oid for _, oid in public_rows(rows, self.arm).values() if oid)
+        for states in self.plan_observations.values():
+            oids.update(oid for _, oid in states.values() if oid)
         for rows in self._detached_kernel.values():
             oids.update(oid for _, oid in public_rows(rows, self.arm).values() if oid)
         return oids
@@ -453,20 +508,33 @@ class Originals:
         if self.complete:
             return
         post = set(reported) | contiguous
-        start_number = self._stamps.get(start, {}).get("number")
-        for key in sorted(self.plan_heads, key=lambda k: self._stamps.get(k, {}).get("number", 0)):
+        states = dict(self.plan_observations)
+        states.update({key: public_rows(rows, self.arm) for key, rows in self.plan_heads.items()})
+        for key in sorted(states, key=lambda k: self._stamps.get(k, {}).get("number", 0)):
             if key in contiguous:
                 continue
-            stamp = self._stamps.get(key, {})
-            number = stamp.get("number")
-            if key != start and number is not None and start_number is not None and number <= start_number:
+            order = self.compare(receipt, {"plan_sha256": key})
+            if order == 1:
                 continue
-            edge = self.plan_edge({"plan_sha256": key})
-            if key not in post and (not edge or stamp["previous"] not in post):
+            stamp = self._stamps.get(key)
+            parent = stamp["previous"] if stamp else None
+            if (parent in self._stamps and self._stamps[parent]["number"] + 1 != stamp["number"]):
+                parent = None
+            if order not in (-1, 0) and key not in post and parent not in post:
                 continue
             post.add(key)
-            prior = edge[0].states if edge and number not in self._forks else None
-            yield key, reported.get(key), prior, public_rows(self.plan_heads[key], self.arm), key == start
+            # A post-notice read of an open row can disprove retention. Calling
+            # it a new reopening additionally requires an ordered incoming edge.
+            prior = states.get(parent) if order in (-1, 0) or parent in post else None
+            yield key, reported.get(key), prior, states[key], key == start
+
+    def plan_contexts(self, work):
+        """Plan rows located at a case head, including a directly observed single work row."""
+        for key, rows in self.plan_heads.items():
+            yield key, rows[work]
+        for (key, subject), row in self._plan_contexts.items():
+            if subject == work and key not in self.plan_heads:
+                yield key, row
 
     def context(self, ck, work):
         key = identity(self.arm, ck)
@@ -475,6 +543,8 @@ class Originals:
             pub = self.publications[self.index[key]]
             return context_pack(pub.snapshot, pub.records[work]["assignment"])
         if key not in self.plan_heads:
+            if (key, work) in self._plan_contexts:
+                return self._plan_contexts[key, work]
             self.lookup(ck)
         return {k: v for k, v in self.plan_heads[key][work].items() if k not in (PLAN_VERSION, "_publication")}
 

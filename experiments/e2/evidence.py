@@ -20,20 +20,33 @@ def file_ids(repo, oid):
 
 def published_submissions(history):
     """An issued or refused submit has no published candidate of its own."""
-    return [p for e in history.journal if e["kind"] == "action" for p in (e["payload"],)
-            if p.get("publicly_submitted") is True]
+    return list(history.submissions.values())
 
 
 def submitted_at(history, ck, work, oid, attempt=None):
+    unresolved = False
     for action in published_submissions(history):
-        order = history.source.compare(action.get("submission_publication"), ck)
-        if (order in (-1, 0) and action.get("subject") == work
-                and action.get("candidate") == oid and (attempt is None or action.get("attempt") == attempt)):
+        if (action.get("subject") != work or action.get("candidate") != oid
+                or attempt is not None and action.get("attempt") != attempt):
+            continue
+        order = history.source.compare(action["submission_publication"], ck)
+        if order in (-1, 0):
             return True
+        unresolved |= order is None
     refused = history.numbered.get(attempt, {}).get("submission_refused_at")
     if refused and history.source.compare(refused, ck) in (-1, 0):
         return False
-    return False if history.public_complete and history.actions_complete else None
+    return False if history.public_complete and history.actions_complete and not unresolved else None
+
+
+def latest_submission(history, submissions):
+    # Select across all published subjects before asking which can be graded.
+    for action in submissions:
+        if all(previous is action or history.source.compare(previous["submission_publication"],
+                                                            action["submission_publication"]) == -1
+               for previous in submissions):
+            return action
+    return None
 
 
 def score(history, track, verdicts, platform, *, release, qualification, submitted, endpoint_known,
@@ -69,15 +82,12 @@ def score(history, track, verdicts, platform, *, release, qualification, submitt
     if latest:
         source = end.get("source")
     else:
-        submissions = [p for p in published_submissions(history) if p.get("candidate") in known_candidates]
-        for action in reversed(submissions):
-            head_at_submit = action["submission_publication"]
-            if all(history.source.compare(p["submission_publication"], head_at_submit) in (-1, 0)
-                   for p in submissions):
-                latest, source = action["candidate"], "last_witnessed_public_submission"
-                publication = identity(history.arm, head_at_submit)
-                subject, attempt = action["subject"], action["attempt"]
-                break
+        submissions = published_submissions(history)
+        action = latest_submission(history, submissions)
+        if action:
+            latest, source = action["candidate"], "last_witnessed_public_submission"
+            publication = identity(history.arm, action["submission_publication"])
+            subject, attempt = action["subject"], action["attempt"]
         if not submissions and len(known_candidates) == 1:
             latest, = known_candidates
             if latest in available_candidates:

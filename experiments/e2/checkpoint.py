@@ -71,15 +71,14 @@ def accepted_submission(history, checkpoint, oid):
 def old_assignment(history, checkpoint, submission_attempt=None):
     """Read the operative W2 law from the original head and from its accepted submission."""
     def selected(ck):
-        index = history.source.position(ck)
         if history.arm != "purser":
-            from .public_sources import identity
-            rows = history.source.plan_heads.get(identity(history.arm, ck))
-            if rows is None:
+            try:
+                row = history.source.context(ck, "W2")
+                return (row["criterion"] == LEAVES["W2"] and row["retry_choice"] == policy.LINEAR
+                        and row["premise"] is None)
+            except READ_ERRORS:
                 return None
-            row = rows["W2"]
-            return (row.get("criterion") == LEAVES["W2"] and row.get("retry_choice") == policy.LINEAR
-                    and "premise" in row and row["premise"] is None)
+        index = history.source.position(ck)
         if index is None:
             return None
         original = history.source.publications[index]

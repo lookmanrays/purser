@@ -196,8 +196,6 @@ def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None, pr
         measurement = dict(platform["checkpoint_measurement"])
         measurement["checkpoint"] = views.checkpoint(measurement.get("checkpoint"))
         platform["checkpoint_measurement"] = measurement
-    named = candidate_evidence.original_oids(arm, platform, objects, views.originals, journal,
-                                             platform.get("start_monotonic_ns"), issue)
     problems = platform.get("git_evidence_issues", [])
     if type(problems) is list:
         for problem in problems:
@@ -216,6 +214,10 @@ def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None, pr
         else:
             issue("original candidate map lacks registered pre-recovery provenance")
     catalog = candidate_evidence.Catalog(objects, packs)
+    named = candidate_evidence.original_oids(
+        arm, platform, objects, views.originals, journal, platform.get("start_monotonic_ns"), issue,
+        lookup=catalog.repository_for, seed=seed,
+        native_producer=producer_files is None or "experiments/e2/git_reads.py" in producer_files)
     case_candidates, _, repos = candidate_evidence.reconcile(
         catalog, candidates, platform.get("case_git_packs"), named, issue, original_map=original,
         references=platform.get("referenced_files"), unavailable=missing,

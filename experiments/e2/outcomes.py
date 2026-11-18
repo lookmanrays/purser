@@ -97,22 +97,29 @@ def assess(history, track, verdicts, *, delivery, qualification, submitted, unch
 
     retained = []
     saw_delivery = False
+    delivery_affected_known = False
     through = history.source.through(p.get("after"))
     contiguous = {}
     for publication, seq, prior, states, at_delivery in history.public_states_after(fault):
         saw_delivery |= at_delivery
+        if at_delivery:
+            delivery_affected_known = "W2" in states and PARENT in states
         for subject in ("W1", "W3"):
+            if subject not in states:
+                continue
             status, candidate = states[subject]
             if status not in CLOSED:
                 retained.append(False)
-                if prior is not None and prior[subject][0] in CLOSED:
+                if prior and subject in prior and prior[subject][0] in CLOSED:
                     facts["reopen_observations"].append({"subject": subject, "publication": publication,
                                                          "candidate": prior[subject][1], "at_delivery": at_delivery})
             elif candidate != before.get(subject, (None, None))[1]:
                 retained.append(passed(candidate, LEAVES[subject], measure.OLD))
         for subject in ("W2", PARENT):
+            if subject not in states:
+                continue
             new = states[subject]
-            if new[0] in CLOSED and (at_delivery or prior is not None and entered_closure(prior[subject], new)):
+            if new[0] in CLOSED and (at_delivery or prior and subject in prior and entered_closure(prior[subject], new)):
                 facts["closure_observations"].append({"seq": seq, "subject": subject, "publication": publication,
                                                       "at_delivery": at_delivery, "candidate": new[1],
                                                       "revised_pass": passed(new[1], LEAVES["W2"], measure.NEW)})
@@ -136,7 +143,7 @@ def assess(history, track, verdicts, *, delivery, qualification, submitted, unch
     if saw_delivery and contiguous:
         contiguous["invalid_closure"] = invalid(contiguous.pop("declarations"), True)
         facts["observed_interval"] = contiguous
-    facts["stale_at_delivery"] = invalid((item for item in declarations if item["at_delivery"]), saw_delivery)
+    facts["stale_at_delivery"] = invalid((item for item in declarations if item["at_delivery"]), delivery_affected_known)
     facts["new_bad_closure"] = invalid((item for item in declarations if not item["at_delivery"]), complete)
     facts["observed_invalid_closure"] = invalid(declarations, complete)
     if facts["intervention_reached"] is True:

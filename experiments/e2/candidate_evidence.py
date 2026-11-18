@@ -4,22 +4,18 @@ import json
 import os
 import re
 import subprocess
-import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from experiments.e1.accounting import WORK, digest, utc_time
+from experiments.e1.accounting import digest, utc_time
 from experiments.e1.artifacts import FIXTURE, START, encoded, git, sha
-from experiments.e1.capture import response_evidence
-from experiments.e1.executor import PARENT
-from experiments.e1.measurement import same
 from experiments.e1.recovery import FileArchive, sync_directory, write_atomic
 from experiments.e1.report import require
-from . import attribution
+from . import git_reads
 
 PACK = re.compile(r"objects/([0-9a-f]{64})\.pack\Z")
 OBJECT = re.compile(r"objects/([0-9a-f]{64})\.(?:pack|json|bin)\Z")
-ERRORS = (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError, zipfile.BadZipFile)
+ERRORS = git_reads.ERRORS
 
 
 def pack_reference(ref):
@@ -56,49 +52,32 @@ def checkout_observation(end):
     return end
 
 
-def inspected_oids(journal, arm, objects, issue):
-    """A successful scoped read has passed WorkerTools' candidate check. A bare action has not."""
+def inspected_oids(journal, arm, objects, issue, *, lookup=None, seed=None, start=None, native_producer=False):
     found = set()
     for row in journal:
         action = row.get("payload") if type(row) is dict else None
         if type(action) is not dict or row.get("kind") != "action" or action.get("action") != "context":
             continue
         inputs = action.get("input")
-        tool = inputs.get("tool") if type(inputs) is dict else None
-        if tool not in ("git", "git_diff", "git_history"):
+        if type(inputs) is not dict or inputs.get("tool") not in git_reads.TOOLS:
             continue
+
+        def dispute(message):
+            issue(f"scoped Git read at attempt {action.get('attempt')}: {message}")
+
         try:
-            work, oid = action["subject"], action["candidate"]
-            require(action.get("arm") == arm and type(action.get("attempt")) is int and action["attempt"] > 0
-                    and work in WORK and inputs == {"work": work, "tool": tool}
-                    and attribution.expected(action) == "inspect", "invalid scoped Git request")
-            attribution.work_request(action, "inspect")
-            if "work_started" not in action:
-                continue
-            delivered, packet = attribution.delivered(action, objects.item)
-            if delivered:
-                require(action["delivery"].get("subject") == work, "Git receiver subject differs from the request")
-            if delivered and tool == "git_history" and work == PARENT:
-                history = packet.get("value") if type(packet) is dict else None
-                require(type(history) is list and history and all(digest(o, 40) for o in history)
-                        and (oid is None or history[0] == oid), "Git history receiver lacks the selected HEAD")
-                found.add(history[0])
-            if not digest(oid, 40):
-                continue
-            if not delivered:
-                reply = action.get("return")
-                if type(reply) is not dict or "failure" in reply:
-                    continue
-                require(same(objects.item(action["response_evidence"]), response_evidence(action)),
-                        "Git return envelope differs from the scoped invocation")
-            found.add(oid)
+            oid = git_reads.selected(action, arm, objects, dispute, lookup=lookup, seed=seed,
+                                     start=start, native_producer=native_producer)
+            if oid is not None:
+                found.add(oid)
         except ERRORS as error:
-            issue(f"scoped Git read at attempt {action.get('attempt')}: {error}")
+            dispute(str(error))
     return found
 
 
-def original_oids(arm, platform, objects, originals, journal, start, issue):
-    result = originals.candidate_oids() | inspected_oids(journal, arm, objects, issue)
+def original_oids(arm, platform, objects, originals, journal, start, issue, *, lookup, seed, native_producer):
+    result = originals.candidate_oids() | inspected_oids(journal, arm, objects, issue, lookup=lookup,
+                                                         seed=seed, start=start, native_producer=native_producer)
     end = platform.get("exit_candidate")
     if end is not None:
         try:
@@ -124,8 +103,8 @@ class Pack:
 class Catalog:
     """One reader's content index. Loading bytes alone never enrolls a case member."""
 
-    def __init__(self, objects, packs):
-        self.objects, self.packs = objects, packs
+    def __init__(self, objects, packs, *, local_repos=()):
+        self.objects, self.packs, self.local_repos = objects, packs, local_repos
         self.loaded = {}
 
     def load(self, ref):
@@ -160,6 +139,31 @@ class Catalog:
 
     def alternative(self, oid, sources):
         return next((pack for pack in sources if oid in pack.commits), None)
+
+
+    def pooled_content(self):
+        """These verified packs supply bytes. Only the case evidence can name a subject."""
+        for name in self.objects.archive.namelist():
+            if not PACK.fullmatch(name):
+                continue
+            try:
+                yield self.load(self.reference(name))
+            except ERRORS:
+                continue
+
+    def repository_for(self, oid):
+        pack = self.alternative(oid, self.loaded.values()) or self.alternative(oid, self.pooled_content())
+        if pack:
+            return pack.repo
+        # During interrupted capture some Git objects still exist only in the case's
+        # bare archive or original checkout. They can independently check a named read.
+        for repo in self.local_repos:
+            try:
+                if git(repo, "cat-file", "-t", oid) == b"commit\n":
+                    return repo
+            except (OSError, subprocess.SubprocessError):
+                continue
+        return None
 
 
 def preserve_damaged_objects(assets):
@@ -391,18 +395,12 @@ def reconcile(catalog, mapping, seals, named, issue, *, capture=False, reference
                 selected[oid] = cover
     missing = members - selected.keys()
     if missing and not capture:
-        for name in catalog.objects.archive.namelist():
-            if not missing:
-                break
-            if not PACK.fullmatch(name):
-                continue
-            try:
-                pack = catalog.load(catalog.reference(name))
-            except ERRORS:
-                continue
+        for pack in catalog.pooled_content():
             for oid in missing.intersection(pack.commits):
                 selected[oid] = pack
             missing -= selected.keys()
+            if not missing:
+                break
 
     # A missing pre-capture pack can leave the original map as the only binding. If
     # recovered content disproves its metadata, keep the source dispute, not a graded slot.

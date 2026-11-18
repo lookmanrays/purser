@@ -152,21 +152,11 @@ def plan_row(row):
     return {k: v for k, v in row.items() if k not in (PLAN_VERSION, "_publication")}
 
 
-def plan_operation(action, method, before, pub):
+def plan_effect(action, method, rows):
+    """The public projection and diagnosis produced by one supported plan write."""
     work = action["subject"]
     require(method in PLAN_WRITES, "read-only invocation claimed a plan write")
-    row = pub.rows[work]
-    previous = plan_row(before.rows[work])
-    actual = plan_row(row)
-    marker = row["_publication"]
-    require(pub.attempt == action["attempt"] and
-            all(marker[k] == v for k, v in {"attempt": action["attempt"], "actor": action["actor"],
-                "subject": work, "candidate": row["candidate"]}.items()), "wrong plan publication actor or subject")
-    for other, fields in before.rows.items():
-        if other != work:
-            require(same({k: v for k, v in fields.items() if k != PLAN_VERSION},
-                         {k: v for k, v in pub.rows[other].items() if k != PLAN_VERSION}),
-                    "plan response concealed a different subject's publication")
+    previous = plan_row(rows[work])
     inputs = action.get("port_input", action.get("input", {}))
     expected = dict(previous)
     diagnosis = []
@@ -200,11 +190,48 @@ def plan_operation(action, method, before, pub):
         if work == PARENT:
             from experiments.e1.executor import LEAVES
             from experiments.e1.outcomes import is_closed
-            diagnosis.update(label for child, label in LEAVES.items() if not is_closed(before.rows[child]["state"]))
+            diagnosis.update(label for child, label in LEAVES.items() if not is_closed(rows[child]["state"]))
         diagnosis = sorted(diagnosis)
         if not diagnosis:
             expected["state"] = "closed"
-    require(same(actual, expected) and same(marker["diagnosis"], diagnosis), "plan effect does not match invocation")
+    return expected, diagnosis
+
+
+def plan_marker(action, candidate, diagnosis):
+    return {"attempt": action["attempt"], "actor": action["actor"], "subject": action["subject"],
+            "candidate": candidate, "diagnosis": diagnosis}
+
+
+def plan_submission(action, pub):
+    """Authenticate the submitting writer and its own published row without a prior full view."""
+    work, oid = action["subject"], action["candidate"]
+    row = pub.rows[work]
+    inputs = action.get("port_input", action.get("input", {}))
+    require(type(action["attempt"]) is int and type(pub.attempt) is int and pub.attempt == action["attempt"]
+            and action["actor"] == "executor" and inputs["candidate"] == oid
+            and pub.states[work] == ("submitted", oid) and same(row["verified"], {})
+            and same(row["_publication"], plan_marker(action, oid, [])),
+            "published plan submission differs from its writer, subject or candidate")
+    return {"state": "submitted"}
+
+
+def plan_operation(action, method, before, pub):
+    work = action["subject"]
+    expected, diagnosis = plan_effect(action, method, before.rows)
+    row = pub.rows[work]
+    actual = plan_row(row)
+    if method == "submit":
+        plan_submission(action, pub)
+    else:
+        require(same(pub.attempt, action["attempt"]) and
+                same(row["_publication"], plan_marker(action, row["candidate"], diagnosis)),
+                "wrong plan publication actor, subject or diagnosis")
+    for other, fields in before.rows.items():
+        if other != work:
+            require(same({k: v for k, v in fields.items() if k != PLAN_VERSION},
+                         {k: v for k, v in pub.rows[other].items() if k != PLAN_VERSION}),
+                    "plan response concealed a different subject's publication")
+    require(same(actual, expected), "plan effect does not match invocation")
     return ({"diagnosis": diagnosis, "claim": actual} if method == "decide" else {"state": actual["state"]})
 
 
