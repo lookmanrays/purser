@@ -1,0 +1,529 @@
+{
+  "contract": "purser.kernel/v1",
+  "fixture": "notification retries",
+  "interpretation": "Semantic checkpoints, with partial expected observations. M1 wire revisions are defined only in wire-v1.json. The run has sufficient preceding history for D-revised revision 41. The scorer owns its own external truth.",
+  "subjects": {
+    "O": {
+      "kind": "git.commit",
+      "algorithm": "sha1",
+      "digest": "1111111111111111111111111111111111111111"
+    },
+    "A": {
+      "kind": "git.commit",
+      "algorithm": "sha1",
+      "digest": "2222222222222222222222222222222222222222"
+    },
+    "B": {
+      "kind": "git.commit",
+      "algorithm": "sha1",
+      "digest": "3333333333333333333333333333333333333333"
+    },
+    "L": {
+      "kind": "git.commit",
+      "algorithm": "sha1",
+      "digest": "4444444444444444444444444444444444444444"
+    }
+  },
+  "support": [
+    {
+      "kind": "depends_on",
+      "from_id": "W2",
+      "to_id": "D-original"
+    },
+    {
+      "kind": "depends_on",
+      "from_id": "D-original",
+      "to_id": "A1"
+    }
+  ],
+  "evidence_bindings": [
+    {
+      "commitment": "C-notify",
+      "work": "W2",
+      "generation": 1,
+      "assignment": "AS-A",
+      "result": "Result-A",
+      "producer": "executor:alpha",
+      "candidate": {
+        "kind": "git.commit",
+        "algorithm": "sha1",
+        "digest": "2222222222222222222222222222222222222222"
+      },
+      "obligation": "O-retries",
+      "criterion_version": 1,
+      "run": "V-A",
+      "observer": "observer:tests",
+      "observation": "Obs-A",
+      "verifier": "verifier:retry-tests",
+      "evidence": "E-A",
+      "test_definition_sha256": "8d38da1f127f76f9f15ff40e070caab24c2a1bb15f567769f634ff54c4acedea",
+      "environment_sha256": "3a9010360e1afbb8116f644c31e0555f019c194b4e9c7426481a7ada0928e765",
+      "verdict": "pass"
+    },
+    {
+      "commitment": "C-notify",
+      "work": "W2",
+      "generation": 2,
+      "assignment": "AS-B",
+      "result": "Result-B",
+      "producer": "executor:beta",
+      "candidate": {
+        "kind": "git.commit",
+        "algorithm": "sha1",
+        "digest": "3333333333333333333333333333333333333333"
+      },
+      "obligation": "O-retries",
+      "criterion_version": 1,
+      "run": "V-B",
+      "observer": "observer:tests",
+      "observation": "Obs-B",
+      "verifier": "verifier:retry-tests",
+      "evidence": "E-B",
+      "test_definition_sha256": "8d38da1f127f76f9f15ff40e070caab24c2a1bb15f567769f634ff54c4acedea",
+      "environment_sha256": "3a9010360e1afbb8116f644c31e0555f019c194b4e9c7426481a7ada0928e765",
+      "verdict": "pass"
+    }
+  ],
+  "immutable_effect": {
+    "intent": {
+      "repository": "R-notify",
+      "commitment": "C-notify",
+      "work": "W2",
+      "generation": 2,
+      "assignment": "AS-B",
+      "slot": "publish",
+      "effect": "F-publish",
+      "capability": "git.commit",
+      "resource": "refs/heads/purser-demo",
+      "expected_old": {
+        "kind": "git.commit",
+        "algorithm": "sha1",
+        "digest": "1111111111111111111111111111111111111111"
+      },
+      "target": {
+        "kind": "git.commit",
+        "algorithm": "sha1",
+        "digest": "3333333333333333333333333333333333333333"
+      },
+      "purpose": "Publish the verified retry change on the allowed local branch.",
+      "grant": "G-publish"
+    },
+    "intent_digest": "2e90f2701074be8fae4f3efedd45cfbf7b801199a84ab19a2d9c8f0cb597ab07",
+    "protected_receipt_ref": "refs/purser/receipts/2e90f2701074be8fae4f3efedd45cfbf7b801199a84ab19a2d9c8f0cb597ab07"
+  },
+  "outcome_vectors": [
+    {
+      "basis": {
+        "work": "W1",
+        "generation": 1,
+        "candidate": {
+          "kind": "git.commit",
+          "algorithm": "sha1",
+          "digest": "1111111111111111111111111111111111111111"
+        },
+        "coverage": null,
+        "children": [],
+        "witnesses": [],
+        "decisions": [],
+        "obligations": [
+          {
+            "id": "O-prefs",
+            "version": 1,
+            "run": "V-prefs",
+            "evidence": "E-prefs",
+            "waiver": null
+          }
+        ],
+        "effects": []
+      },
+      "digest": "ce2af62ae6a057f7777121471ccf9228556cdf011f92655790cb4bbfe902f979"
+    },
+    {
+      "basis": {
+        "work": "W2",
+        "generation": 2,
+        "candidate": {
+          "kind": "git.commit",
+          "algorithm": "sha1",
+          "digest": "3333333333333333333333333333333333333333"
+        },
+        "coverage": null,
+        "children": [],
+        "witnesses": [],
+        "decisions": [
+          {
+            "id": "D-revised",
+            "revision": 41
+          }
+        ],
+        "obligations": [
+          {
+            "id": "O-retries",
+            "version": 1,
+            "run": "V-B",
+            "evidence": "E-B",
+            "waiver": null
+          }
+        ],
+        "effects": [
+          {
+            "effect": "F-publish",
+            "observation": "Obs-Git-B"
+          }
+        ]
+      },
+      "digest": "5a3f7fee8997e8ceadeaa6a49fd01aa94dc946e838d0ed17bf81081df7636ab9"
+    },
+    {
+      "basis": {
+        "work": "W3",
+        "generation": 1,
+        "candidate": {
+          "kind": "git.commit",
+          "algorithm": "sha1",
+          "digest": "1111111111111111111111111111111111111111"
+        },
+        "coverage": null,
+        "children": [],
+        "witnesses": [],
+        "decisions": [],
+        "obligations": [
+          {
+            "id": "O-delivery",
+            "version": 1,
+            "run": "V-delivery",
+            "evidence": "E-delivery",
+            "waiver": null
+          }
+        ],
+        "effects": []
+      },
+      "digest": "20fa4a29a72a26f1b583161186df68e20babe63110b8b80aada62c96f1642e11"
+    },
+    {
+      "basis": {
+        "work": "W-notify",
+        "generation": 1,
+        "candidate": null,
+        "coverage": {
+          "kind": "all",
+          "k": null
+        },
+        "children": [
+          "W1",
+          "W2",
+          "W3"
+        ],
+        "witnesses": [
+          {
+            "work": "W1",
+            "outcome": "ce2af62ae6a057f7777121471ccf9228556cdf011f92655790cb4bbfe902f979"
+          },
+          {
+            "work": "W2",
+            "outcome": "5a3f7fee8997e8ceadeaa6a49fd01aa94dc946e838d0ed17bf81081df7636ab9"
+          },
+          {
+            "work": "W3",
+            "outcome": "20fa4a29a72a26f1b583161186df68e20babe63110b8b80aada62c96f1642e11"
+          }
+        ],
+        "decisions": [],
+        "obligations": [],
+        "effects": []
+      },
+      "digest": "3681db2d653024aad38a55938b682d7472d264958793b52fb37bee15d79d84d3"
+    },
+    {
+      "basis": {
+        "work": "W-root",
+        "generation": 1,
+        "candidate": null,
+        "coverage": {
+          "kind": "all",
+          "k": null
+        },
+        "children": [
+          "W-notify"
+        ],
+        "witnesses": [
+          {
+            "work": "W-notify",
+            "outcome": "3681db2d653024aad38a55938b682d7472d264958793b52fb37bee15d79d84d3"
+          }
+        ],
+        "decisions": [],
+        "obligations": [],
+        "effects": []
+      },
+      "digest": "13371a3de0df1fe6f57fa38a2fd4a7206cfc1702cbae252ab9eaf5ddc3bb9e5f"
+    }
+  ],
+  "steps": [
+    {
+      "point": "01 accepted scope",
+      "admitted_or_external_facts": [
+        "The principal activates C-notify, requiring outcome acceptance only at W-root. W-root contains automatic parent W-notify. W-notify requires all three children W1, W2 and W3.",
+        "W2 generation 1 is assigned to executor:alpha as AS-A. D-original depends on held A1. W2 depends on D-original. W1 and W3 have independent criteria and no support edge to either.",
+        "The human issues G-publish for executor:beta under C-notify, limited to the demo branch and the retry path. It expires at 2026-11-18T14:00:00.000000Z."
+      ],
+      "required_observations": {
+        "commitment": "active",
+        "root": "open",
+        "grant": "active",
+        "closure_or_effect_from_result_alone": false
+      }
+    },
+    {
+      "point": "02 E2 intervention boundary",
+      "admitted_or_external_facts": [
+        "W1 and W3 each close on their independent passing observations. W2 submits Result-A at candidate A. V-A is in flight."
+      ],
+      "required_observations": {
+        "closed": [
+          "W1",
+          "W3"
+        ],
+        "submitted": [
+          "W2"
+        ],
+        "root_satisfied": false,
+        "W2_obligation": "open",
+        "effect_count": 0
+      }
+    },
+    {
+      "point": "03 invalidation",
+      "admitted_or_external_facts": [
+        "Independent observation Obs-change contradicts A1. Its admitted invalidation satisfies D-original’s declared trigger."
+      ],
+      "required_observations": {
+        "closed": [
+          "W1",
+          "W3"
+        ],
+        "stale": [
+          "W2"
+        ],
+        "under_reconsideration": [
+          "D-original"
+        ],
+        "W2_closing_evidence": [],
+        "allowed_includes": [
+          {
+            "action": "reconsider",
+            "subject": "D-original"
+          },
+          {
+            "action": "rework",
+            "subject": "W2"
+          }
+        ]
+      }
+    },
+    {
+      "point": "04 replacement and late pass",
+      "admitted_or_external_facts": [
+        "Triggered D-revised becomes effective at event revision 41. W2 is reworked on generation 2, assigned to executor:beta as AS-B. B replaces A and Result-B is submitted. A delayed V-A pass arrives for A."
+      ],
+      "required_observations": {
+        "closed": [
+          "W1",
+          "W3"
+        ],
+        "W2_candidate": "B",
+        "W2_generation": 2,
+        "historical_evidence": [
+          "E-A"
+        ],
+        "W2_closing_evidence": [],
+        "root_satisfied": false
+      }
+    },
+    {
+      "point": "05 independent verification",
+      "admitted_or_external_facts": [
+        "The trusted observer and verifier complete V-B on B. The mandatory publish effect still needs independent confirmation."
+      ],
+      "required_observations": {
+        "W2_closing_evidence": [
+          "E-B"
+        ],
+        "still_required": [
+          "F-publish"
+        ],
+        "W2_closed": false
+      }
+    },
+    {
+      "point": "06 durable dispatch",
+      "admitted_or_external_facts": [
+        "Admit the frozen F-publish intent. At 2026-11-18T13:59:59.000000Z an authorized broker wins the cutoff and durably creates dispatching attempt T1."
+      ],
+      "required_observations": {
+        "intent": "F-publish",
+        "attempt": "T1",
+        "external_transition_count_yet": 0,
+        "same_intent_dispatch_permitted": false
+      }
+    },
+    {
+      "point": "07 lost acknowledgment",
+      "admitted_or_external_facts": [
+        "Git atomically advances the branch from O to B and creates the protected per-intent receipt. The broker exits before reporting success to SQLite. Start a new process with all models disabled."
+      ],
+      "required_observations": {
+        "q06_contains": {
+          "effect": "F-publish",
+          "attempt": "T1",
+          "state": "dispatching"
+        },
+        "q10_contains": {
+          "action": "reconcile",
+          "subject": "F-publish"
+        },
+        "q10_excludes": {
+          "action": "authorize_dispatch",
+          "subject": "F-publish"
+        },
+        "external_transition_count_for_this_operation": 1,
+        "W2_closed": false
+      }
+    },
+    {
+      "point": "08 external reconciliation",
+      "admitted_or_external_facts": [
+        "Another legitimate operation later advances the branch to L. After earlier-writer quiescence the independent Git observer records Obs-Git-B with a protected matching receipt for B. Reconcile T1 as happened."
+      ],
+      "required_observations": {
+        "latest_branch": "L",
+        "receipt_target": "B",
+        "effect": "confirmed_happened",
+        "ambiguous_for_F_publish": false,
+        "external_transition_count_for_this_operation": 1,
+        "retry_permitted": false,
+        "root_satisfied": false
+      }
+    },
+    {
+      "point": "09 automatic closure",
+      "admitted_or_external_facts": [
+        "Closure Evaluator closes W2 from its verified test and settled effect. W-notify closes by all-of-three. W-root awaits the human."
+      ],
+      "required_observations": {
+        "closed": [
+          "W-notify",
+          "W1",
+          "W2",
+          "W3"
+        ],
+        "commitment": "active",
+        "root_satisfied": false,
+        "next_for_root": {
+          "action": "principal_accept",
+          "subject": "W-root"
+        },
+        "root_outcome_digest": "13371a3de0df1fe6f57fa38a2fd4a7206cfc1702cbae252ab9eaf5ddc3bb9e5f"
+      }
+    },
+    {
+      "point": "10 human acceptance",
+      "admitted_or_external_facts": [
+        "The authenticated human accepts the current W-root outcome digest. The gate verifies the basis and admits derived root closure and commitment satisfaction."
+      ],
+      "required_observations": {
+        "root": "closed",
+        "commitment": "satisfied",
+        "external_transition_count_for_this_operation": 1,
+        "accepted_outcome": "13371a3de0df1fe6f57fa38a2fd4a7206cfc1702cbae252ab9eaf5ddc3bb9e5f"
+      }
+    }
+  ],
+  "alternative_cutoff_orders": [
+    {
+      "order": [
+        "revoke G-publish",
+        "authorize T1"
+      ],
+      "T1_dispatching": false,
+      "external_transition_count": 0,
+      "grant": "revoked"
+    },
+    {
+      "order": [
+        "authorize T1",
+        "revoke G-publish",
+        "T1 completes after revocation",
+        "observe matching receipt"
+      ],
+      "T1_dispatching_at_revocation": true,
+      "external_transition_count": 1,
+      "T1": "reconciled_happened",
+      "new_attempt_allowed": false,
+      "grant": "revoked"
+    },
+    {
+      "order": [
+        "clock reaches G-publish expiry exactly",
+        "authorize T1"
+      ],
+      "T1_dispatching": false,
+      "external_transition_count": 0,
+      "grant": "expired"
+    }
+  ],
+  "alternative_recovery": [
+    {
+      "original_T1": "did_not_land",
+      "observer_facts": [
+        "T1 writer and children fenced and quiescent",
+        "known intact receipt retention and no unrecorded transition",
+        "receipt absent",
+        "branch still at O"
+      ],
+      "reconcile": "confirmed_absent",
+      "if_same_grant_current": "freshly authorize distinct T2 under F-publish",
+      "expected_total_targeted_effects_if_T2_lands": 1
+    },
+    {
+      "original_T1": "unknown",
+      "observer_facts": [
+        "receipt absent",
+        "earlier writer may still apply"
+      ],
+      "reconcile": "pending",
+      "new_attempt_allowed": false
+    },
+    {
+      "original_T1": "unknown",
+      "observer_facts": [
+        "receipt unreadable or inconsistent",
+        "tip already B"
+      ],
+      "reconcile": "pending",
+      "new_attempt_allowed": false
+    }
+  ],
+  "continuity_overlay": {
+    "purpose": "Add this independent work to the step 07 no-model snapshot when all awkward states are required simultaneously. The experiment scorer owns final full golden answers.",
+    "other_commitment": "C-doc",
+    "independent_branches": [
+      {
+        "work": "W-doc-submitted",
+        "state": "submitted",
+        "missing": "independent_observation"
+      },
+      {
+        "work": "W-doc-stale",
+        "state": "stale",
+        "support": "D-doc"
+      }
+    ],
+    "invalidated_assumption": "A-doc",
+    "decision_under_reconsideration": "D-doc",
+    "unaffected_original_siblings": [
+      "W1",
+      "W3"
+    ]
+  }
+}
