@@ -15,17 +15,14 @@ _BATCH = ("batch_start", "batch_size", "at", "actor_id", "proposal_id")
 _ENVELOPE = {"v", "event_version", "revision", "type", "data", "prev_hash", "hash", *_BATCH}
 
 
-def _schema(db):
-    db.execute("CREATE TABLE events (revision INTEGER PRIMARY KEY, body BLOB NOT NULL)")
-    db.execute("CREATE TABLE head (id INTEGER PRIMARY KEY CHECK(id=1), "
+def _projection_schema(db):
+    db.execute("CREATE TABLE IF NOT EXISTS head (id INTEGER PRIMARY KEY CHECK(id=1), "
                "revision INTEGER NOT NULL, hash TEXT NOT NULL)")
     for table, keys in _KEYS.items():
         columns = ", ".join(f"{key} TEXT NOT NULL" for key in keys)
-        db.execute(f"CREATE TABLE {table} ({columns}, body BLOB NOT NULL, "
+        db.execute(f"CREATE TABLE IF NOT EXISTS {table} ({columns}, body BLOB NOT NULL, "
                    f"PRIMARY KEY ({', '.join(keys)})) WITHOUT ROWID")
-    db.execute("CREATE INDEX edges_by_support ON edges(kind, to_id)")
-    db.execute(f"PRAGMA application_id={_APPLICATION_ID}")
-    db.execute("PRAGMA user_version=1")
+    db.execute("CREATE INDEX IF NOT EXISTS edges_by_support ON edges(kind, to_id)")
 
 
 def _identify(db):
@@ -68,7 +65,7 @@ def _batches(db):
     sequence = 1
     for number, raw in db.execute("SELECT revision,body FROM events ORDER BY revision"):
         if number != sequence:
-            raise KernelError("integrity_error", {"revision": min(number, sequence)})
+            raise KernelError("integrity_error", {"revision": sequence})
         event = _event(raw, sequence, previous)
         if pending:
             if any(event[k] != pending[0][k] for k in _BATCH):
@@ -87,9 +84,12 @@ def _batches(db):
 
 def _fold(db, requested=None):
     current = {"revision": 0, "head_hash": ZERO_HASH, "projection": empty_projection()}
-    historical = current if requested == 0 else None
+    if requested == 0:
+        return current
     for events in _batches(db):
         end = events[-1]["revision"]
+        if requested is not None and requested < end:
+            raise KernelError("bad_revision")
         projection = current["projection"]
         for e in events:
             if e["v"] != 1:
@@ -98,10 +98,10 @@ def _fold(db, requested=None):
                                      event_version=e["event_version"])
         current = {"revision": end, "head_hash": events[-1]["hash"], "projection": projection}
         if requested == end:
-            historical = current
-    if requested is not None and historical is None:
+            return current
+    if requested is not None:
         raise KernelError("bad_revision")
-    return current, historical
+    return current
 
 
 def _rows(projection, table, keys):
@@ -112,6 +112,7 @@ def _verify_projection(db, snapshot):
     if db.execute("SELECT revision,hash FROM head WHERE id=1").fetchone() != (
         snapshot["revision"], snapshot["head_hash"]
     ):
+        _check_retained_head(db, snapshot)
         raise KernelError("integrity_error")
     for table, keys in _KEYS.items():
         columns = ", ".join(keys)
@@ -124,6 +125,26 @@ def _verify_projection(db, snapshot):
             raise KernelError("integrity_error")
 
 
+def _check_retained_head(db, snapshot):
+    anchor = db.execute("SELECT revision,hash FROM head WHERE id=1").fetchone()
+    if anchor is None:
+        return  # A log-only restore has no independent high water.
+    revision, expected = anchor
+    if type(revision) is not int or revision < 0:
+        raise KernelError("integrity_error")
+    if revision > snapshot["revision"]:
+        raise KernelError("integrity_error", {"revision": snapshot["revision"] + 1})
+    if revision == 0:
+        actual = ZERO_HASH
+    else:
+        event = decode(db.execute("SELECT body FROM events WHERE revision=?", (revision,)).fetchone()[0])
+        if event["batch_start"] + event["batch_size"] - 1 != revision:
+            raise KernelError("integrity_error", {"revision": revision})
+        actual = event["hash"]
+    if expected != actual:
+        raise KernelError("integrity_error", {"revision": revision})
+
+
 def _publish(db, snapshot, previous=None):
     for table, keys in _KEYS.items():
         if previous is None:
@@ -133,7 +154,7 @@ def _publish(db, snapshot, previous=None):
             old = _rows(previous["projection"], table, keys)
         new = _rows(snapshot["projection"], table, keys)
         where = " AND ".join(f"{k}=?" for k in keys)
-        db.executemany(f"DELETE FROM {table} WHERE {where}", ((k) for k in old.keys() - new.keys()))
+        db.executemany(f"DELETE FROM {table} WHERE {where}", old.keys() - new.keys())
         changed = (key + (canonical(row),) for key, row in new.items() if row != old.get(key))
         placeholders = ", ".join("?" for _ in range(len(keys) + 1))
         db.executemany(f"INSERT OR REPLACE INTO {table} VALUES ({placeholders})", changed)
@@ -184,8 +205,11 @@ class Store:
             db.execute("BEGIN IMMEDIATE")
             existing = _identify(db)
             if not existing:
-                _schema(db)
-            snapshot, _ = _fold(db)
+                db.execute("CREATE TABLE events (revision INTEGER PRIMARY KEY, body BLOB NOT NULL)")
+                _projection_schema(db)
+                db.execute(f"PRAGMA application_id={_APPLICATION_ID}")
+                db.execute("PRAGMA user_version=1")
+            snapshot = _fold(db)
             if existing:
                 _verify_projection(db, snapshot)
             else:
@@ -197,19 +221,22 @@ class Store:
         if revision is not None and (type(revision) is not int or not 0 <= revision <= MAX_INTEGER):
             raise KernelError("bad_revision")
         with self._transaction() as db:
-            current, historical = _fold(db, revision)
-            _verify_projection(db, current)
-            return current if revision is None else historical
+            snapshot = _fold(db, revision)
+            if revision is None:
+                _verify_projection(db, snapshot)
+            return snapshot
 
     def replay(self):
         with self._transaction(write=True) as db:
-            current, _ = _fold(db)
+            current = _fold(db)
+            _projection_schema(db)
+            _check_retained_head(db, current)
             _publish(db, current)
             return current
 
     def transact(self, actor_id, proposal_id, clock, decide):
         with self._transaction(write=True) as db:
-            before, _ = _fold(db)
+            before = _fold(db)
             _verify_projection(db, before)
             at = format_time(clock())
             descriptions, reply = decide(deepcopy(before), at)
@@ -226,11 +253,12 @@ class Store:
                 event = {"v": 1, "event_version": 1, "revision": revision, "batch_start": start,
                          "batch_size": len(descriptions), "actor_id": actor_id, "proposal_id": proposal_id,
                          "at": at, "type": entry["type"], "data": entry["data"], "prev_hash": previous}
-                previous = event["hash"] = digest("event", event)
+                event["hash"] = digest("event", event)
                 raw = canonical(event)
-                _event(raw, revision, event["prev_hash"])
+                verified = _event(raw, revision, previous)
+                previous = verified["hash"]
                 db.execute("INSERT INTO events VALUES (?,?)", (revision, raw))
-                projection = apply_event(projection, entry["type"], entry["data"], revision, end)
+                projection = apply_event(projection, verified["type"], verified["data"], revision, end)
             after = {"revision": end, "head_hash": previous, "projection": projection}
             _publish(db, after, before)
             return after, reply
