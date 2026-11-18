@@ -339,16 +339,21 @@ def verify_candidates(directory):
                 if git(repo, "rev-parse", oid + "^{tree}").decode().strip() != entry["tree"]:
                     raise ValueError("archived tree identity mismatch")
             journal = json.loads(read_artifact(archive, raw["artifacts"]["journal"]))
+            reports = {}
             for event in journal:
-                if event["kind"] != "oracle":
-                    continue
-                p = event["payload"]
-                oid = p["candidate"]
+                if event["kind"] == "oracle":
+                    payload = event["payload"]
+                    reports.setdefault(payload["candidate"], {})[payload["criterion"]] = payload["evidence"]
+            for oid, archived in reports.items():
                 key = (seed, rank, oid)
-                if key not in measurements:
+                previous = measurements.setdefault(key, {})
+                missing = archived.keys() - previous.keys()
+                if missing:
                     repo = repos[entries[oid]["pack"]["sha256"]]
                     with extract_tree(repo, oid) as checkout:
-                        measurements[key] = scorer.measure(repo, oid, Path(checkout), seed, rank)
-                if encoded(measurements[key][p["criterion"]]) != read_artifact(archive, p["evidence"]):
-                    raise ValueError("archived input produced a different protected report")
+                        current = scorer.measure(repo, oid, Path(checkout), seed, rank, labels=missing)
+                    previous.update(current)
+                for label, ref in archived.items():
+                    if encoded(previous[label]) != read_artifact(archive, ref):
+                        raise ValueError("archived input produced a different protected report")
         return {"runs": len(seen), "independent_git_packs": len(repos), "reexecuted_seed_candidates": len(measurements)}
