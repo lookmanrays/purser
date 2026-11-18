@@ -10,6 +10,7 @@ from experiments.e1.outcomes import is_closed
 from experiments.e1.run import Driver as ActionDriver
 
 from . import policy
+from .actions import PublicActions
 
 
 class Driver(ActionDriver):
@@ -17,6 +18,11 @@ class Driver(ActionDriver):
         super().__init__(candidates, adapter, journal, assets, seed, "clean")
         self.track = track
         self.phase = policy.LINEAR
+        self.actions = PublicActions(self)
+        self.adapter.work_actions = self.actions
+
+    def call(self, action, work, actor, inputs, operation, oid=None):
+        return self.actions.call(action, work, actor, inputs, operation, oid)
 
     def submit_work(self, work):
         adapter = self.adapter

@@ -61,14 +61,17 @@ class Treatment:
         self.count += 1
         proposal = {"v": 1, "proposal_id": f"P-{self.count}", "commitment": SCOPE,
                     "base_revision": self.store.snapshot()["revision"], "justification": [], "ops": ops}
-        if self.on_proposal is not None:
-            self.on_proposal({"actor_id": actor, "proposal_id": proposal["proposal_id"], "body": proposal,
-                              "digest": digest("proposal", {"actor_id": actor, "proposal": proposal})})
+        self.record_request({"actor_id": actor, "proposal_id": proposal["proposal_id"], "body": proposal,
+                             "digest": digest("proposal", {"actor_id": actor, "proposal": proposal})})
         receipt = admit(self.store, binding, proposal, clock=lambda: datetime(2026, 1, 1, tzinfo=timezone.utc))
         self.receipts.append({"role": role, "proposal": proposal, "receipt": receipt})
         if receipt["disposition"] == "rejected" and not allow_rejected:
             raise RuntimeError(f"{ops[0]['op']}: {receipt}")
         return receipt
+
+    def record_request(self, request):
+        if self.on_proposal is not None:
+            self.on_proposal(request)
 
     def view(self):
         from purser.kernel.workview import WorkView
