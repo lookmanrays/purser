@@ -1,13 +1,16 @@
 """Pin all study code before collection and retain each scheduled attempt."""
 
+import fcntl
 import json
+import os
+import shutil
 import subprocess
-import tempfile
 import zipfile
 from pathlib import Path
 
 from .artifacts import FIXTURE, MANIFEST, REGISTRATION, ROOT, Artifacts, encoded, sha
-from .run import attempt
+from . import run
+from .recovery import FileArchive, failure_record, sync_directory, write_atomic
 
 ARMS = MANIFEST["units"]["arm_order"]
 
@@ -51,9 +54,11 @@ def source_pin():
     }
 
 
-def freeze_series(directory):
+def freeze_series(directory, *, replicate=1, reason=None):
+    if type(replicate) is not int or replicate < 1 or (replicate > 1 and not (reason or "").strip()):
+        raise ValueError("a replication requires a positive identifier and a reason")
     directory.mkdir(exist_ok=True, parents=True)
-    pin = source_pin()
+    pin = {**source_pin(), "replicate": replicate, "replication_reason": reason}
     with (directory / "freeze.json").open("x") as output:
         json.dump(pin, output, ensure_ascii=False, sort_keys=True, indent=2)
         output.write("\n")
@@ -71,32 +76,122 @@ def schedule():
         yield "clean", e["clean_seed"], rank, arm
 
 
-def collect(directory):
+def committed_registration(directory):
     pinned = json.loads((directory / "freeze.json").read_bytes())
     actual = source_pin()
-    if {k: v for k, v in actual.items() if k != "source_commit"} != {k: v for k, v in pinned.items() if k != "source_commit"}:
+    excluded = {"source_commit", "replicate", "replication_reason"}
+    if {k: v for k, v in actual.items() if k not in excluded} != {k: v for k, v in pinned.items() if k not in excluded}:
         raise RuntimeError("study or treatment bytes differ from the precollection pin")
-    # A persisted git commit containing this exact pin precedes every collected outcome.
+    replicate = pinned.get("replicate", 1)
+    if type(replicate) is not int or replicate < 1 or (replicate > 1 and not pinned.get("replication_reason")):
+        raise ValueError("invalid precollection replicate identity")
+    subprocess.run(["git", "diff", "--quiet", pinned["source_commit"], "--",
+                    *pinned["source_files"], "experiments/manifests/v1"], cwd=ROOT, check=True)
     freeze_name = (directory / "freeze.json").resolve().relative_to(ROOT)
     committed = subprocess.check_output(["git", "show", "HEAD:" + freeze_name.as_posix()], cwd=ROOT)
-    if json.loads(committed) != pinned:
+    if committed != (directory / "freeze.json").read_bytes():
         raise RuntimeError("the registration is not committed")
-    archive_file = directory / "raw.zip"
-    for track, seed, rank, arm in schedule():
-        name = f"runs/{track}/{seed}/{arm}.json"
-        marker = name.replace("runs/", "started/")
-        with zipfile.ZipFile(archive_file, "a", compression=zipfile.ZIP_DEFLATED) as archive:
-            if "freeze.json" not in archive.namelist():
-                archive.writestr("freeze.json", committed)
-            if archive.read("freeze.json") != committed:
-                raise RuntimeError("existing archive has a different precollection pin")
-            if name in archive.namelist():
-                continue
-            if marker in archive.namelist():
-                raise RuntimeError("previously interrupted attempt retained: " + marker)
-            archive.writestr(marker, encoded({"arm": arm, "track": track, "seed": seed, "rank": rank}))
-        with zipfile.ZipFile(archive_file, "a", compression=zipfile.ZIP_DEFLATED) as archive:
-            with tempfile.TemporaryDirectory(prefix="purser-e1-") as tmp:
-                raw = attempt(Path(tmp), Artifacts(archive), pinned, arm, track, seed, rank)
-            archive.writestr(name, encoded(raw))
+    return pinned, committed
+
+
+def archive_members(path, registration):
+    if not path.exists():
+        return set()
+    with zipfile.ZipFile(path) as archive:
+        names = archive.namelist()
+        if len(set(names)) != len(names):
+            raise ValueError("duplicate members in existing trial archive")
+        if archive.read("freeze.json") != registration:
+            raise ValueError("existing archive has a different registration")
+        return set(names)
+
+
+def publish(path, registration, members, key, marker, staged, raw):
+    # ZIP writes change its central directory. Never modify a previously published copy.
+    temp = path.with_name(".raw-next.zip")
+    temp.unlink(missing_ok=True)
+    if path.exists():
+        shutil.copyfile(path, temp)
+    name = f"runs/{key}.json"
+    started = f"started/{key}.json"
+    with zipfile.ZipFile(temp, "a", compression=zipfile.ZIP_DEFLATED) as archive:
+        if "freeze.json" not in members:
+            archive.writestr("freeze.json", registration)
+        if started in members:
+            if json.loads(archive.read(started)) != marker:
+                raise ValueError("existing archive marker disagrees with scheduled case")
+        else:
+            archive.writestr(started, encoded(marker))
+        for obj in staged.namelist():
+            data = staged.read(obj)
+            if obj not in members:
+                archive.writestr(obj, data)
+            elif archive.read(obj) != data:
+                raise ValueError("an existing archive object disagrees with the staged copy")
+        archive.writestr(name, encoded(raw))
+    with temp.open("rb") as file:
+        os.fsync(file.fileno())
+    os.replace(temp, path)
+    sync_directory(path.parent)
+    members.update(staged.namelist())
+    members.update(("freeze.json", name, started))
+
+
+def collect_cases(directory, pinned, registration, units, run_case):
+    path = directory / "raw.zip"
+    members = archive_members(path, registration)
+    for track, seed, rank, arm in units:
+        key = f"{track}/{seed}/{arm}"
+        stage = directory / f".attempt-{track}-{seed}-{arm}"
+        if f"runs/{key}.json" in members:
+            if stage.exists():
+                shutil.rmtree(stage)
+            continue
+        marker = {"track": track, "seed": seed, "rank": rank, "arm": arm}
+        started = stage / "started.json"
+        progress_file = stage / "progress.json"
+        raw_file = stage / "raw.json"
+        working = stage / "trial"
+        previous = stage.exists() or f"started/{key}.json" in members
+        stage.mkdir(mode=0o700, exist_ok=True)
+        sync_directory(directory)
+        identity = {**marker, "registration_sha256": sha(registration)}
+        if started.exists() and json.loads(started.read_bytes()) != identity:
+            raise ValueError("staged attempt belongs to a different registration")
+        staged = FileArchive(stage)
+        assets = Artifacts(staged)
+        if raw_file.exists():
+            raw = json.loads(raw_file.read_bytes())
+        else:
+            def checkpoint(data):
+                write_atomic(progress_file, encoded(data))
+
+            try:
+                if previous:
+                    raise InterruptedError("collector exited before recording the complete trial")
+                write_atomic(started, encoded(identity))
+                working.mkdir()
+                raw = run_case(working, assets, pinned, arm, track, seed, rank, progress=checkpoint)
+            except Exception as error:
+                reason = f"{type(error).__name__}: {error}"
+                progress = json.loads(progress_file.read_bytes()) if progress_file.exists() else {}
+                if working.exists():
+                    try:
+                        progress = run.reconcile_interrupted(working, assets, arm, progress, seed=seed, rank=rank)
+                    except Exception as inspection:
+                        reason += f" (recovery inspection failed: {type(inspection).__name__}: {inspection})"
+                raw = failure_record(assets, pinned, arm, track, seed, rank, reason=reason, progress=progress)
+            write_atomic(raw_file, encoded(raw))
+        publish(path, registration, members, key, marker, staged, raw)
+        shutil.rmtree(stage)
         print(f"{track} {seed} {arm} {raw['terminal']} {raw['cost']['steps']} steps", flush=True)
+
+
+def collect(directory):
+    pinned, registration = committed_registration(directory)
+    fd = os.open(directory, os.O_RDONLY)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        collect_cases(directory, pinned, registration, schedule(), run.attempt)
+    finally:
+        os.close(fd)

@@ -10,9 +10,13 @@ def main():
     parser = argparse.ArgumentParser(description="Preregister, collect and reconstruct the scripted E1 series.")
     parser.add_argument("command", choices=("freeze", "collect", "report", "verify"))
     parser.add_argument("directory", type=Path)
+    parser.add_argument("--replicate", type=int)
+    parser.add_argument("--reason")
     args = parser.parse_args()
+    if args.command != "freeze" and (args.replicate is not None or args.reason is not None):
+        parser.error("replicate and reason belong to the precollection freeze")
     if args.command == "freeze":
-        freeze_series(args.directory)
+        freeze_series(args.directory, replicate=1 if args.replicate is None else args.replicate, reason=args.reason)
     elif args.command == "collect":
         collect(args.directory)
     elif args.command == "verify":
