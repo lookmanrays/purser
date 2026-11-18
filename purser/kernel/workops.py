@@ -10,6 +10,7 @@ OPS = {
     "work.assign": ("id work executor", ("principal", "planner")),
     "obligation.set": ("id work version title observer verifier definition_sha256 environment_sha256",
                        ("principal", "verifier")),
+    "assignment.dispatch": ("id", ("executor",)),
     "result.submit": ("id assignment candidate", ("executor",)),
     "run.open": ("id obligation result", ("principal", "planner")),
     "observation.record": ("id run", ("observer",)),
@@ -29,6 +30,8 @@ def bound(op, binding):
         return binding["assignment"] is None
     if name == "work.create":
         return bool(binding["assignment"])
+    if name == "assignment.dispatch":
+        return binding["assignment"] == op["id"]
     if name == "obligation.set":
         return binding["assignment"] == op["id"] and binding["actor_id"] == op["verifier"] and "criterion" in binding
     return binding["assignment"] == op.get("run", op.get("assignment"))
@@ -91,13 +94,21 @@ def work_reads(view, op, binding, keys):
         if (not assignment or assignment["kind"] != "Assignment" or assignment["commitment"] != binding["commitment"]
                 or assignment["fields"]["executor"] != binding["actor_id"] or assignment["fields"]["state"] != "current"
                 or name == "work.create" and (op["parent"] != assignment["fields"]["work"]
-                                               or view.fields(op["parent"])["state"] == "closed")):
+                                               or view.fields(op["parent"])["state"] == "closed"
+                                               or view.graph.issues(op["parent"]))):
             raise Refusal("forbidden")
+    if name == "work.create" and binding["role"] == "executor":
+        keys.update(view.graph.supports(op["parent"]))
     for ref in tuple(keys):
         row = view.records.get(ref)
         if row:
             keys.update(row["fields"][k] for k in ("work", "assignment", "result")
                         if isinstance(row["fields"].get(k), str) and name not in ("observation.record", "evidence.record"))
+    if name in ("work.assign", "result.submit", "assignment.dispatch", "run.open", "obligation.waive"):
+        for ref in tuple(keys):
+            row = view.records.get(ref)
+            if row and row["kind"] == "WorkItem":
+                keys.update(view.reads(ref) if name == "assignment.dispatch" else view.graph.supports(ref))
     target = view.records.get(op["id"])
     if target and target["kind"] == "WorkItem":
         if name in ("work.close", "work.accept"):
@@ -130,7 +141,7 @@ class WorkAdmission:
     def apply(self, op):
         name, key = op["op"], op["id"]
         fields = {k: v for k, v in op.items() if k != "op"}
-        if name not in ("work.coverage", "work.close", "work.accept", "obligation.set") and key in self.view.records:
+        if name not in ("work.coverage", "work.close", "work.accept", "obligation.set", "assignment.dispatch") and key in self.view.records:
             raise Refusal("id_exists")
         if name == "work.create":
             self.get(op["parent"], "WorkItem")
@@ -142,14 +153,22 @@ class WorkAdmission:
             self.emit("CoverageSet", {"id": key, "coverage": {"kind": op["kind"], "k": op["k"]}})
         elif name == "work.assign":
             work = self.get(op["work"], "WorkItem")
+            self.check_support(op["work"], reassign=True)
             generation = work["generation"] + (1 if work.get("assignment") else 0)
             self.emit("WorkAssigned", fields, commitment=self.scope, generation=generation)
-        elif name == "result.submit":
-            assignment = self.get(op["assignment"], "Assignment")
+        elif name in ("assignment.dispatch", "result.submit"):
+            identity = key if name == "assignment.dispatch" else op["assignment"]
+            assignment = self.get(identity, "Assignment")
             work = self.get(assignment["work"], "WorkItem")
             if (assignment["state"] != "current" or assignment["executor"] != self.actor
-                    or work.get("assignment") != op["assignment"] or work.get("result")):
+                    or work.get("assignment") != identity or work.get("result")):
                 raise Refusal("invalid_transition")
+            self.check_support(assignment["work"])
+            if name == "assignment.dispatch":
+                if self.commitment["state"] != "active":
+                    raise Refusal("invalid_transition")
+                # The gate receipt is the cutoff for this local callback. No shared effect is authorized.
+                return "admitted", "ok", {}
             if op["candidate"]["kind"] == "artifact.bytes":
                 self.batch.artifacts.read(op["candidate"]["digest"])
             self.emit("ResultSubmitted", fields, commitment=self.scope, work=assignment["work"],
@@ -172,6 +191,7 @@ class WorkAdmission:
             criterion = self.get(op["obligation"], "Obligation")
             result = self.get(op["result"], "Result")
             work = self.get(criterion["work"], "WorkItem")
+            self.check_support(criterion["work"])
             if result["work"] != criterion["work"] or op["result"] != work.get("result"):
                 raise Refusal("invalid_transition")
             if result["producer"] in (criterion["observer"], criterion["verifier"]):
@@ -204,6 +224,7 @@ class WorkAdmission:
             criterion = self.get(op["obligation"], "Obligation")
             result = self.get(op["result"], "Result")
             work = self.get(criterion["work"], "WorkItem")
+            self.check_support(criterion["work"])
             if (op["version"] != criterion["version"] or result["work"] != criterion["work"]
                     or work.get("result") != op["result"]):
                 raise Refusal("invalid_transition")
@@ -232,12 +253,23 @@ class WorkAdmission:
         self.reopen_changed()
         return "admitted", "ok", {}
 
+    def check_support(self, work, *, reassign=False):
+        issues = self.view.graph.issues(work, reassign=reassign)
+        if issues:
+            raise Refusal("invalidated_support", {"work": work, "reasons":
+                          [{"code": code, "refs": refs} for code, refs in issues]})
+
     def reopen_changed(self):
-        view = WorkView(self.batch.projection)
-        for key, row in view.records.items():
-            f = row["fields"]
-            if (row["commitment"] == self.scope and row["kind"] == "WorkItem" and f["state"] == "closed"
-                    and not view.closed(key)):
+        # Publish aggregate state only after support fallout. A dependent can itself read a
+        # previously closed aggregate, so settle lost closure witnesses to a fixed point.
+        while True:
+            view = WorkView(self.batch.projection)
+            lost = [(key, row["fields"]) for key, row in view.records.items()
+                    if row["commitment"] == self.scope and row["kind"] == "WorkItem"
+                    and row["fields"]["state"] == "closed" and not view.closed(key)]
+            if not lost:
+                break
+            for key, f in lost:
                 state = "submitted" if f["candidate"] else "assigned" if f.get("assignment") else "open"
                 self.emit("WorkReopened", {"id": key, "state": state})
         c = view.fields(self.scope)
