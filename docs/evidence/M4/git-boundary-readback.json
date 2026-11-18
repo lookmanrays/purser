@@ -1,0 +1,110 @@
+{
+  "after": {
+    "attempt": "T1",
+    "branch_tip": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b",
+    "expected_old": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+    "history_intact": true,
+    "intent_digest": "6263885affab7b19c0d8dec04f07627b39649fb0d02af16035fe32bf8769dd69",
+    "matching_transitions": 1,
+    "reason": "protected_receipt_verified",
+    "receipt_ref": "refs/purser/receipts/6263885affab7b19c0d8dec04f07627b39649fb0d02af16035fe32bf8769dd69",
+    "receipt_target": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b",
+    "repository": "R-notify",
+    "repository_instance": "ac3396663f89179d7698c3e8991196152032fb97abe2ed9a8b8724c08b37f387",
+    "resource": "refs/heads/purser-demo",
+    "state": "confirmed_happened",
+    "target": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b",
+    "writer_quiescent": true
+  },
+  "after_later_advance": {
+    "attempt": "T1",
+    "branch_tip": "4e224463a8e72f796d7b90e453b5563dce1b222e",
+    "expected_old": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+    "history_intact": true,
+    "intent_digest": "6263885affab7b19c0d8dec04f07627b39649fb0d02af16035fe32bf8769dd69",
+    "matching_transitions": 1,
+    "reason": "protected_receipt_verified",
+    "receipt_ref": "refs/purser/receipts/6263885affab7b19c0d8dec04f07627b39649fb0d02af16035fe32bf8769dd69",
+    "receipt_target": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b",
+    "repository": "R-notify",
+    "repository_instance": "ac3396663f89179d7698c3e8991196152032fb97abe2ed9a8b8724c08b37f387",
+    "resource": "refs/heads/purser-demo",
+    "state": "confirmed_happened",
+    "target": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b",
+    "writer_quiescent": true
+  },
+  "before": {
+    "attempt": "T1",
+    "branch_tip": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+    "expected_old": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+    "history_intact": true,
+    "intent_digest": "6263885affab7b19c0d8dec04f07627b39649fb0d02af16035fe32bf8769dd69",
+    "matching_transitions": 0,
+    "reason": "quiescent_no_application",
+    "receipt_ref": "refs/purser/receipts/6263885affab7b19c0d8dec04f07627b39649fb0d02af16035fe32bf8769dd69",
+    "receipt_target": null,
+    "repository": "R-notify",
+    "repository_instance": "ac3396663f89179d7698c3e8991196152032fb97abe2ed9a8b8724c08b37f387",
+    "resource": "refs/heads/purser-demo",
+    "state": "confirmed_absent",
+    "target": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b",
+    "writer_quiescent": true
+  },
+  "changed_paths": [
+    "notify/delivery.py",
+    "notify/preferences.py",
+    "notify/retry.py"
+  ],
+  "frozen_e3_target": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b",
+  "initial": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+  "intent": {
+    "assignment": "AS-B",
+    "capability": "git.commit",
+    "commitment": "C-notify",
+    "effect": "F-publish",
+    "expected_old": {
+      "algorithm": "sha1",
+      "digest": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+      "kind": "git.commit"
+    },
+    "generation": 2,
+    "grant": "G-publish",
+    "purpose": "Publish the verified notification policy.",
+    "repository": "R-notify",
+    "resource": "refs/heads/purser-demo",
+    "slot": "publish",
+    "target": {
+      "algorithm": "sha1",
+      "digest": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b",
+      "kind": "git.commit"
+    },
+    "work": "W2"
+  },
+  "later": "4e224463a8e72f796d7b90e453b5563dce1b222e",
+  "native_branch_reflog_oldest_first": [
+    {
+      "message": "purser.init ac3396663f89179d7698c3e8991196152032fb97abe2ed9a8b8724c08b37f387",
+      "oid": "55686bd5152e10a53dfdc2c003974ea405a3a075"
+    },
+    {
+      "message": "purser.effect 6263885affab7b19c0d8dec04f07627b39649fb0d02af16035fe32bf8769dd69 T1",
+      "oid": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b"
+    },
+    {
+      "message": "controlled later advance",
+      "oid": "4e224463a8e72f796d7b90e453b5563dce1b222e"
+    }
+  ],
+  "native_current_branch": "4e224463a8e72f796d7b90e453b5563dce1b222e",
+  "native_current_receipt": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b",
+  "native_receipt_reflog": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b\tpurser.effect 6263885affab7b19c0d8dec04f07627b39649fb0d02af16035fe32bf8769dd69 T1",
+  "observed_at_utc": "2026-11-18T22:52:59.153581+00:00",
+  "platform": {
+    "git": "git version 2.50.1 (Apple Git-155)",
+    "os": "macOS-26.5.2-arm64-arm-64bit",
+    "python": "3.11.15",
+    "refs": "reftable"
+  },
+  "scope": "off-study M4-B technical fixture; no experiment collection or ledger admission",
+  "source": "b781dcb79398270b9b8e18baf72cbb6a395f79f3"
+}
