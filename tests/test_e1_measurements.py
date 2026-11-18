@@ -110,6 +110,16 @@ class MeasurementIntegrity(unittest.TestCase):
                 with self.assertRaises(measurement.MeasurementUnavailable):
                     measurement.probe(location, cases=[{}])
 
+    def test_one_missing_protected_probe_leaves_other_criteria_independently_measurable(self):
+        c = self.candidates
+        (c.work / "notify/retry.py").write_text("def delays(attempts, base):\n    return (0,)\n")
+        oid = c.commit("Partial evidence fixture")
+        with c.export(oid) as loc, patch.object(measurement, "REGISTRATION", self.root / "missing-tests"):
+            with self.assertRaises(measurement.MeasurementUnavailable):
+                scorer.measure(c.archive, oid, Path(loc), 912345, 4)
+            surviving = scorer.measure(c.archive, oid, Path(loc), 912345, 4, labels=("W2/retry", "scope/paths"))
+            self.assertEqual({k: v["verdict"] for k, v in surviving.items()}, {"W2/retry": "fail", "scope/paths": "pass"})
+
     def test_first_public_diagnosis_wins_and_pre_repair_false_closure_stays(self):
         original = [fault("A"), submitted("A"),
                     event("action", action="check", input={}, candidate="A",
