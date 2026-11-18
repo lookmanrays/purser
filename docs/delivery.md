@@ -4,7 +4,7 @@ The orchestrator integrates worker candidates on `lookman/purser-development`. E
 
 ## Current implementation
 
-M0, M1 and M2 passed their gates. The integrated M3 kernel can reconsider a decision, reopen its dependent work and explain why a sibling stayed closed. The architect registered the 66 original scripted E2 trials on `59e27f2` and started collection. M3-G awaits independent readback of those results. [CLI example](../README.md) · [E2 source decision and registration](evidence/M3/e2-registration.md)
+M0 through M3 passed their local engineering gates. The integrated kernel can reconsider a decision, reopen its dependent work and explain why a sibling stayed closed. All 66 scripted E2 trials completed. Both original arms passed 20/20 primary cases. Purser used 500 rework steps against the plain loop’s 260. The next milestone qualifies authority and recovery of real Git effects. [CLI example](../README.md) · [M3 decision and evidence](evidence/M3/acceptance.md)
 
 ## M0 · Design and experimental protocol
 
