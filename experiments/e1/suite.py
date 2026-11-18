@@ -35,7 +35,9 @@ def source_pin():
         "raw_schema_sha256": sha((REGISTRATION / "raw.schema.json").read_bytes()),
         "scorer_sha256": group(selected("scorer") + support), "fault_driver_sha256": group(selected("executor", "run")),
         "executor_sha256": group(selected("executor") + support), "controller_sha256": group(code),
-        "treatments": {arm: group(code + (kernel if arm == "purser" else [])) for arm in ARMS},
+        "treatments": {arm: sha(encoded({"selected_arm": arm,
+                                           "implementation": group(code + (kernel if arm == "purser" else []))}))
+                       for arm in ARMS},
         "action_mapping": {"setup": "Before release, provision common fixture, scoped assignments and criteria.",
           "plan": "Release shared order, reassign after an actual diagnosis, or open one criterion run.",
           "context": "Request the assigned subject's current public state.",

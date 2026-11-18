@@ -27,6 +27,12 @@ def inspect(repo, oid, root, label):
         expected = [[[i, channel, t] for i in ids] if t in range(0, test["attempts"] * 3, 3)
                     else [] for t in test["times"]]
         answer = [{"enqueued": test["attempts"] * len(ids), "samples": expected, "pending": 0}]
-    return {"criterion": label, "version": 1, "candidate": oid, "input": test if "/" in label and
-            label not in ("scope/paths", "legacy/compat") else None, "observed": actual, "expected": answer,
-            "verdict": "pass" if actual == answer else "fail"}
+    return {"criterion": label, "version": 1, "candidate": oid,
+            "input": None if label in ("scope/paths", "legacy/compat") else test,
+            "observed": actual, "expected": answer}
+
+
+def verdict(report, label, oid):
+    if (report["candidate"], report["criterion"], report["version"]) != (oid, label, 1):
+        raise ValueError("public observation is for a different candidate or criterion")
+    return "pass" if report["observed"] == report["expected"] else "fail"

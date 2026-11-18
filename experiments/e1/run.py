@@ -12,7 +12,7 @@ from pathlib import Path
 from . import observer, scorer
 from .arms import Plan, self_review
 from .artifacts import FIXTURE, MANIFEST, START, Candidates, changes, encoded, git, sha
-from .executor import LEAVES, ORDER, PARENT, PARENT_CHECKS, fault_for, implement, inject, local_check
+from .executor import LEAVES, ORDER, PARENT, PARENT_CHECKS, TASKS, fault_for, implement, inject, local_check
 from .purser_arm import Treatment
 
 
@@ -66,7 +66,7 @@ class Driver:
     def __init__(self, candidates, adapter, journal, store, seed, track):
         self.candidates, self.adapter, self.j, self.assets = candidates, adapter, journal, store
         self.seed, self.fault = seed, fault_for(seed, track)
-        self.used_fault, self.latest, self.previous = False, {}, adapter.states()
+        self.used_fault, self.previous = False, adapter.states()
         self.witnesses = []
         self.seen = set()
 
@@ -74,12 +74,15 @@ class Driver:
         return self.j.action(action, work, actor, oid, inputs, operation)
 
     def capture(self, work, oid, decision=None):
-        states = self.adapter.states()
+        rows, checkpoint = self.adapter.public_view()
+        states = {key: row["state"] for key, row in rows.items()}
         for key, state in states.items():
             if self.previous.get(key) != state or (decision is not None and key == work):
                 self.j.event("public_state", {
                     "subject": key, "from": self.previous.get(key), "to": state,
-                    "candidate": self.latest.get(key, oid), "diagnosis": decision["diagnosis"] if key == work and decision else [],
+                    "candidate": rows[key]["candidate"]["digest"] if isinstance(rows[key]["candidate"], dict)
+                                 else rows[key]["candidate"], "checkpoint": checkpoint,
+                    "diagnosis": decision["diagnosis"] if key == work and decision else [],
                     "evidence": decision if key == work and decision else None, "effect_disposition": None,
                 })
         self.previous = states
@@ -90,11 +93,14 @@ class Driver:
         if repair:
             self.call("plan", work, "planner", {"repair": repair}, lambda: adapter.assign_again(work))
             self.capture(work, candidates.head)
-        self.call("context", work, "executor", {"work": work}, lambda: adapter.context(work))
+        context = self.call("context", work, "executor", {"work": work}, lambda: adapter.context(work))
+        released = context["work"]
+        if released["id"] != work or released["title"] != TASKS[work]:
+            raise ValueError("released assignment does not match the common task")
         fault = self.fault if not self.used_fault and self.fault and self.fault[1] == work else None
         if work in LEAVES:
             def edit():
-                implement(root, work)
+                implement(root, released["id"])
                 return {"edited": work}
             self.call("edit", work, "executor", {"repair": repair, "work": work}, edit)
         elif repair:
@@ -114,7 +120,6 @@ class Driver:
             self.used_fault = True
         oid = candidates.commit(f"Notification work {work}")
         self.seen.add(oid)
-        self.latest[work] = oid
         if fault:
             self.j.event("fault", {"seed": self.seed, "intervention": fault[0], "target": fault[2],
                                    "candidate": oid, "trigger": f"first submission of {work}",
@@ -137,7 +142,8 @@ class Driver:
                         return {"witness": ref, "response": response}
                     self.call("observe", work, "independent_observer", {"criterion": label}, observe, oid)
                     report = self.assets.archive.read(self.witnesses[-1]["path"])
-                    verdict = json.loads(report)
+                    measured = json.loads(report)
+                    verdict = dict(measured, verdict=observer.verdict(measured, label, oid))
                     self.call("decide", work, "independent_verifier", {"criterion": label, "witness": self.witnesses[-1]},
                               lambda: adapter.verify(work, label, verdict), oid)
                     self.capture(work, oid)

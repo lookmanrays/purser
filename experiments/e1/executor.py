@@ -10,6 +10,12 @@ RETURNS = {"W1": "channel not in disabled", "W2": "tuple(k * base for k in range
 LEAVES = {"W1": "W1/preferences", "W2": "W2/retry", "W3": "W3/delivery"}
 PARENT = "W-notify"
 PARENT_CHECKS = ("scope/paths", "legacy/compat", "queue/composition")
+TASKS = {
+    "W1": "Disable delivery on disabled channels and allow other channels.",
+    "W2": "Schedule every requested attempt at offsets k times base, beginning at zero.",
+    "W3": "Keep the first occurrence of each event ID in input order within each submitted batch.",
+    PARENT: "Integrate the three policies, retain compatibility and restrict edits to the three policy files.",
+}
 
 
 def implement(worktree, work):

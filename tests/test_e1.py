@@ -1,4 +1,3 @@
-import json
 import tempfile
 import unittest
 import zipfile
@@ -6,9 +5,10 @@ from pathlib import Path
 
 from experiments.e1 import scorer
 from experiments.e1.artifacts import Artifacts, Candidates, START
+from experiments.e1.arms import Plan
 from experiments.e1.executor import implement, inject
 from experiments.e1.purser_arm import Treatment
-from experiments.e1.run import Journal, operational_definitions
+from experiments.e1.run import Driver, Journal, operational_definitions
 from experiments.e1.suite import schedule
 
 
@@ -37,6 +37,19 @@ class ExperimentComponents(unittest.TestCase):
                 bad = scorer.measure(c.archive, oid, Path(ex), 912345, 4)
             self.assertEqual({k for k, r in bad.items() if r["verdict"] == "fail"},
                              {"W2/retry","queue/composition"})
+
+    def test_public_action_counts_against_hand_worked_nonstudy_control(self):
+        for arm, expected in [("loop", 24), ("loop_equal_verifier", 42)]:
+            with self.subTest(arm=arm), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp)
+                with zipfile.ZipFile(path/"unit.zip", "w") as z:
+                    assets = Artifacts(z)
+                    candidates = Candidates(path, assets)
+                    journal = Journal(arm)
+                    driver = Driver(candidates, Plan(path), journal, assets, 912345, "clean")
+                    self.assertEqual(driver.execute(), "done")
+                    self.assertEqual(expected, journal.steps)
+                    self.assertEqual(sum(r["kind"] == "action" for r in journal.rows), expected)
 
     def test_kernel_diagnosis_is_read_from_real_scoped_public_records(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -2,8 +2,8 @@
 
 import json
 
-from .artifacts import FIXTURE, changes, encoded
-from .executor import LEAVES, ORDER, PARENT, PARENT_CHECKS, PATHS, local_check
+from .artifacts import FIXTURE, changes, encoded, sha
+from .executor import LEAVES, ORDER, PARENT, PARENT_CHECKS, PATHS, TASKS, local_check
 from .measurement import probe
 
 
@@ -30,7 +30,7 @@ def self_review(repo, oid, root, work):
 class Plan:
     def __init__(self, directory):
         self.file = directory / "plan.json"
-        self.file.write_bytes(encoded({work: {"state": "open", "candidate": None, "verified": {}}
+        self.file.write_bytes(encoded({work: {"state": "open", "candidate": None, "verified": {}, "work": {"id": work, "title": TASKS[work]}}
                                        for work in (*ORDER, PARENT)}))
 
     def read(self):
@@ -71,6 +71,11 @@ class Plan:
         if not missing:
             self.update(work, state="closed")
         return {"diagnosis": sorted(missing), "claim": self.context(work)}
+
+    def public_view(self):
+        original = self.file.read_bytes()
+        rows = json.loads(original)
+        return rows, {"plan_sha256": sha(original)}
 
     def states(self):
         return {k: row["state"] for k, row in self.read().items()}
