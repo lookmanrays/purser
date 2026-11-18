@@ -1,0 +1,89 @@
+{
+  "matched_report_cells": 100,
+  "native_strict": {
+    "git_packs": 5,
+    "missing_registered": 54,
+    "records": 12,
+    "reexecuted_seed_candidate_criteria": 80,
+    "reexecuted_seed_candidate_versions": 20,
+    "registered": 66,
+    "replicate": 120,
+    "started": 12
+  },
+  "normal_registered_shape_units_reexecuted_privately": [
+    {
+      "key": "primary/2001/purser.json",
+      "physical": 48,
+      "worker_git_inspect": 0
+    },
+    {
+      "key": "primary/2001/loop_equal_verifier.json",
+      "physical": 48,
+      "worker_git_inspect": 0
+    },
+    {
+      "key": "primary/2001/loop.json",
+      "physical": 30,
+      "worker_git_inspect": 0
+    },
+    {
+      "key": "primary/2002/loop_equal_verifier.json",
+      "physical": 48,
+      "worker_git_inspect": 0
+    },
+    {
+      "key": "primary/2002/loop.json",
+      "physical": 30,
+      "worker_git_inspect": 0
+    },
+    {
+      "key": "primary/2002/purser.json",
+      "physical": 48,
+      "worker_git_inspect": 0
+    },
+    {
+      "key": "clean/2001/purser.json",
+      "physical": 42,
+      "worker_git_inspect": 0
+    },
+    {
+      "key": "clean/2001/loop_equal_verifier.json",
+      "physical": 42,
+      "worker_git_inspect": 0
+    },
+    {
+      "key": "clean/2001/loop.json",
+      "physical": 24,
+      "worker_git_inspect": 0
+    },
+    {
+      "key": "closed-affected/2001/purser.json",
+      "physical": 53,
+      "worker_git_inspect": 0
+    },
+    {
+      "key": "closed-affected/2001/loop_equal_verifier.json",
+      "physical": 53,
+      "worker_git_inspect": 0
+    },
+    {
+      "key": "closed-affected/2001/loop.json",
+      "physical": 32,
+      "worker_git_inspect": 0
+    }
+  ],
+  "observed_worker_git_inspects": 0,
+  "official_starts": 0,
+  "ordinary_raw_sha256": "04ed30cd102f2f716319cfd81fb0de3a5851baa33cb567352cb040bd67892d95",
+  "protected_separate": 456,
+  "reference_output_sha256": "ff8b66c0fc6febc2f1056bfc49f2c5d8a0d31c6cabed345e13eb12501f94c47d",
+  "scripted_worker_tool_calls": [
+    "check",
+    "context",
+    "edit",
+    "review",
+    "schedule"
+  ],
+  "source": "6c16e8c7381cdef140e9db803be26bd8eaa82798",
+  "total_physically_charged_public_work": 498
+}

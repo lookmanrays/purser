@@ -4,7 +4,7 @@ The orchestrator integrates worker candidates on `lookman/purser-development`. E
 
 ## Current implementation
 
-M0, M1 and M2 passed their gates. The integrated M3 kernel can reconsider a decision, reopen its dependent work and explain why a sibling stayed closed. M3’s comparison experiment is in source qualification. Its original 66 trials have yet to start. The [CLI example](../README.md) exercises the local product, and the [latest source review](evidence/M3/review-1baf2dd/source-review.md) records the remaining evaluator work.
+M0, M1 and M2 passed their gates. The integrated M3 kernel can reconsider a decision, reopen its dependent work and explain why a sibling stayed closed. The architect registered the 66 original scripted E2 trials on `59e27f2` and started collection. M3-G awaits independent readback of those results. [CLI example](../README.md) · [E2 source decision and registration](evidence/M3/e2-registration.md)
 
 ## M0 · Design and experimental protocol
 
