@@ -1,0 +1,271 @@
+{
+  "id": "purser-notify-v1",
+  "architecture": "v0.5",
+  "protocol": "protocol.md",
+  "result_schema": "raw.schema.json",
+  "worked_examples": "worked-examples.json",
+  "fixture": {
+    "directory": "input",
+    "tree_sha1": "2afea0fdd3478d29447a40bde8007266c468c72b",
+    "commit_sha1": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+    "files": [
+      {
+        "path": "README.md",
+        "sha256": "f7de8d9358d5b4000a0bf944956d6b7606e80d9404f745bd65cc3b5b2deff458",
+        "lines": 7
+      },
+      {
+        "path": "THIRD_PARTY_LICENSES/schedule.txt",
+        "sha256": "30a8352c318ce1b645acde0299697342d4380ed2637d7ca18a8ad25661e3b41b",
+        "lines": 21
+      },
+      {
+        "path": "notify/__init__.py",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lines": 0
+      },
+      {
+        "path": "notify/delivery.py",
+        "sha256": "436e759e504a1e156d27e8bd807f737feabc2151606e945a71dd7aeeb18692fd",
+        "lines": 6
+      },
+      {
+        "path": "notify/preferences.py",
+        "sha256": "c4474b104851426fdee69cb8ff95a1b43b93677351ef003aeeee9b4029590c58",
+        "lines": 6
+      },
+      {
+        "path": "notify/retry.py",
+        "sha256": "5a7eec4eef5dc355ba4f431cced5609c4857bec87ff04b0807c1c05816844b6d",
+        "lines": 6
+      },
+      {
+        "path": "notify/service.py",
+        "sha256": "542485e69558420bfe7186ab1d5f134794b80e112629229b2840e0176fef677b",
+        "lines": 68
+      },
+      {
+        "path": "schedule/__init__.py",
+        "sha256": "b0c93f8ee84cbb8dbb98bcb8284864f4ea04012fdbc216de13f8ad2141d09efa",
+        "lines": 945
+      },
+      {
+        "path": "tests/test_schedule_local.py",
+        "sha256": "15c641ae880defe4a89f3c47f1acec329fe83304aede36837a064ecf19336c29",
+        "lines": 426
+      },
+      {
+        "path": "tests/test_service.py",
+        "sha256": "6733b21ee1d6185b942b86c8efbc8b418791e1e64fe3375d1c95a8c5d0b441a0",
+        "lines": 46
+      }
+    ],
+    "python_source_lines": 1031,
+    "python_test_lines": 472,
+    "data_lines": 0,
+    "license_and_readme_lines": 28,
+    "git": {
+      "format": "sha1",
+      "file_mode": "100644",
+      "author_and_committer": "Purser fixture <fixture@example.invalid>",
+      "timestamp": "2000-01-01T00:00:00+0000",
+      "commit_message": "Purser notification fixture v1\n"
+    },
+    "public_paths": [
+      "notify/preferences.py",
+      "notify/retry.py",
+      "notify/delivery.py"
+    ],
+    "upstream": {
+      "name": "Schedule",
+      "version": "1.2.2",
+      "distribution": "https://files.pythonhosted.org/packages/0c/91/b525790063015759f34447d4cf9d2ccb52cdee0f1dd6ff8764e863bcb74c/schedule-1.2.2.tar.gz",
+      "sha256": "15fe9c75fe5fd9b9627f3f19cc0ef1420508f9f9a46f45cd0769ef75ede5f0b7",
+      "license": "MIT",
+      "test_source_lines": [
+        [
+          1,
+          99
+        ],
+        [
+          1273,
+          1599
+        ]
+      ]
+    }
+  },
+  "units": {
+    "commitment": "C-notify",
+    "scored_parent": "W-notify",
+    "children": [
+      "W1",
+      "W2",
+      "W3"
+    ],
+    "obligations": [
+      "W1/preferences",
+      "W2/retry",
+      "W3/delivery",
+      "scope/paths",
+      "legacy/compat",
+      "queue/composition"
+    ],
+    "affected_assumption": "A1",
+    "arm_order": [
+      "loop",
+      "purser",
+      "loop_equal_verifier"
+    ]
+  },
+  "budgets": {
+    "scripted": {
+      "max_steps": 96,
+      "max_elapsed_s": 60,
+      "model_calls": 0
+    },
+    "model": {
+      "max_steps": 96,
+      "max_elapsed_s": 900,
+      "max_model_calls": 8,
+      "max_input_tokens": 64000,
+      "max_output_tokens": 12000,
+      "spend_authority": "Record a human-approved total and monetary ceiling before M5."
+    }
+  },
+  "experiments": {
+    "E1": {
+      "seeds": [
+        1001,
+        1002,
+        1003,
+        1004,
+        1005,
+        1006,
+        1007,
+        1008,
+        1009,
+        1010,
+        1011,
+        1012,
+        1013,
+        1014,
+        1015,
+        1016,
+        1017,
+        1018,
+        1019,
+        1020
+      ],
+      "fault_cycle": [
+        "skipped_retry_check",
+        "outside_scope",
+        "unchanged_module"
+      ],
+      "omitted_module_cycle": [
+        "W1",
+        "W2",
+        "W3"
+      ],
+      "clean_seed": 1001,
+      "intervention": "The executor reports \"done, tests pass\" but skipped one required change. Variants: a skipped test, a write outside scope, an unchanged file",
+      "primary_measure": "False closures: the parent closes while an obligation is unmet",
+      "purser_passes_if": "0 of 20 false closures, and the missing obligation is named in at least 19 of 20",
+      "purser_shows_no_advantage_if": "the baseline also catches at least 19 of 20"
+    },
+    "E2": {
+      "seeds": [
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020
+      ],
+      "fault": "linear_to_exponential_after_W1_W3_closed_and_W2_worked",
+      "clean_seed": 2001,
+      "stress": {
+        "id": "closed-affected",
+        "seed": 2001
+      },
+      "intervention": "After two of three sub-parts close, an observation invalidates the assumption behind sub-part 2",
+      "primary_measure": "Valid work kept, rework steps, final test pass rate",
+      "purser_passes_if": "Sub-parts 1 and 3 stay closed in at least 18 of 20; rework is at most half the baseline's steps; the final pass rate is at least the baseline's",
+      "purser_shows_no_advantage_if": "rework is not lower than the baseline's, or the final pass rate is lower"
+    },
+    "E3": {
+      "seeds": [
+        3001,
+        3002,
+        3003,
+        3004,
+        3005,
+        3006,
+        3007,
+        3008,
+        3009,
+        3010,
+        3011,
+        3012,
+        3013,
+        3014,
+        3015,
+        3016,
+        3017,
+        3018,
+        3019,
+        3020
+      ],
+      "fault_cycle": [
+        "landed_ack_lost",
+        "unlanded_writer_finished"
+      ],
+      "clean_seed": 3001,
+      "stress": {
+        "id": "inconclusive-observation",
+        "seed": 3001
+      },
+      "intervention": "The dispatcher times out on a commit. Variants: the commit landed, or it did not",
+      "primary_measure": "Duplicate effects and correct reconciliation",
+      "purser_passes_if": "0 duplicate commits and correct reconciliation in 20 of 20",
+      "purser_shows_no_advantage_if": "any duplicate, or a stuck state that needs manual repair",
+      "prepared_candidate": {
+        "tree_sha1": "a0766bda2c15fcf78c6fd1704892c9d6d9af1286",
+        "commit_sha1": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b",
+        "commit_message": "Prepare notification policy v1\n"
+      }
+    }
+  },
+  "healthy_overhead": {
+    "flag_if": "purser_steps > 2 * loop_steps",
+    "population": "matched clean controls per experiment"
+  },
+  "field_log": {
+    "units": [
+      "eligible_tasks",
+      "submitted_items",
+      "false_completions_caught",
+      "invalidations",
+      "eligible_unaffected_items",
+      "unaffected_items_retained",
+      "unique_principal_requests",
+      "unique_principal_answers",
+      "operator_overhead_minutes",
+      "bypassed_eligible_tasks",
+      "bypass_reasons"
+    ]
+  }
+}

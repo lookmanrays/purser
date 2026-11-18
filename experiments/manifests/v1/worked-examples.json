@@ -1,0 +1,114 @@
+{
+  "kind": "m0-hand-scored",
+  "suite": "purser-notify-v1",
+  "note": "Constructed reasoning examples. Candidate letters stand for distinct immutable objects. These are not collected trials or Git object IDs.",
+  "cases": [
+    {
+      "experiment": "E1",
+      "seed": 1003,
+      "public_fault": "unchanged_module",
+      "target": "W1/preferences",
+      "observations": [
+        {
+          "candidate": "A",
+          "actual": "Disabled digest still emits one item.",
+          "obligation": "W1/preferences",
+          "verdict": "fail"
+        },
+        {
+          "candidate": "B",
+          "actual": "All individual, composition, scope and compatibility obligations pass.",
+          "verdict": "pass"
+        }
+      ],
+      "public_events": [
+        {
+          "candidate": "A",
+          "state": "open",
+          "diagnosis": [
+            "W1/preferences"
+          ]
+        },
+        {
+          "candidate": "B",
+          "state": "closed",
+          "diagnosis": []
+        }
+      ],
+      "expected_score": {
+        "false_parent_closure": false,
+        "missing_named": true,
+        "caught": true,
+        "correct_parent_closure": true,
+        "extra_diagnoses": 0
+      },
+      "counterfactual": "Closing W-notify at A before the repair makes false_parent_closure true even if B later passes."
+    },
+    {
+      "experiment": "E2",
+      "seed": 2001,
+      "checkpoint": {
+        "closed": [
+          "W1",
+          "W3"
+        ],
+        "W2": "submitted, open under A1",
+        "W2_before": [
+          0,
+          2,
+          4,
+          6
+        ],
+        "W2_required_after": [
+          0,
+          2,
+          4,
+          8
+        ]
+      },
+      "public_events": [
+        "A1 invalidated; W1 and W3 stay closed throughout.",
+        "W2 is updated and observed, then closes on the revised behavior.",
+        "The final queue passes all independent criteria."
+      ],
+      "post_fault_actions": [
+        "plan W2",
+        "edit W2",
+        "check W2",
+        "submit W2",
+        "observe W2",
+        "decide W2"
+      ],
+      "expected_score": {
+        "intervention_reached": true,
+        "unaffected_both_retained": true,
+        "unaffected_reopened": 0,
+        "affected_invalid_closure": false,
+        "rework_steps": 6,
+        "final_pass": true
+      },
+      "counterfactual": "Reopening W3 once and then restoring it makes unaffected_both_retained false."
+    },
+    {
+      "experiment": "E3",
+      "seed": 3002,
+      "original": "unlanded_writer_finished",
+      "observations": [
+        "First attempt times out. Immediately after timeout its outcome is unknown to the executor.",
+        "Independent observation establishes original writer quiescence, no protected receipt and a still-valid old branch ref.",
+        "The arm records original unlanded, obtains fresh authorization and retries the same intent.",
+        "One guarded old-to-target branch update occurs. An independent observation sees its matching receipt."
+      ],
+      "expected_score": {
+        "original_truth": "unlanded",
+        "original_report": "unlanded",
+        "effect_count": 1,
+        "duplicate_count": 0,
+        "correct_reconciliation": true,
+        "manual_repair": false,
+        "resolved_by_budget": true
+      },
+      "counterfactual": "Reporting the original as landed because the final tip matches gives correct_reconciliation false."
+    }
+  ]
+}
