@@ -1,5 +1,6 @@
 """Read-only operator answers from one verified snapshot."""
 
+from .kernel.support import SupportGraph
 from .kernel.wire import KernelError, digest
 from .kernel.workview import WorkView
 
@@ -34,7 +35,18 @@ def why(snapshot, as_of, record_id):
                     "refs": [commitment["fields"]["root"]]}]
     else:
         reasons = view.reasons(record_id)
-    return {
-        "v": 1, "revision": snapshot["revision"], "as_of": as_of,
-        "record": record, "reasons": reasons,
-    }
+    result = {"v": 1, "revision": snapshot["revision"], "as_of": as_of, "record": record, "reasons": reasons}
+    if record["kind"] == "WorkItem" and any(
+        r["commitment"] == record["commitment"] and r["kind"] in ("Assumption", "Decision") for r in records.values()
+    ):
+        causes = []
+        for ref in record["fields"].get("causes", []):
+            observation = records[ref]
+            if observation["kind"] == "Observation" and "assumption" in observation["fields"]:
+                premise = observation["fields"]["assumption"]
+                at_change = SupportGraph(records, view.fields(premise)["impact_edges"])
+                causes.append({"observation": ref, "assumption": premise, "revision": observation["changed"],
+                               "edges": at_change.edges_for(record_id)})
+        result["support"] = {"edges": view.graph.edges_for(record_id), "causes": causes,
+                             "basis": view.basis(record_id), "outcome": view.outcome(record_id)}
+    return result

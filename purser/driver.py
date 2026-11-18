@@ -1,6 +1,8 @@
 """One foreground turn over durable state. Adapters are supplied by trusted launchers."""
+from uuid import uuid4
+
 from .kernel.gate import admit
-from .kernel.wire import KernelError, digest
+from .kernel.wire import KernelError
 from .kernel.workview import WorkView
 
 
@@ -13,7 +15,8 @@ def context_pack(snapshot, assignment_id):
     work_id, scope = assignment["work"], row["commitment"]
     work, commitment = view.fields(work_id), view.fields(scope)
     if (commitment["state"] != "active" or assignment["state"] != "current"
-            or work.get("assignment") != assignment_id or assignment["generation"] != work["generation"]):
+            or work.get("assignment") != assignment_id or assignment["generation"] != work["generation"]
+            or view.graph.issues(work_id)):
         raise KernelError("inactive_assignment")
     obligations = []
     for oid in view.related[work_id, "Obligation"]:
@@ -38,7 +41,7 @@ def context_pack(snapshot, assignment_id):
         "acceptance": "principal" if work_id == commitment["root"] else "automatic",
         "limits": {"results_per_assignment": 1, "shared_effects": 0},
         "obligations": obligations, "observations": observations, "reasons": view.reasons(work_id),
-        "decisions": [], "capabilities": [],
+        "decisions": view.graph.decisions(work_id), "capabilities": [],
     }
 
 
@@ -54,25 +57,34 @@ def tick(store, executors=None, *, clock=None):
             continue
         work = view.fields(work_id)
         scope = view.records[work_id]["commitment"]
-        token = digest("proposal", {"action": name, "work": work_id, "generation": work["generation"],
-                                    "base_revision": snapshot["revision"]})
+        # A snapshot can select the same opportunity in two processes. An invocation has
+        # its own receipt identities so transport replay cannot release a different callback.
+        token = uuid4().hex
+
+        def propose(actor, role, assignment, operation, prefix):
+            binding = {"actor_id": actor, "role": role, "principal_id": "principal:local",
+                       "commitment": scope, "assignment": assignment}
+            proposal = {"v": 1, "proposal_id": prefix + token, "commitment": scope,
+                        "base_revision": snapshot["revision"], "ops": [operation], "justification": [work_id]}
+            options = {} if clock is None else {"clock": clock}
+            return admit(store, binding, proposal, **options)
+
         if name == "execute":
             assignment_id = work["assignment"]
             actor = view.fields(assignment_id)["executor"]
             if actor not in executors:
                 continue
+            release = propose(actor, "executor", assignment_id,
+                              {"op": "assignment.dispatch", "id": assignment_id}, "p-release-")
+            if release["disposition"] != "admitted":
+                return {"v": 1, "state": "refused", "revision": release["revision"], "action": action, "receipt": release}
             candidate = executors[actor](context_pack(snapshot, assignment_id))
             op = {"op": "result.submit", "id": "R-" + token, "assignment": assignment_id, "candidate": candidate}
             role = "executor"
         else:
             actor, role, assignment_id = "closure:local-driver", "closure", None
             op = {"op": "work.close", "id": work_id}
-        binding = {"actor_id": actor, "role": role, "principal_id": "principal:local",
-                   "commitment": scope, "assignment": assignment_id}
-        proposal = {"v": 1, "proposal_id": "p-driver-" + token, "commitment": scope,
-                    "base_revision": snapshot["revision"], "ops": [op], "justification": [work_id]}
-        options = {} if clock is None else {"clock": clock}
-        result = admit(store, binding, proposal, **options)
+        result = propose(actor, role, assignment_id, op, "p-driver-")
         return {"v": 1, "state": "dispatched", "revision": result["revision"],
                 "action": action, "receipt": result}
     return {"v": 1, "state": "idle", "revision": snapshot["revision"], "frontier": actions}

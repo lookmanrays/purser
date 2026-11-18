@@ -76,7 +76,8 @@ def project(projection, name, data, revision):
         if prior:
             update(prior, "Assignment", state="superseded")
         create("Assignment", dict(fields, state="current"))
-        update(work, "WorkItem", state="assigned", generation=data["generation"], assignment=identity,
+        recovered = {"causes": []} if "causes" in records[work]["fields"] else {}
+        update(work, "WorkItem", state="assigned", generation=data["generation"], assignment=identity, **recovered,
                candidate=None, result=None, accepted_outcome=None, closed_outcome=None)
     elif name == "ResultSubmitted":
         create("Result", fields)
