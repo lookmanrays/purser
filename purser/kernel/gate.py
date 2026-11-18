@@ -2,10 +2,10 @@
 import re
 from datetime import datetime, timezone
 
-from .artifacts import Artifacts
+from .artifacts import MAX_WITNESS_BYTES, Artifacts
 from .projector import apply_event
-from .rules import HASH, ID, Refusal, matches
-from .workops import OPS, WorkAdmission, bound, candidate, validate_work, work_reads
+from .rules import HASH, ID, Refusal, candidate, matches
+from .workops import OPS, WorkAdmission, prior_work_access, validate_work, work_reads
 from .workview import WorkView
 from .wire import KernelError, canonical, decode, digest, parse_time
 
@@ -36,7 +36,7 @@ def authenticate(binding):
         byte_fields = ("definition", "environment", "artifact") if name == "witness" else ("definition", "environment")
         other = {"candidate"} if name == "witness" else {"work", "observer"}
         if (proof.keys() != {*byte_fields, *other}
-                or any(type(proof[k]) is not bytes or len(proof[k]) > 8 * 1024 * 1024 for k in byte_fields)
+                or any(type(proof[k]) is not bytes or len(proof[k]) > MAX_WITNESS_BYTES for k in byte_fields)
                 or name == "witness" and not candidate(proof["candidate"])
                 or name == "criterion" and (not matches(ID, proof["work"]) or type(proof["observer"]) is not str)):
             raise KernelError("unauthenticated")
@@ -201,9 +201,9 @@ def admit(store, binding, proposal, *, clock=lambda: datetime.now(timezone.utc))
                 raise KernelError("id_conflict")
             if not scoped_here and previous["code"] != "forbidden":
                 raise KernelError("unauthenticated")
-            if previous["disposition"] != "rejected" and any(
-                type(op) is dict and type(op.get("op")) is str and op["op"] in OPS and not bound(op, binding)
-                for op in proposal["ops"]
+            if previous["code"] not in ("invalid_op", "unknown_op", "forbidden", "not_found") and any(
+                type(op) is dict and type(op.get("op")) is str and op["op"] in OPS
+                and not prior_work_access(store, op, binding, previous["revision"]) for op in proposal["ops"]
             ):
                 raise KernelError("unauthenticated")
             return [], previous
@@ -228,7 +228,7 @@ def admit(store, binding, proposal, *, clock=lambda: datetime.now(timezone.utc))
                     references = validate_work(op, binding)
                     if any(k in records and records[k]["commitment"] != scope for k in references):
                         raise Refusal("not_found")
-                    keys.update(work_reads(view, op, binding))
+                    keys.update(work_reads(view, op, binding, references))
                     keys.add(scope)
                 else:
                     keys.update(validate_op(op, proposal, binding))

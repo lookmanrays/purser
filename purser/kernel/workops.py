@@ -1,8 +1,7 @@
 """Work, verification and closure operators admitted by the local gate."""
 import hashlib
-import re
 
-from .rules import HASH, ID, Refusal, matches
+from .rules import HASH, ID, Refusal, candidate, matches
 from .workview import WorkView
 
 OPS = {
@@ -20,15 +19,6 @@ OPS = {
     "work.accept": ("id outcome", ("principal",)),
 }
 _REFS = {"id", "parent", "work", "assignment", "obligation", "result", "run", "observation"}
-
-
-def candidate(value):
-    if type(value) is not dict or value.keys() != {"kind", "algorithm", "digest"}:
-        return False
-    size = {("git.commit", "sha1"): 40, ("git.commit", "sha256"): 64, ("artifact.bytes", "sha256"): 64}
-    return (all(type(v) is str for v in value.values())
-            and re.fullmatch(r"[0-9a-f]+", value["digest"]) is not None
-            and len(value["digest"]) == size.get((value["kind"], value["algorithm"])))
 
 
 def bound(op, binding):
@@ -71,16 +61,37 @@ def validate_work(op, binding):
     return {op[k] for k in _REFS & op.keys()}
 
 
-def work_reads(view, op, binding):
+def check_enrollment(op, binding, exists):
+    pinned = binding["criterion"]
+    if (exists or op["version"] != 1 or pinned["work"] != op["work"] or pinned["observer"] != op["observer"]
+            or any(hashlib.sha256(pinned[k]).hexdigest() != op[k+"_sha256"] for k in ("definition", "environment"))):
+        raise Refusal("forbidden")
+
+
+def prior_work_access(store, op, binding, revision):
+    if not bound(op, binding):
+        return False
+    if op["op"] == "work.create" and binding["role"] == "executor":
+        rows = WorkView(store.snapshot(revision=revision)["projection"]).records
+        assignment = rows.get(binding["assignment"])
+        return bool(assignment and assignment["kind"] == "Assignment"
+                    and assignment["fields"]["executor"] == binding["actor_id"]
+                    and assignment["fields"]["work"] == op["parent"] and assignment["fields"]["state"] == "current")
+    return True
+
+
+def work_reads(view, op, binding, keys):
     name = op["op"]
-    keys = validate_work(op, binding)
+    if name == "obligation.set" and binding["role"] == "verifier":
+        check_enrollment(op, binding, op["id"] in view.records)
     if binding["assignment"]:
         keys.add(binding["assignment"])
     if binding["role"] == "executor":
         assignment = view.records.get(binding["assignment"])
         if (not assignment or assignment["kind"] != "Assignment" or assignment["commitment"] != binding["commitment"]
                 or assignment["fields"]["executor"] != binding["actor_id"] or assignment["fields"]["state"] != "current"
-                or name == "work.create" and op["parent"] != assignment["fields"]["work"]):
+                or name == "work.create" and (op["parent"] != assignment["fields"]["work"]
+                                               or view.fields(op["parent"])["state"] == "closed")):
             raise Refusal("forbidden")
     for ref in tuple(keys):
         row = view.records.get(ref)
@@ -150,9 +161,7 @@ class WorkAdmission:
                 raise Refusal("id_exists")
             if self.binding["role"] == "verifier":
                 pinned = self.binding["criterion"]
-                if (prior or op["version"] != 1 or pinned["work"] != op["work"] or pinned["observer"] != op["observer"]
-                        or any(hashlib.sha256(pinned[k]).hexdigest() != op[k+"_sha256"] for k in ("definition", "environment"))):
-                    raise Refusal("forbidden")
+                check_enrollment(op, self.binding, prior is not None)
                 for k in ("definition", "environment"):
                     self.batch.artifacts.put(pinned[k])
             if (prior and self.get(key, "Obligation")["work"] != op["work"]

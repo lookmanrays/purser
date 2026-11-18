@@ -1,4 +1,5 @@
 """Version-one work events interpreted by the sole deterministic projector."""
+from .rules import HASH, candidate, matches
 from .wire import KernelError
 
 EVENTS = {
@@ -16,6 +17,8 @@ EVENTS = {
 }
 _INTS = {"generation", "criterion_version", "version"}
 _OBJECTS = {"candidate", "coverage"}
+_LINKS = {"work": "WorkItem", "parent": "WorkItem", "assignment": "Assignment", "result": "Result",
+          "obligation": "Obligation", "run": "VerificationRun", "observation": "Observation"}
 
 
 def project(projection, name, data, revision):
@@ -24,9 +27,27 @@ def project(projection, name, data, revision):
         raise error
     for key, value in data.items():
         expected = int if key in _INTS else dict if key in _OBJECTS else str
-        if type(value) is not expected:
+        if type(value) is not expected or key in _INTS and value < 1:
+            raise error
+        if (key.endswith("_sha256") or key == "outcome") and not matches(HASH, value):
+            raise error
+    if "candidate" in data and not candidate(data["candidate"]):
+        raise error
+    if "verdict" in data and data["verdict"] not in ("pass", "fail", "inconclusive"):
+        raise error
+    if name == "WorkReopened" and data["state"] not in ("open", "assigned", "submitted"):
+        raise error
+    if "coverage" in data:
+        c = data["coverage"]
+        if c.keys() != {"kind", "k"} or not (c["kind"] in ("all", "any") and c["k"] is None
+                or c["kind"] == "k_of_n" and type(c["k"]) is int and c["k"] > 0):
             raise error
     records = {r["id"]: r for r in projection["records"]}
+    for field, kind in _LINKS.items():
+        if field in data:
+            target = records.get(data[field])
+            if not target or target["kind"] != kind or target["commitment"] != data["commitment"]:
+                raise error
     identity = data["id"]
     fields = {k: v for k, v in data.items() if k not in ("id", "commitment")}
     edges = projection["edges"]
