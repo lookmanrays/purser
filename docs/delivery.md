@@ -4,6 +4,8 @@ The orchestrator integrates worker candidates on `lookman/purser-development`. E
 
 ## M0 · Design and experimental protocol
 
+Accepted at `4460381e44f3dd42d22848bf6d82fea9a817a833` after independent review. See [M0 acceptance](evidence/M0/acceptance.md). M1-A and M1-B are released against the [M1 preflight](evidence/M1/preflight.md).
+
 Dispatched from `122b729bb5e549383dec72d2065b242cfbe5d9d5`. The two planning documents at that commit have SHA-256 digests `28bfc613d93c238bf4211b19fa5484f4eb16cc84ebb6c64d3b08a7237c0a51cf` and `e7ad1f76a62a1ab2ffeb35549b36c7b79f75d69a157bef3f41a55b9b732bdbd7`. D-30 applies to the M7 transport choice. It changes no experimental threshold.
 
 | Packet | Writer | Scope and return |
