@@ -1,4 +1,4 @@
-"""A fresh interpreter for every public command; expected replies come from M0."""
+"""A fresh interpreter for every public command and frozen expected observations."""
 
 import hashlib
 import json
@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WIRE = json.loads((ROOT / "docs/contracts/wire-v1.json").read_bytes())
 EXPECTED = WIRE["expected"]
 AS_OF = EXPECTED["replay_as_of"]
+M2_STATUS = {s["revision"]: s for s in json.loads((ROOT / "docs/contracts/m2-legacy-status-v1.json").read_bytes())}
 
 
 def published_digest(path):
@@ -66,7 +67,7 @@ class PublicCLI(unittest.TestCase):
 
     def test_frozen_replies_on_historical_and_rebuilt_store(self):
         self.assertEqual(self.command("init"), EXPECTED["init"])
-        self.assertEqual(self.command("status", "--as-of", AS_OF), EXPECTED["initial_status"])
+        self.assertEqual(self.command("status", "--as-of", AS_OF), M2_STATUS[0])
 
         # Install original fixture batches by public store API, independent of CLI and gate.
         store = Store(self.db)
@@ -77,10 +78,11 @@ class PublicCLI(unittest.TestCase):
             descriptions = [{"type": e["type"], "data": e["data"]} for e in batch]
             store.transact(first["actor_id"], first["proposal_id"], lambda: at,
                            lambda snapshot, time: (descriptions, None))
-        for expected in [EXPECTED["initial_status"], *EXPECTED["status_by_revision"]]:
-            with self.subTest(revision=expected["revision"]):
-                self.assertEqual(self.command("status", "--revision", str(expected["revision"]),
-                                              "--as-of", AS_OF), expected)
+        for original in [EXPECTED["initial_status"], *EXPECTED["status_by_revision"]]:
+            with self.subTest(revision=original["revision"]):
+                actual = self.command("status", "--revision", str(original["revision"]), "--as-of", AS_OF)
+                self.assertEqual(actual, M2_STATUS[original["revision"]])
+                self.assertEqual(dict(actual, answers={"q01": actual["answers"]["q01"]}), original)
 
         self.assertEqual(self.command("why", "C-notify", "--as-of", AS_OF),
                          EXPECTED["why_active_commitment"])
@@ -92,8 +94,8 @@ class PublicCLI(unittest.TestCase):
         self.assertEqual(historical["reasons"],
                          [{"code": "awaiting_activation", "refs": [pending["id"]]}])
         self.assertEqual(self.command("replay", "--as-of", AS_OF),
-                         EXPECTED["status_by_revision"][-1])
-        head = EXPECTED["status_by_revision"][-1]
+                         M2_STATUS[8])
+        head = M2_STATUS[8]
         self.assertEqual(self.command("init"), {k: head[k] for k in ("v", "revision", "head_hash")})
         for revision in ("1", "9", "-1"):
             self.error("bad_revision", 4, "status", "--revision", revision)
@@ -124,7 +126,7 @@ class PublicCLI(unittest.TestCase):
         final = self.propose(hold)["receipt"]
         self.assertEqual((final["disposition"], final["revision"]), ("admitted", 8))
         self.assertEqual(self.command("status", "--as-of", AS_OF)["answers"],
-                         EXPECTED["status_by_revision"][-1]["answers"])
+                         M2_STATUS[8]["answers"])
 
         unsupported = dict(create, proposal_id="p-unsupported", base_revision=8, ops=[{"op": "unknown"}])
         rejected = self.propose(unsupported, 4)["receipt"]
@@ -150,7 +152,7 @@ class PublicCLI(unittest.TestCase):
         self.error("invalid_input", 2, "--actor", "principal:other", "status")
         self.error("invalid_input", 2, "status", "--as-of", "2026-11-31T00:00:00.000000Z")
         self.error("invalid_input", 2, "replay", "--revision", "0")
-        self.assertEqual(self.command("status", "--as-of", AS_OF), EXPECTED["initial_status"])
+        self.assertEqual(self.command("status", "--as-of", AS_OF), M2_STATUS[0])
         before = datetime.now(timezone.utc)
         read = self.command("status")
         after = datetime.now(timezone.utc)

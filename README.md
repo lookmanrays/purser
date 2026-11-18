@@ -28,3 +28,5 @@ python3.11 -m purser --db "$workspace/purser.db" replay
 ```
 
 The creation receipt records revision 2. `why` explains that the commitment awaits activation. Running the identical proposal again returns its existing receipt. The [wire contract](docs/contracts/kernel-v1.md) describes activation, historical reads and JSON exit codes.
+
+For an active commitment, `frontier` lists permitted next actions. `context ASSIGNMENT` reconstructs the work, candidate, required evidence and scope for that assignment. `why WORK` explains the evidence or acceptance the work still needs. Each command can read a complete historical revision. `run` takes one local driver turn and reports whether it dispatched work or went idle. A trusted launcher can attach a scripted executor to its assigned identity. The owner CLI can evaluate eligible child closure directly. [Work and evidence operations](docs/contracts/work-v1.md)

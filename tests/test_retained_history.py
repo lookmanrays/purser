@@ -11,9 +11,8 @@ from copy import deepcopy
 from pathlib import Path
 
 from docs.contracts.check_vectors import canonical, digest
-from tests.test_cli import AS_OF, EXPECTED, ROOT, WIRE
+from tests.test_cli import AS_OF, EXPECTED, M2_STATUS as STATUSES, ROOT, WIRE
 
-STATUSES = {r["revision"]: r for r in [EXPECTED["initial_status"], *EXPECTED["status_by_revision"]]}
 TABLES = ("events", "head", "records", "receipts", "edges")
 ZERO = "0" * 64
 

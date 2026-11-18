@@ -13,7 +13,8 @@ from .queries import status, why
 
 ERROR_EXITS = {
     "invalid_input": 2, "not_found": 4, "bad_revision": 4, "id_conflict": 4,
-    "unauthenticated": 5, "unavailable": 6, "integrity_error": 7, "unsupported_version": 7,
+    "inactive_assignment": 4, "unauthenticated": 5, "unavailable": 6,
+    "integrity_error": 7, "unsupported_version": 7,
 }
 
 
@@ -36,7 +37,11 @@ def arguments(argv):
     commands.add_parser("init")
     proposal = commands.add_parser("propose", allow_abbrev=False)
     proposal.add_argument("file", metavar="FILE", help="UTF-8 JSON proposal, or - for stdin")
-    for name in ("status", "why", "replay"):
+    commands.add_parser("run", help="run one eligible local driver turn")
+    context = commands.add_parser("context", allow_abbrev=False)
+    context.add_argument("assignment_id", metavar="ASSIGNMENT")
+    context.add_argument("--revision", type=int, metavar="N")
+    for name in ("status", "why", "frontier", "replay"):
         query = commands.add_parser(name, allow_abbrev=False)
         if name == "why":
             query.add_argument("record_id", metavar="ID")
@@ -86,12 +91,23 @@ def run(args):
         return {"admitted": 0, "pending": 3, "rejected": 4}[receipt["disposition"]], {
             "v": 1, "receipt": receipt,
         }
+    if args.command == "run":
+        from .driver import tick
+        result = tick(store)
+        return (4 if result.get("receipt", {}).get("disposition") == "rejected" else 0), result
+    if args.command == "context":
+        from .driver import context_pack
+        return 0, context_pack(store.snapshot(revision=args.revision), args.assignment_id)
     as_of = format_time(args.as_of or datetime.now(timezone.utc))
     if args.command == "replay":
         return 0, status(store.replay(), as_of)
     snapshot = store.snapshot(revision=args.revision)
     if args.command == "why":
         return 0, why(snapshot, as_of, args.record_id)
+    if args.command == "frontier":
+        response = status(snapshot, as_of)
+        return 0, {"v": 1, "revision": snapshot["revision"], "head_hash": snapshot["head_hash"],
+                   "as_of": as_of, "actions": response["answers"]["q10"]}
     return 0, status(snapshot, as_of)
 
 

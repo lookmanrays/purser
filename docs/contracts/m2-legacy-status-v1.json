@@ -1,0 +1,185 @@
+[
+  {
+    "v": 1,
+    "revision": 0,
+    "head_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "projection_hash": "f07bfc5c6936ae7b5ea29a68593db6dc6f42494a7bc9d2e18d3ad545ac42ffce",
+    "as_of": "2026-11-18T12:00:04.000000Z",
+    "answers": {
+      "q01": [],
+      "q02": [],
+      "q07": [],
+      "q08": [],
+      "q09": [],
+      "q10": []
+    }
+  },
+  {
+    "v": 1,
+    "revision": 2,
+    "head_hash": "9afcd4fca372dfdb97e018f0868d898df0e43c5704ccefc309d241accfd002a6",
+    "projection_hash": "66ea4508fdf4ccba11236cfd5271b522d2d45b5861f2647205108c8ad3c0fc4b",
+    "as_of": "2026-11-18T12:00:04.000000Z",
+    "answers": {
+      "q01": [],
+      "q02": [
+        {
+          "work": "W-root",
+          "state": "open",
+          "generation": 1,
+          "candidate": null
+        }
+      ],
+      "q07": [],
+      "q08": [
+        {
+          "work": "W-root",
+          "reasons": [
+            {
+              "code": "awaiting_activation",
+              "refs": [
+                "C-notify"
+              ]
+            }
+          ]
+        }
+      ],
+      "q09": [
+        {
+          "commitment": "C-notify",
+          "root": "W-root",
+          "missing": [
+            {
+              "code": "awaiting_activation",
+              "refs": [
+                "C-notify"
+              ]
+            }
+          ]
+        }
+      ],
+      "q10": []
+    }
+  },
+  {
+    "v": 1,
+    "revision": 4,
+    "head_hash": "f1b80d45ecbf87cc8ffd8b025c8da6210526987f72be9f038489b1549f0cf269",
+    "projection_hash": "01dbc18f65c42a10808900629ba73591d900cdf96673aaad0751bc0e1b14b27b",
+    "as_of": "2026-11-18T12:00:04.000000Z",
+    "answers": {
+      "q01": [],
+      "q02": [
+        {
+          "work": "W-root",
+          "state": "open",
+          "generation": 1,
+          "candidate": null
+        }
+      ],
+      "q07": [],
+      "q08": [
+        {
+          "work": "W-root",
+          "reasons": [
+            {
+              "code": "awaiting_activation",
+              "refs": [
+                "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884"
+              ]
+            }
+          ]
+        }
+      ],
+      "q09": [
+        {
+          "commitment": "C-notify",
+          "root": "W-root",
+          "missing": [
+            {
+              "code": "awaiting_activation",
+              "refs": [
+                "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884"
+              ]
+            }
+          ]
+        }
+      ],
+      "q10": [
+        {
+          "action": "principal_approve",
+          "subject": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884"
+        }
+      ]
+    }
+  },
+  {
+    "v": 1,
+    "revision": 8,
+    "head_hash": "10aa8c962d2966b2fc22d4f8e131268d0ee727a87cf11f2027ce182e5316eae5",
+    "projection_hash": "b4b7b7553a3982ba49bf649bd07b7c9ecca8d890ef14840c38b17c5d22896449",
+    "as_of": "2026-11-18T12:00:04.000000Z",
+    "answers": {
+      "q01": [
+        {
+          "commitment": "C-notify",
+          "principal": "principal:local"
+        }
+      ],
+      "q02": [
+        {
+          "work": "W-root",
+          "state": "open",
+          "generation": 1,
+          "candidate": null
+        }
+      ],
+      "q07": [],
+      "q08": [
+        {
+          "work": "W-root",
+          "reasons": [
+            {
+              "code": "missing_evidence",
+              "refs": [
+                "W-root"
+              ]
+            },
+            {
+              "code": "missing_result",
+              "refs": [
+                "W-root"
+              ]
+            }
+          ]
+        }
+      ],
+      "q09": [
+        {
+          "commitment": "C-notify",
+          "root": "W-root",
+          "missing": [
+            {
+              "code": "missing_evidence",
+              "refs": [
+                "W-root"
+              ]
+            },
+            {
+              "code": "missing_result",
+              "refs": [
+                "W-root"
+              ]
+            }
+          ]
+        }
+      ],
+      "q10": [
+        {
+          "action": "assign",
+          "subject": "W-root"
+        }
+      ]
+    }
+  }
+]
