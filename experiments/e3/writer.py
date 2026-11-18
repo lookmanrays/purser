@@ -39,11 +39,11 @@ def run(directory, attempt):
         if command["cut"] == "unlanded_writer_finished":
             os._exit(LOST)
         if command["cut"] == "inconclusive-observation":
-            # The writer still owns the exclusive lease while the participant observes.
-            # If the controller dies, EOF ends the suspended writer before Git can run.
+            # This authorized writer can still enter Git if resumed while the controller owns the pipe.
+            # EOF on collector loss or ordinary teardown cancels it before the update.
             print(json.dumps({"held": True}), flush=True)
-            sys.stdin.buffer.read(1)
-            os._exit(LOST)
+            if sys.stdin.buffer.read(1) != b"R":
+                os._exit(LOST)
 
     def after_write():
         note(folder, "written", effect=intent["effect"], attempt=attempt)
