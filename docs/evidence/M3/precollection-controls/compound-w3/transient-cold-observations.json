@@ -1,0 +1,58 @@
+[
+  {
+    "phase": "adopted",
+    "revision": 60,
+    "head_hash": "d8de580d46e3549b02872387ef2325daaf24004b4fb71d48440f4ea103fa7d3d",
+    "W3": {
+      "work": "W3",
+      "state": "closed",
+      "generation": 1,
+      "candidate": {
+        "algorithm": "sha1",
+        "digest": "af70fa43920a23d5e30dd6b4f5502084da6f9e6b",
+        "kind": "git.commit"
+      }
+    }
+  },
+  {
+    "phase": "W3 reassigned",
+    "revision": 62,
+    "head_hash": "cb9b8b1d33d3cb862882a3ba9c20fb8e84dae93eb694623752d596aa9fc9ac37",
+    "W3": {
+      "work": "W3",
+      "state": "assigned",
+      "generation": 2,
+      "candidate": null
+    }
+  },
+  {
+    "phase": "W3 re-submitted",
+    "revision": 64,
+    "head_hash": "e04d4b962c146465a1e598abd104b6ea7fcb1c73212faf8373bac581c38fd1de",
+    "W3": {
+      "work": "W3",
+      "state": "submitted",
+      "generation": 2,
+      "candidate": {
+        "algorithm": "sha1",
+        "digest": "af70fa43920a23d5e30dd6b4f5502084da6f9e6b",
+        "kind": "git.commit"
+      }
+    }
+  },
+  {
+    "phase": "W3 reclosed",
+    "revision": 72,
+    "head_hash": "e1dfc3d629a560cebfb5390a22291ba223ad04566da7017911ae4f909551a2e3",
+    "W3": {
+      "work": "W3",
+      "state": "closed",
+      "generation": 2,
+      "candidate": {
+        "algorithm": "sha1",
+        "digest": "af70fa43920a23d5e30dd6b4f5502084da6f9e6b",
+        "kind": "git.commit"
+      }
+    }
+  }
+]

@@ -30,31 +30,40 @@ def self_review(repo, oid, root, work):
 
 
 class Plan:
-    def __init__(self, directory):
+    def __init__(self, directory, *, tasks=TASKS):
         self.file = directory / "plan.json"
         self.invocation = None
-        write_atomic(self.file, encoded({work: {"state": "open", "candidate": None, "verified": {},
-                                                "work": {"id": work, "title": TASKS[work]}}
-                                         for work in (*ORDER, PARENT)}))
+        self.publish({work: {"state": "open", "candidate": None, "verified": {},
+                             "work": {"id": work, "title": tasks[work]}} for work in (*ORDER, PARENT)})
+
+    def publish(self, plans):
+        write_atomic(self.file, encoded(plans))
 
     def read(self):
         return json.loads(self.file.read_bytes())
+
+    def publication(self):
+        return self.invocation
 
     def update(self, work, *, diagnosis=(), **fields):
         plans = self.read()
         row = plans[work]
         row.update(fields)
-        if self.invocation is not None:
-            row["_publication"] = {**self.invocation, "subject": work, "candidate": row["candidate"],
+        invocation = self.publication()
+        if invocation is not None:
+            row["_publication"] = {**invocation, "subject": work, "candidate": row["candidate"],
                                    "diagnosis": list(diagnosis)}
-        write_atomic(self.file, encoded(plans))
+        self.publish(plans)
         return {"state": row["state"]}
 
-    def context(self, work):
+    def _plan_row(self, work):
         row = self.read()[work]
         # The controller's receipt identifies a write on readback. It is outside the released context.
         row.pop("_publication", None)
         return row
+
+    def context(self, work):
+        return self._plan_row(work)
 
     def assign_again(self, work):
         return self.update(work, state="open", candidate=None, verified={})
@@ -63,13 +72,13 @@ class Plan:
         return self.update(work, state="submitted", candidate=oid, verified={})
 
     def opening(self, work, label):
-        return {"criterion": label, "candidate": self.context(work)["candidate"]}
+        return {"criterion": label, "candidate": self._plan_row(work)["candidate"]}
 
     def observe(self, work, label, observed):
         return {"criterion": label, "candidate": observed["candidate"], "observed": observed["observed"]}
 
     def verify(self, work, label, observed):
-        checked = self.context(work)["verified"]
+        checked = self._plan_row(work)["verified"]
         checked[label] = observed["verdict"]
         diagnosis = [label] if observed["verdict"] in ("fail", "inconclusive") else []
         return self.update(work, verified=checked, diagnosis=diagnosis)
@@ -81,7 +90,7 @@ class Plan:
         if work == PARENT:
             missing.update(LEAVES[k] for k in ORDER if not is_closed(plans[k]["state"]))
         self.update(work, state=plans[work]["state"] if missing else "closed", diagnosis=sorted(missing))
-        return {"diagnosis": sorted(missing), "claim": self.context(work)}
+        return {"diagnosis": sorted(missing), "claim": self._plan_row(work)}
 
     def public_view(self):
         original = self.file.read_bytes()

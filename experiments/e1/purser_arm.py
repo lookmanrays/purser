@@ -18,7 +18,7 @@ IDS = {label: "O-" + label.replace("/", "-") for label in (*LEAVES.values(), *PA
 
 
 class Treatment:
-    def __init__(self, directory, definitions, environment):
+    def __init__(self, directory, definitions, environment, *, before_assignments=None, tasks=TASKS):
         self.store = Store(directory / "kernel.sqlite")
         self.store.initialize()
         self.definitions, self.environment = definitions, environment
@@ -31,8 +31,8 @@ class Treatment:
                                        "expires_at": "2030-01-01T00:00:00.000000Z"}])
         self.send("principal", [{"op": "approval.answer", "id": hold["details"]["approval_id"],
                                  "request_digest": hold["digest"], "decision": "approve"}])
-        create = [{"op": "work.create", "id": PARENT, "parent": "W-root", "title": TASKS[PARENT]}]
-        create += [{"op": "work.create", "id": w, "parent": PARENT, "title": TASKS[w]} for w in ORDER]
+        create = [{"op": "work.create", "id": PARENT, "parent": "W-root", "title": tasks[PARENT]}]
+        create += [{"op": "work.create", "id": w, "parent": PARENT, "title": tasks[w]} for w in ORDER]
         create += [{"op": "work.coverage", "id": w, "kind": "all", "k": None} for w in ("W-root", PARENT)]
         self.send("planner", create)
         obligations = []
@@ -44,27 +44,35 @@ class Treatment:
                                     "definition_sha256": sha(definitions[label]),
                                     "environment_sha256": sha(environment)})
         self.send("principal", obligations)
+        if before_assignments is not None:
+            before_assignments(self)
         for w in (*ORDER, PARENT):
             self.assign_again(w)
 
-    def send(self, role, ops, *, assignment=None, witness=None, allow_rejected=False):
+    def send(self, role, ops, *, assignment=None, witness=None, premise=None, allow_rejected=False, proposal_store=None):
         actor = {"principal": PRINCIPAL, "planner": "planner:study", "closure": "closure:study",
                  "executor": EXECUTOR, "observer": OBSERVER, "verifier": VERIFIER}[role]
         binding = {"role": role, "actor_id": actor, "principal_id": PRINCIPAL,
                    "commitment": None if role == "principal" else SCOPE, "assignment": assignment}
         if witness is not None:
             binding["witness"] = witness
+        if premise is not None:
+            binding["premise"] = premise
         self.count += 1
         proposal = {"v": 1, "proposal_id": f"P-{self.count}", "commitment": SCOPE,
                     "base_revision": self.store.snapshot()["revision"], "justification": [], "ops": ops}
-        if self.on_proposal is not None:
-            self.on_proposal({"actor_id": actor, "proposal_id": proposal["proposal_id"], "body": proposal,
-                              "digest": digest("proposal", {"actor_id": actor, "proposal": proposal})})
-        receipt = admit(self.store, binding, proposal, clock=lambda: datetime(2026, 1, 1, tzinfo=timezone.utc))
+        self.record_request({"actor_id": actor, "proposal_id": proposal["proposal_id"], "body": proposal,
+                             "digest": digest("proposal", {"actor_id": actor, "proposal": proposal})})
+        receipt = admit(self.store if proposal_store is None else proposal_store, binding, proposal,
+                        clock=lambda: datetime(2026, 1, 1, tzinfo=timezone.utc))
         self.receipts.append({"role": role, "proposal": proposal, "receipt": receipt})
         if receipt["disposition"] == "rejected" and not allow_rejected:
             raise RuntimeError(f"{ops[0]['op']}: {receipt}")
         return receipt
+
+    def record_request(self, request):
+        if self.on_proposal is not None:
+            self.on_proposal(request)
 
     def view(self):
         from purser.kernel.workview import WorkView

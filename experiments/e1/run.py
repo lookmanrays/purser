@@ -61,8 +61,11 @@ class Journal:
         if self.progress is not None:
             self.progress(deepcopy(self.checkpoint()))
 
+    def elapsed(self):
+        return time.monotonic_ns() - self.start
+
     def event(self, kind, payload):
-        self.rows.append({"seq": len(self.rows) + 1, "offset_ns": time.monotonic_ns() - self.start,
+        self.rows.append({"seq": len(self.rows) + 1, "offset_ns": self.elapsed(),
                           "kind": kind, "payload": payload})
         self.persist()
 
@@ -71,11 +74,15 @@ class Journal:
         return sum(event["kind"] == "action" for event in self.rows)
 
     def action(self, kind, work, actor, oid, inputs, run, *, before=None, repair_before=None, assets=None):
+        info = self.begin_action(kind, work, actor, oid, inputs, before=before, repair_before=repair_before)
+        return self.run_action(info, run, assets)
+
+    def begin_action(self, kind, work, actor, oid, inputs, *, before=None, repair_before=None, metadata=None):
         limits = MANIFEST["budgets"]["scripted"]
         number = self.steps + 1
         if number > limits["max_steps"]:
             raise Cutoff("step_limit")
-        if time.monotonic_ns() - self.start >= limits["max_elapsed_s"] * 10**9:
+        if self.elapsed() >= limits["max_elapsed_s"] * 10**9:
             raise Cutoff("time_limit")
         info = {"action_id": f"action-{number}", "attempt": number, "action": kind, "subject": work,
                 "candidate": oid, "actor": actor, "arm": self.arm, "input": inputs}
@@ -83,7 +90,12 @@ class Journal:
             info["before"] = before
         if repair_before is not None:
             info["repair_before"] = repair_before
+        if metadata is not None:
+            info.update(metadata)
         self.event("action", info)
+        return info
+
+    def run_action(self, info, run, assets):
         try:
             answer = run()
         except Exception as error:
@@ -332,7 +344,7 @@ def _run_arm(driver, journal):
     previous = signal.signal(signal.SIGALRM, expire)
     try:
         journal.release()
-        remaining = MANIFEST["budgets"]["scripted"]["max_elapsed_s"] - (time.monotonic_ns() - journal.start) / 1e9
+        remaining = MANIFEST["budgets"]["scripted"]["max_elapsed_s"] - journal.elapsed() / 1e9
         if remaining <= 0:
             return "time_limit"
         signal.setitimer(signal.ITIMER_REAL, remaining)

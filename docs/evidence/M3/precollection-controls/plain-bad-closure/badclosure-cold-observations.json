@@ -1,0 +1,20 @@
+[
+  {
+    "label": "incoming already delivered",
+    "state": "submitted",
+    "oid": "7df4a199e2ada1caafe78f5acec2f99b06f44771",
+    "premise": "Obs-A1-changed"
+  },
+  {
+    "label": "actual old candidate declared closed",
+    "state": "closed",
+    "oid": "7df4a199e2ada1caafe78f5acec2f99b06f44771",
+    "premise": "Obs-A1-changed"
+  },
+  {
+    "label": "old candidate returned to submitted",
+    "state": "submitted",
+    "oid": "7df4a199e2ada1caafe78f5acec2f99b06f44771",
+    "premise": "Obs-A1-changed"
+  }
+]

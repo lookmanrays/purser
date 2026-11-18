@@ -51,7 +51,7 @@ def utc_time(value):
     return result if result.utcoffset() == timedelta(0) else None
 
 
-def check_exit(raw, journal, platform, modern, issue):
+def check_exit(raw, journal, platform, modern, issue, *, duration=None, before_release_oracles=False):
     """Keep the raw identities for diagnostics. Only a reconciled clock has a comparable cost."""
     endpoint_ok = True
     def check(condition, message):
@@ -95,13 +95,15 @@ def check_exit(raw, journal, platform, modern, issue):
         clock_ok &= check(type(stopped) is bool and (released or not stopped)
                           and basis == expected_basis == terminal.get("cost_basis"), "clock provenance disagrees with basis")
     if basis == "before_release":
+        offline_only = all(row["kind"] == "terminal" or before_release_oracles
+                           and row["kind"] == "oracle" and same(row["offset_ns"], 0) for row in journal)
         clock_ok &= check((start, end, started, ended) == (None,) * 4 and same(span, 0)
-                          and not [row for row in journal if row["kind"] != "terminal"]
-                          and reason == "harness_failure", "before-release clock has participant activity")
+                          and offline_only and reason == "harness_failure",
+                          "before-release clock has participant activity")
     else:
         times = utc_time(started), utc_time(ended)
         clock_ok &= check(type(start) is int and type(end) is int and 0 <= start <= end
-                          and same(end - start, span) and all(times) and times[0] <= times[1],
+                          and same(end - start if duration is None else duration(start, end, platform), span) and all(times) and times[0] <= times[1],
                           "invalid clock interval or elapsed cost")
         if clock_ok:
             live = [row for row in journal if row["kind"] in ("action", "fault") or
@@ -142,7 +144,7 @@ def check_exit(raw, journal, platform, modern, issue):
     return (basis if clock_ok and steps_ok else "unavailable"), endpoint_ok
 
 
-def journal_prefix(journal, arm, issue):
+def journal_prefix(journal, arm, issue, *, allowed_actions=ACTIONS):
     """Read every structurally identifiable observation, flagging gaps in chronology and action identity."""
     if type(journal) is not list:
         issue("unavailable observation journal")
@@ -181,7 +183,7 @@ def journal_prefix(journal, arm, issue):
                 ordered = False
             attempt = max(attempt, number) if type(number) is int and number > 0 else attempt + 1
             action, actor = p.get("action"), p.get("actor")
-            if (repeated or type(action) is not str or actor not in ACTIONS.get(action, ()) or p.get("arm") != arm
+            if (repeated or type(action) is not str or actor not in allowed_actions.get(action, ()) or p.get("arm") != arm
                     or arm == "loop" and actor in ("independent_verifier", "independent_observer")
                     or not same(p.get("attempt"), attempt) or p.get("action_id") != f"action-{attempt}"
                     or p.get("subject") not in WORK or type(p.get("input")) is not dict

@@ -1,0 +1,27 @@
+{
+  "_publication": {
+    "actor": "closure",
+    "attempt": 19,
+    "candidate": "7df4a199e2ada1caafe78f5acec2f99b06f44771",
+    "diagnosis": [],
+    "subject": "W2"
+  },
+  "candidate": "7df4a199e2ada1caafe78f5acec2f99b06f44771",
+  "criterion": "W2/retry",
+  "premise": {
+    "assumption": "A1",
+    "criterion": "W2/retry",
+    "finding": "contradicts",
+    "id": "Obs-A1-changed",
+    "retry_schedule": "exponential",
+    "seed": 2001,
+    "statement": "Use zero, then base times two to the power k minus one at attempt index k."
+  },
+  "retry_choice": "linear",
+  "state": "closed",
+  "verified": {},
+  "work": {
+    "id": "W2",
+    "title": "Schedule every requested attempt under the current retry decision, beginning at zero."
+  }
+}
