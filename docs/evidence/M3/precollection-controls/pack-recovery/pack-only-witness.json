@@ -1,0 +1,16 @@
+{
+  "_publication": {
+    "actor": "closure",
+    "attempt": 30,
+    "candidate": "a5cd7dfec079a2b38d8b673c47d736ce3161f22a",
+    "diagnosis": [],
+    "subject": "W-notify"
+  },
+  "candidate": "a5cd7dfec079a2b38d8b673c47d736ce3161f22a",
+  "state": "closed",
+  "verified": {},
+  "work": {
+    "id": "W-notify",
+    "title": "Integrate the three policies, retain compatibility and restrict edits to the three policy files."
+  }
+}

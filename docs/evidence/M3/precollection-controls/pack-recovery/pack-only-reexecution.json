@@ -1,0 +1,51 @@
+{
+  "recovered_candidate": "a5cd7dfec079a2b38d8b673c47d736ce3161f22a",
+  "all_packed_candidates": 5,
+  "captured_oracles": 0,
+  "independently_reexecuted_from_same_sealed_pack": {
+    "W1/preferences": "pass",
+    "W3/delivery": "pass",
+    "scope/paths": "pass",
+    "legacy/compat": "pass",
+    "W2/retry": "pass",
+    "queue/composition": "pass"
+  },
+  "recovery_issues": [
+    {
+      "error": "[Errno 2] No such file or directory: PosixPath('/private/tmp/purser-e2-assurance-E6chNl/repo/private-pack-only/.attempt-primary-2001-loop/trial/private-objects')",
+      "stage": "policy Git objects 55686bd5152e10a53dfdc2c003974ea405a3a075"
+    },
+    {
+      "error": "[Errno 2] No such file or directory: PosixPath('/private/tmp/purser-e2-assurance-E6chNl/repo/private-pack-only/.attempt-primary-2001-loop/trial/private-objects')",
+      "stage": "policy Git objects 6dcb12a91c06f00fc75c5e68b6145a727f3749a7"
+    },
+    {
+      "error": "[Errno 2] No such file or directory: PosixPath('/private/tmp/purser-e2-assurance-E6chNl/repo/private-pack-only/.attempt-primary-2001-loop/trial/private-objects')",
+      "stage": "policy Git objects 7df4a199e2ada1caafe78f5acec2f99b06f44771"
+    },
+    {
+      "error": "[Errno 2] No such file or directory: PosixPath('/private/tmp/purser-e2-assurance-E6chNl/repo/private-pack-only/.attempt-primary-2001-loop/trial/private-objects')",
+      "stage": "policy Git objects a5cd7dfec079a2b38d8b673c47d736ce3161f22a"
+    },
+    {
+      "error": "[Errno 2] No such file or directory: PosixPath('/private/tmp/purser-e2-assurance-E6chNl/repo/private-pack-only/.attempt-primary-2001-loop/trial/private-objects')",
+      "stage": "policy Git objects af70fa43920a23d5e30dd6b4f5502084da6f9e6b"
+    },
+    {
+      "error": "[Errno 2] No such file or directory: PosixPath('/private/tmp/purser-e2-assurance-E6chNl/repo/private-pack-only/.attempt-primary-2001-loop/trial/private-objects')",
+      "stage": "export candidate 6dcb12a91c06f00fc75c5e68b6145a727f3749a7"
+    },
+    {
+      "error": "[Errno 2] No such file or directory: PosixPath('/private/tmp/purser-e2-assurance-E6chNl/repo/private-pack-only/.attempt-primary-2001-loop/trial/private-objects')",
+      "stage": "export candidate 7df4a199e2ada1caafe78f5acec2f99b06f44771"
+    },
+    {
+      "error": "[Errno 2] No such file or directory: PosixPath('/private/tmp/purser-e2-assurance-E6chNl/repo/private-pack-only/.attempt-primary-2001-loop/trial/private-objects')",
+      "stage": "export candidate a5cd7dfec079a2b38d8b673c47d736ce3161f22a"
+    },
+    {
+      "error": "[Errno 2] No such file or directory: PosixPath('/private/tmp/purser-e2-assurance-E6chNl/repo/private-pack-only/.attempt-primary-2001-loop/trial/private-objects')",
+      "stage": "export candidate af70fa43920a23d5e30dd6b4f5502084da6f9e6b"
+    }
+  ]
+}
