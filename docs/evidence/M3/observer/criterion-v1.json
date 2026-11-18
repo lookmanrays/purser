@@ -1,0 +1,59 @@
+{
+  "commitment": "C-purser-delivery",
+  "criteria": [
+    "Bind the original submission, exact Git commit/tree, run, criterion version and actual retained independent observation to this work. If the E2 source, preregistration, result or integration are distinct commits, verify their provenance and corresponding product, fixture and evaluator file equivalence.",
+    "Demonstrate a genuine scoped dependency/parent graph on disposable stores through the documented admitted boundary. A new opinion alone leaves the decision effective. A matching admitted observation disqualifies A1 support at the same revision. Dependencies propagate only over incoming depends_on at every depth, terminate through a cycle and expose the cause to W9. Parent coverage is recomputed independently. W10 remains closed with its original evidence and basis. A superseding decision can qualify its own newly supported work; late old passes cannot restore an obsolete decision.",
+    "Order close against invalidation both ways from independent connections/processes. Invalidation first precludes old closure and stale dispatch authority at the implemented local M3 boundary. Closure first remains historical after invalidation. In fresh CLI processes check as-of/at-revision and current q03, q04, why, frontier, decision and support continuity, with model access disabled. Compare a cold log-only restore and original M2 local-principal history, the M0 frozen contracts, and the preserved E1 series through its registered reader.",
+    "Independently verify preregistered E2 source before collection, original notification Git tree, seed order, three arm identities/budgets, primary records for 20 seeds per arm plus matched clean and separately labelled closed-affected stress. The independent observer must check the actual qualifying public checkpoint and publication of the changed premise, Git OIDs, ordered closure/reopen history, protected queue behavior and version, contiguous rework actions and final six criteria. Preserve observed adverse and partial evidence and original raw hashes. Recompute absolute and original no-advantage predicates independently, report paired raw costs, valid denominators and clean overhead from first principles, and reproduce the archived results report. E2 performance may meet, miss, or be inconclusive under the original protocol."
+  ],
+  "frozen_sources": [
+    {
+      "commit": "927d5ec32a1d17cc463b79b567d02629d1d522e3",
+      "path": "docs/evidence/M3/dispatch.md",
+      "sha256": "25bfde86bf49cf24d4d31fb168916e295eb46b57f6646bcd309ca06257a17499"
+    },
+    {
+      "commit": "4460381e44f3dd42d22848bf6d82fea9a817a833",
+      "path": "docs/contracts/kernel-v1.md",
+      "sha256": "673ff1e7241eb04588254662896e4541687af1821afbc1235369d14964bd4e7d"
+    },
+    {
+      "commit": "4460381e44f3dd42d22848bf6d82fea9a817a833",
+      "path": "docs/contracts/lifecycle-v1.json",
+      "sha256": "be4ee8a73e6c96cffc3332d12e9bbd73ad1e18dd99290d147f24561cb774944b"
+    },
+    {
+      "commit": "4460381e44f3dd42d22848bf6d82fea9a817a833",
+      "path": "experiments/manifests/v1/manifest.json",
+      "sha256": "1c51ce44eb1887bc5cf08ee98afd7714faa7b23cf8f9b62c998c128f9ce54b73"
+    },
+    {
+      "commit": "4460381e44f3dd42d22848bf6d82fea9a817a833",
+      "path": "experiments/manifests/v1/protocol.md",
+      "sha256": "5722774bffd56969b97c1575b2776cd7b9b3536da99dc1b4e49976be4835b2eb"
+    },
+    {
+      "commit": "4460381e44f3dd42d22848bf6d82fea9a817a833",
+      "path": "experiments/manifests/v1/raw.schema.json",
+      "sha256": "7886a6f9c2027281d51dd72ee21e093a4d06a7c3479f07e0efe55d0e2465eb1b"
+    },
+    {
+      "commit": "4460381e44f3dd42d22848bf6d82fea9a817a833",
+      "path": "experiments/manifests/v1/worked-examples.json",
+      "sha256": "69399778226f413e97a804fb9d38b9767ccaaacdaeb236a9d024badcde16d45b"
+    }
+  ],
+  "id": "purser.m3.integrated.criterion.v1",
+  "obligation": "O-m3-integrated",
+  "observer": "observer:independent-m3",
+  "report": "Retain canonical JSON bytes with subject, candidate IDs and trees, exact definition and environment digests, original command transcripts or content-addressed references, observed failures or missing data, per-arm totals, and the independent verdict. The project owner retains the milestone decision and the local principal retains human acceptance.",
+  "title": "The submitted Purser revision explains dependency-only decision invalidation after restart and reproduces registered E2 results",
+  "verdict_rules": {
+    "fail": "A reproduced material contradiction of the registered outcome, public state, authority, historical integrity or stated implementation requirement.",
+    "inconclusive": "Evidence essential to technical/measurement qualification cannot be independently observed or attributed. Identify the exact missing boundary.",
+    "pass": "The submitted M3 product passes the described independent integration checks and registered results honestly reproduce their retained evidence. A measured adverse or inconclusive scientific comparison by itself does not fail this engineering criterion."
+  },
+  "verifier": "verifier:independent-m3",
+  "version": 1,
+  "work": "W-m3-decision-impact"
+}
