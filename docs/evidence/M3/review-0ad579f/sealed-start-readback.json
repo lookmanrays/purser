@@ -1,0 +1,45 @@
+{
+  "archive_members_verified": 15,
+  "archive_sha256": "415c5d7a33c9a785b25fe4f693127aa439b7b69baf84f76b14e5f5260b1db6bd",
+  "candidate": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+  "independent_grades": {
+    "W1/preferences/v1": false,
+    "W2/retry/v1": false,
+    "W2/retry/v2": false,
+    "W3/delivery/v1": false,
+    "legacy/compat/v1": true,
+    "queue/composition/v1": false,
+    "queue/composition/v2": false,
+    "scope/paths/v1": true
+  },
+  "journal_kinds": [
+    "terminal"
+  ],
+  "legacy_suite": {
+    "count": 28,
+    "errors": 0,
+    "fails": 0,
+    "skips": 0
+  },
+  "oracle_program_sha256": "a1612991ddb556a0737adb849e152d3b0c25bfa8043dd76d0251467daf07b5e4",
+  "pack_bytes": 14704,
+  "pack_sha256": "ab3fec4e7fd7128beeeb085306b2315a5ea6b9dbaded7afb65ffa1b4ef92d09e",
+  "participant_cost": {
+    "elapsed_ns": 0,
+    "input_tokens": 0,
+    "model_calls": 0,
+    "output_tokens": 0,
+    "spend_usd_micros": 0,
+    "steps": 0
+  },
+  "physical_participant_exit": null,
+  "raw_cases": 1,
+  "raw_score": null,
+  "raw_terminal": "harness_failure",
+  "recorded_oracles": 0,
+  "replicate": 119,
+  "seed": 2001,
+  "source": "0ad579f7a39f033b2efe59a6f8f3d04ac1dabef0",
+  "starts": 1,
+  "tree": "2afea0fdd3478d29447a40bde8007266c468c72b"
+}
