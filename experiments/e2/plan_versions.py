@@ -80,6 +80,8 @@ def retain(directory, assets):
     cursor = sha(head)
     history = []
     while cursor:
+        if not isinstance(cursor, str) or len(cursor) != 64 or any(c not in "0123456789abcdef" for c in cursor):
+            raise ValueError("invalid published plan digest")
         data = (directory / "plan-versions" / cursor).read_bytes()
         if sha(data) != cursor or not history and data != head:
             raise ValueError("published plan version disagrees with its content address")

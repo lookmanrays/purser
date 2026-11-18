@@ -71,6 +71,10 @@ class Journal:
         return sum(event["kind"] == "action" for event in self.rows)
 
     def action(self, kind, work, actor, oid, inputs, run, *, before=None, repair_before=None, assets=None):
+        info = self.begin_action(kind, work, actor, oid, inputs, before=before, repair_before=repair_before)
+        return self.run_action(info, run, assets)
+
+    def begin_action(self, kind, work, actor, oid, inputs, *, before=None, repair_before=None, metadata=None):
         limits = MANIFEST["budgets"]["scripted"]
         number = self.steps + 1
         if number > limits["max_steps"]:
@@ -83,7 +87,12 @@ class Journal:
             info["before"] = before
         if repair_before is not None:
             info["repair_before"] = repair_before
+        if metadata is not None:
+            info.update(metadata)
         self.event("action", info)
+        return info
+
+    def run_action(self, info, run, assets):
         try:
             answer = run()
         except Exception as error:

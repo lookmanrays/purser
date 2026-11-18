@@ -43,7 +43,7 @@ class PlanArm(WorkPorts, Plan):
             return self.update("W2", premise=message)
 
     def revise(self, message):
-        return self.public_operation("revise", "plan", "W2", "planner", {"adopt": message["id"], "work": "W2"},
+        return self.public_operation("revise", "plan", "W2", "planner", {"adopt": message["id"], "notice": message},
                                      lambda: self.adopt(message))
 
     def adopt(self, message):
@@ -98,11 +98,11 @@ class KernelArm(WorkPorts, Treatment):
                          assignment=ASSUMPTION, premise={"artifact": encoded(message)})
 
     def revise(self, message):
-        return self.public_operation("revise", "plan", "W2", "planner", {"adopt": message["id"], "work": "W2"},
+        return self.public_operation("revise", "plan", "W2", "planner", {"adopt": message["id"], "notice": message},
                     lambda: self.send("planner", [decision(REPLACEMENT, message["retry_schedule"], [], ORIGINAL)]))
 
     def record_request(self, request):
-        if self.on_proposal is not None:
+        if self.on_proposal is not None and request["body"]["ops"][0]["op"] == "assumption.observe":
             return super().record_request(request)
         if self.work_actions is not None:
             self.work_actions.record(request)
