@@ -69,8 +69,9 @@ class PublicActions:
         return rows, capture.checkpoint(self.driver.assets, rows, identity)
 
     def states(self, action, decision=None):
-        rows, checkpoint = self.snapshot()
-        capture.states(rows, checkpoint, self.driver.previous, self.driver.j.event, action=action, decision=decision)
+        with self.admission:
+            rows, checkpoint = self.snapshot()
+            capture.states(rows, checkpoint, self.driver.previous, self.driver.j.event, action=action, decision=decision)
         return checkpoint
 
     def call(self, kind, work, actor, inputs, operation, oid=None):
@@ -89,7 +90,8 @@ class PublicActions:
         finally:
             self.frame.reset(token)
             action["finished_monotonic_ns"] = monotonic_ns()
-            action["after"] = self.states(action, capture.returned_decision(action))
+            decision = None if "port_after" in action else capture.returned_decision(action)
+            action["after"] = self.states(action, decision)
             journal.persist()
 
     def port(self, method, kind, work, actor, inputs, operation, oid=None):
@@ -108,7 +110,11 @@ class PublicActions:
             action["port_return"] = answer
             return answer
         finally:
-            action["port_after"] = self.states(action)
+            reply = dict(action, **{"return": action.get("port_return")})
+            decision = capture.returned_decision(reply)
+            if decision and method == "verify" and inputs["observation"]["verdict"] in ("fail", "inconclusive"):
+                decision["diagnosis"] = [inputs["criterion"]]
+            action["port_after"] = self.states(action, decision)
             self.driver.j.persist()
 
 
