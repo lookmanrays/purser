@@ -1,0 +1,499 @@
+{
+  "action_mapping": {
+    "check": "Perform worker checks or review the immutable submission.",
+    "context": "Admit one requested scoped work packet or independent public tool inspection. Record its original source and its witnessed delivery separately.",
+    "decide": "Publish one verifier verdict or request one subject closure.",
+    "edit": "Apply the current scoped task to its one policy file.",
+    "fault": "Independently qualify the exact old W2 commit and both sibling closures during the recorded clock pause, then deliver the incoming observation. This adds zero worker steps.",
+    "hand_count": "Clean loop: plan 1 + 3 leaves x 6 + parent 5 = 24. Clean equipped: 24 + 6 criteria x 3 = 42. Ordinary changed loop after receipt: adopt and reassign 2 + W2 6 + parent 5 = 13. Equipped after receipt: 13 + 4 criteria x 3 = 25.",
+    "observe": "Run one public independent criterion on the sealed candidate.",
+    "plan": "Release one schedule, adopt the identified change, assign its work, or open one verification run.",
+    "rework": "Count each subsequent charged plan/context/edit/check/submit/observe/decide on W1/W2/W3 or W-notify, including attempted calls at cutoff. Each has one observed subject. Reads by the retrospective scorer add zero.",
+    "setup": "Provision identical fixture, initial assignments, old decision and scoped authority before release.",
+    "submit": "Publish one sealed candidate on its assignment."
+  },
+  "controller_sha256": "dd308413f23b0615162b8e6c6f5295d39d128095c310a4f3f4d07364f40af978",
+  "executor_sha256": "280931252e3b4da9e7f1ed335f522f79803a6925b8b8f1513d824e4842a09e6a",
+  "experiment": "E2",
+  "fault_driver_sha256": "8a49b0191b4ce49a0527b95eea3a0669bd721ade42c9a354736aa493f80dec4b",
+  "fixture_commit": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+  "fixture_tree": "2afea0fdd3478d29447a40bde8007266c468c72b",
+  "manifest_sha256": "1c51ce44eb1887bc5cf08ee98afd7714faa7b23cf8f9b62c998c128f9ce54b73",
+  "protocol_sha256": "5722774bffd56969b97c1575b2776cd7b9b3536da99dc1b4e49976be4835b2eb",
+  "raw_schema_sha256": "7886a6f9c2027281d51dd72ee21e093a4d06a7c3479f07e0efe55d0e2465eb1b",
+  "replicate": 1,
+  "replication_reason": null,
+  "schedule": [
+    [
+      "primary",
+      2001,
+      1,
+      "purser"
+    ],
+    [
+      "primary",
+      2001,
+      1,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2001,
+      1,
+      "loop"
+    ],
+    [
+      "primary",
+      2002,
+      2,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2002,
+      2,
+      "loop"
+    ],
+    [
+      "primary",
+      2002,
+      2,
+      "purser"
+    ],
+    [
+      "primary",
+      2003,
+      3,
+      "loop"
+    ],
+    [
+      "primary",
+      2003,
+      3,
+      "purser"
+    ],
+    [
+      "primary",
+      2003,
+      3,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2004,
+      4,
+      "purser"
+    ],
+    [
+      "primary",
+      2004,
+      4,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2004,
+      4,
+      "loop"
+    ],
+    [
+      "primary",
+      2005,
+      5,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2005,
+      5,
+      "loop"
+    ],
+    [
+      "primary",
+      2005,
+      5,
+      "purser"
+    ],
+    [
+      "primary",
+      2006,
+      6,
+      "loop"
+    ],
+    [
+      "primary",
+      2006,
+      6,
+      "purser"
+    ],
+    [
+      "primary",
+      2006,
+      6,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2007,
+      7,
+      "purser"
+    ],
+    [
+      "primary",
+      2007,
+      7,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2007,
+      7,
+      "loop"
+    ],
+    [
+      "primary",
+      2008,
+      8,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2008,
+      8,
+      "loop"
+    ],
+    [
+      "primary",
+      2008,
+      8,
+      "purser"
+    ],
+    [
+      "primary",
+      2009,
+      9,
+      "loop"
+    ],
+    [
+      "primary",
+      2009,
+      9,
+      "purser"
+    ],
+    [
+      "primary",
+      2009,
+      9,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2010,
+      10,
+      "purser"
+    ],
+    [
+      "primary",
+      2010,
+      10,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2010,
+      10,
+      "loop"
+    ],
+    [
+      "primary",
+      2011,
+      11,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2011,
+      11,
+      "loop"
+    ],
+    [
+      "primary",
+      2011,
+      11,
+      "purser"
+    ],
+    [
+      "primary",
+      2012,
+      12,
+      "loop"
+    ],
+    [
+      "primary",
+      2012,
+      12,
+      "purser"
+    ],
+    [
+      "primary",
+      2012,
+      12,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2013,
+      13,
+      "purser"
+    ],
+    [
+      "primary",
+      2013,
+      13,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2013,
+      13,
+      "loop"
+    ],
+    [
+      "primary",
+      2014,
+      14,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2014,
+      14,
+      "loop"
+    ],
+    [
+      "primary",
+      2014,
+      14,
+      "purser"
+    ],
+    [
+      "primary",
+      2015,
+      15,
+      "loop"
+    ],
+    [
+      "primary",
+      2015,
+      15,
+      "purser"
+    ],
+    [
+      "primary",
+      2015,
+      15,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2016,
+      16,
+      "purser"
+    ],
+    [
+      "primary",
+      2016,
+      16,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2016,
+      16,
+      "loop"
+    ],
+    [
+      "primary",
+      2017,
+      17,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2017,
+      17,
+      "loop"
+    ],
+    [
+      "primary",
+      2017,
+      17,
+      "purser"
+    ],
+    [
+      "primary",
+      2018,
+      18,
+      "loop"
+    ],
+    [
+      "primary",
+      2018,
+      18,
+      "purser"
+    ],
+    [
+      "primary",
+      2018,
+      18,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2019,
+      19,
+      "purser"
+    ],
+    [
+      "primary",
+      2019,
+      19,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2019,
+      19,
+      "loop"
+    ],
+    [
+      "primary",
+      2020,
+      20,
+      "loop_equal_verifier"
+    ],
+    [
+      "primary",
+      2020,
+      20,
+      "loop"
+    ],
+    [
+      "primary",
+      2020,
+      20,
+      "purser"
+    ],
+    [
+      "clean",
+      2001,
+      1,
+      "purser"
+    ],
+    [
+      "clean",
+      2001,
+      1,
+      "loop_equal_verifier"
+    ],
+    [
+      "clean",
+      2001,
+      1,
+      "loop"
+    ],
+    [
+      "closed-affected",
+      2001,
+      1,
+      "purser"
+    ],
+    [
+      "closed-affected",
+      2001,
+      1,
+      "loop_equal_verifier"
+    ],
+    [
+      "closed-affected",
+      2001,
+      1,
+      "loop"
+    ]
+  ],
+  "scorer_sha256": "72d433b4d8e8655ef47558a6a055bd3f51c5396d1d9096a546e859127f5d9f22",
+  "source_commit": "6c16e8c7381cdef140e9db803be26bd8eaa82798",
+  "source_files": {
+    "experiments/e1/__init__.py": "d51e408020b070619769eb4d99488325136e1ff7609995db4bd339d7c2fdf006",
+    "experiments/e1/__main__.py": "240e25337256d9f6fb367cb8e79924a5d496a2aefcc6102f90d67c6c36cf5802",
+    "experiments/e1/accounting.py": "fd48f56751b1c0aeb9db85be720bd3b10eb3290a4cfd4b47bcd2d10d9e26d94a",
+    "experiments/e1/arms.py": "9c4dc39918632a8cfb601c672ba4be0895271493dea2f99b3c5c8dce185184a4",
+    "experiments/e1/artifacts.py": "4eb62ad211ccb609884b796a11aca9593e7097f24852ac7c8acbd3da3d2e53b2",
+    "experiments/e1/capture.py": "cd7049eb857f0c19242876c86e175c35019056b971e3aee0b2a6be5e009287c6",
+    "experiments/e1/executor.py": "5c91fb4466cd8e0a6f101dfa7f613cf94768581d562c1ae34cbbccca5f6610f9",
+    "experiments/e1/intervention.py": "97d5229d67ac2dc7b9aaf205eac81be5d9fcfdf13b57d1ec16213266f9194926",
+    "experiments/e1/measurement.py": "16b7db1057f9645005443b12a76b9d6b9f4d5a17a2e0e9c381f0d75a9161773e",
+    "experiments/e1/observer.py": "f55f35f9fb9caf68da1d20a2039a972bbe22c0da559e36a2cbf1eee3350bf86c",
+    "experiments/e1/outcomes.py": "17e52e4b3b71c34886f62a3182f8b4d2b8bdf9a41d6ca5a9aa1db160ceda4326",
+    "experiments/e1/probe.py": "795a797c352bf3bc8a8ad7dcaac17eb56f81d7a7602dc92c36f801eb31e76c84",
+    "experiments/e1/purser_arm.py": "2a8df2b84f7d44c4d2cf051d1bdca5ffa3ecb7a1f0d7e409195fde303754efe2",
+    "experiments/e1/recovery.py": "a10dddf100bac35124ce83b491aea0a561459dd55a8d1169a91adfd660275850",
+    "experiments/e1/report.py": "2bfa2b79cb93ce8901516abf13dcd952cd5f88a701851ddbdca1cfbc1bc591b2",
+    "experiments/e1/run.py": "8ab710d0fb4823b77d1e20341a3401f60adb027af1600906147698b90689e237",
+    "experiments/e1/scorer.py": "84ac903b7db64a14e77331391a9c22d41d4b947fd64fdf263c37956cd2590110",
+    "experiments/e1/suite.py": "fbe61e01e693bc9d60a8e53817e933a6ae40084f2e960b3d8888f6cf967ba446",
+    "experiments/e1/summary.py": "6c1eab47a20aa4f221220fb3ea4aa2907626339a694f0e42aa759e08a01dc66f",
+    "experiments/e2/__init__.py": "3e9a20d47241eb570b5624fd8e8ff70a5c27eaa3d5c79f4edcf99ae2b00af0f4",
+    "experiments/e2/__main__.py": "5297f60ca27b91d123923c71983d44112c810127e5fd59deaef5faf38c30a9bb",
+    "experiments/e2/actions.py": "6429b39977daab6c003a15fde3bbcad0672d679f35b30ec603088f047c620301",
+    "experiments/e2/attribution.py": "3b203c34bb2c360c40c668776cbb80f1f6214f0c127afa33d16ecbb8325927ed",
+    "experiments/e2/candidate_evidence.py": "7e17f7f41246398b58bd27116019aa0e1e08009c6a03ef144c43f58c7b644a81",
+    "experiments/e2/checkpoint.py": "ddb887e3fe70feaf861bab31436a16b42f6b39f3be702741d1442ad2a38fb676",
+    "experiments/e2/clock.py": "1fa2fabc80ee2cfae7cc4ed4c16e3c592c2c0c620064eb7daf2eba243aa63889",
+    "experiments/e2/driver.py": "453761fc8fffcf59f1953fda1863c3368195088ae201f094dae9ac421887f5aa",
+    "experiments/e2/evidence.py": "2c2e0c8d8e42a7f7c8b6804c5046413b5d81bbca7817512b001d8b76558d55c3",
+    "experiments/e2/git_reads.py": "ff54598b6bf148aecbf7f8be01b3b24da60061a274ea7976ce733160418566ae",
+    "experiments/e2/head.py": "41ea17181b113d5956753e23c4b2f305c5858a131609bb95de98a993c3f65908",
+    "experiments/e2/kernel_history.py": "1ab5b7ba206e2c71986c19ff2a6330817e15943263262a29451e15d3cb4ecbdc",
+    "experiments/e2/measure.py": "200b273a1dfa5d9e15bebc432ed05c9a236b9ea2d56765d0594337f3e3b1e93f",
+    "experiments/e2/operations.py": "102583e5414188c05ac84c205c42b8267b0ccd103c7aef4bcaa1be722468f3ec",
+    "experiments/e2/outcomes.py": "52cc1c3b31ad8d4bf67e4803ac9cafb13e093b455f772bc774ad1ef57296d68b",
+    "experiments/e2/plan_evidence.py": "8ebb133d071bcfd5a0ab54f24246c7515d6d894eb239d4eb6c6ea873f23a2293",
+    "experiments/e2/plan_order.py": "11cf6f74af7cbd3035f58a4161d8206645f860be7a13cffedd88dfe7edad63d1",
+    "experiments/e2/plan_versions.py": "00b3fa7453e764b098a99063a0f41defcdfa3ae2ca9a86b4649812b8f38a6558",
+    "experiments/e2/policy.py": "5263fa5cedb7025ca9f1dfe7d5483c1c951d3a579add06ef14ed2c7dcc0bd6c1",
+    "experiments/e2/protected_slots.py": "f568a3a44abddf2026a83902f477895edbd49ff9e90a760e3933f28ade751165",
+    "experiments/e2/public_history.py": "b3bd7a7f21b4137ed4bd167fe1497390b22077f54e18fb61b1d7636e892b8b98",
+    "experiments/e2/public_sources.py": "d14bd9ee868606bb6c28f0e97261e3459b6b84286ead9061242fe606e95c9abc",
+    "experiments/e2/report.py": "d4ecfc35df6ab161776704a57ee4128e6960007501fc9458dc967bdead046c02",
+    "experiments/e2/suite.py": "8b62971e39512a31956523e2140ac2639d7332a60d8d189cf9ea31ada7f01705",
+    "experiments/e2/summary.py": "397f353e3423f874441c6bcced24fd7c52bd01d3e0dad14ba566adededd6ecaa",
+    "experiments/e2/trial.py": "2796ca2230a1d4f7f837fc0778772ca069e39bc987d2738be7163e3dc9232f59",
+    "experiments/e2/views.py": "d111f303c0b2febadf1449c7de75032c2f25f6f2bc32d2100dfdd2a67da02b6c",
+    "experiments/e2/worker_tools.py": "ace8fc270999d07a47c527d605e5e8037ab75ee4283fe3b999b0458c9c7141c2",
+    "purser/__init__.py": "d0915a20370b3b1cb489e74be2dcc8281c623efbe40f69bb6e2f5bfc72cb7dcb",
+    "purser/__main__.py": "307299fda7b77d22c64cb51430ec75e5f59d78e9c948786afb3b2544fe45e4b7",
+    "purser/cli.py": "35781795da4059f146155e8a5c2d373d0c417fbd7e054914cb006696ab74b0f7",
+    "purser/driver.py": "ac5632f0a15e744a477f1e752df325734632ef2348b7fc743e613ddf5cfc13ed",
+    "purser/kernel/__init__.py": "4b986a6bccd035b55dbd50a4b4839390087c1c580f86ae32629824a0314fdbb8",
+    "purser/kernel/artifacts.py": "9e4546b71b83704f53ef7bf8a7e3bc1b031b7bf051a9b9a18e89b171d9595f94",
+    "purser/kernel/decisionevents.py": "be9210bcca4c18d8a714dbe16d18b1bfda60973a4ae2b8bf44e6ab8b1669cca9",
+    "purser/kernel/decisionops.py": "850125d165ea8c3fdd2f7e6543049b04160d7360f5c23867595ad5ec7da97b2d",
+    "purser/kernel/gate.py": "1f4c68c72333aebd5ccc731a82e8b1d19aacfbd802c15083189648b42eda214d",
+    "purser/kernel/projector.py": "c2e6d9edf61bcc06287b6bfd62b7a02fdc587dcf6d13d660648924fb10f4b01b",
+    "purser/kernel/rules.py": "7f9f7ffe19d009457f5db877a4f794606f7d1cfc0699a3b72c619ebe709661c5",
+    "purser/kernel/store.py": "e70cd104a61fb38b9212c64ebb417d3b4a53ffd5c74792bd253b22a5e00cd813",
+    "purser/kernel/support.py": "f6abd13e8a9993e1a7a14830908761007bccd439f69bcef2351848dc6df93107",
+    "purser/kernel/wire.py": "ffd2cec7291a1db5b91a2511f2c2194a39700461605246c5aa891d87408a59c5",
+    "purser/kernel/workevents.py": "f4117ec5e7329d46e25e63cfc5cc606bdeebcf44322f7652418ef341b9d6b079",
+    "purser/kernel/workops.py": "7954ac2cd743c5d8ae06ae49f379a6d9a3fb73030dd3f6c223d3fbcbfb704b4e",
+    "purser/kernel/workview.py": "528040ee2fa894b295d2d65ff44a23d750910d07cb4c485a217f6aeae75ad64c",
+    "purser/queries.py": "bba4facfe11dde8d25966f0b90a9a44953cc1fde5a527a2c015e40d33e13596e"
+  },
+  "suite": "purser-notify-v1",
+  "treatments": {
+    "loop": "9a98e38a1ca6bd4228edde111c9e54e5ede3585d2f69e339269aa31861c3ccd7",
+    "loop_equal_verifier": "0b3197c4b917a7fd3cd475d5e1b944872ff0de9ec72d668e93072ed667ae7b54",
+    "purser": "9176f9f1640479b0fbb68328247ed241500c9da2d5e5d476d2b71a588d79aeac"
+  }
+}
