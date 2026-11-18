@@ -18,14 +18,16 @@ The independent report has SHA-256 `0257b7dbdb67520209f80fe2cfef07c5e6d5e3d8f1c6
 
 The actual local ledger is separate from the controlled fixture. Its principal activated the commitment at revision 8. The independent criterion was enrolled at 10, the work was assigned at 12, the candidate was submitted at 14 and its run opened at 16. The observer published the measured observation at 18 and the verifier recorded a pass at 20. At that checkpoint the root was submitted and its exact outcome `2ea75e79227a5076d8b9b599a3f9ffa77a478e5a82682d18bbdbe61556425524` awaited the local principal.
 
-The [portable evidence archive](development-log.zip) at revision 20 has SHA-256 `dc9757effb786e67d07b27988b6c9ea7d728ee445f4957bf9ed1a7bbab88e525`. It contains the original event bytes and four digest-addressed artifacts including the full independent report. Rebuilding in an empty database reproduced the following head, projection and six historical answers.
+The local principal accepted that exact outcome at 16:45:35 UTC on 18 November 2026. The single admitted batch recorded `WorkAccepted` at 21, `WorkClosed` at 22, `CommitmentSatisfied` at 23 and the principal's receipt at 24. The owner also confirmed acceptance in the architect chat. Resubmitting the same proposal through the local CLI returned the original receipt `a7e4312007ff3c1add28a61236e840b606b28c4939e1b8c6e89e8c193bc5f2be` at 24. Fresh `why` calls read a closed root and a satisfied commitment.
+
+The [portable evidence archive](development-log.zip) now contains all 24 original events and four digest-addressed artifacts, including the full independent report. Its SHA-256 is `3e26990bb328f6449c8734a75c6a7c8502afcf8e0fdc9378f15f9548a06c6122`. Its first 20 events and all four artifacts match the earlier 20-event archive byte for byte. That earlier archive, SHA-256 `dc9757effb786e67d07b27988b6c9ea7d728ee445f4957bf9ed1a7bbab88e525`, is preserved at commit `a58cf40`. Rebuilding each checkpoint in an empty database reproduced its head, projection and six historical answers.
 
 ```sh
 python3.11 -B docs/evidence/M2/development_trace.py docs/evidence/M2/development-log.zip
 ```
 
-| Verified value | At revision 20 |
-| --- | --- |
-| Head | `e3659ee94efdb6e721a25753d65540b307b071ba1b48611b35a54bb5ab1998af` |
-| Projection | `778dcbd55828a8e027764b2fc382a19018c7e48f82cc25f8ddfef47d2665aca7` |
-| Continuity | q01, q02, q07, q08, q09, q10 |
+| Verified value | Awaiting acceptance at revision 20 | Accepted at revision 24 |
+| --- | --- | --- |
+| Head | `e3659ee94efdb6e721a25753d65540b307b071ba1b48611b35a54bb5ab1998af` | `09ad2ae06114ebb771ecd87d0d386170bdc897febe701b123056c4378fb8bfe4` |
+| Projection | `778dcbd55828a8e027764b2fc382a19018c7e48f82cc25f8ddfef47d2665aca7` | `634218f8cfe75cb3281f349346300232638c54edeb9b202ecd17725e105ade15` |
+| Continuity | q01, q02, q07, q08, q09, q10 | q01, q02, q07, q08, q09, q10 |
