@@ -35,3 +35,5 @@ M1-G declined `fc6d72a` because a named historical read could contradict its sur
 ## M2 · Independent evidence and work closure
 
 M2-A and M2-B are released against the [M2 preflight](evidence/M2/preflight.md). The work worker owns the shared gate/projector registrations and the evaluation worker owns the independent scorer, baseline and scripted harness. The orchestrator owns the dependent driver, CLI integration and real development commitment. The existing frozen inputs remain at their M0 identities.
+
+The actual work item is `W-cold-reasons` in commitment `C-m2-explain-work`. Its live authority is the local Purser workspace at `~/.local/state/purser/development/ledger.sqlite3`. Query the live workspace with `python3.11 -m purser --db "$HOME/.local/state/purser/development/ledger.sqlite3" why C-m2-explain-work`. The scoped intake actor and the local human response have separate actor IDs and immutable receipts.
