@@ -1,0 +1,301 @@
+{
+  "accepted_at": "2026-11-18T16:45:35.089918Z",
+  "authenticated_actor": "principal:local",
+  "checkpoints": {
+    "20": {
+      "answers": {
+        "q01": [
+          {
+            "commitment": "C-m2-explain-work",
+            "principal": "principal:local"
+          }
+        ],
+        "q02": [
+          {
+            "candidate": {
+              "algorithm": "sha1",
+              "digest": "70097e0a2b933713d4fe91e6eddb5c2132951f89",
+              "kind": "git.commit"
+            },
+            "generation": 1,
+            "state": "submitted",
+            "work": "W-cold-reasons"
+          }
+        ],
+        "q07": [
+          {
+            "evidence": [
+              "E-real-cold-1"
+            ],
+            "obligation": "O-cold-reasons",
+            "state": "passed",
+            "version": 1,
+            "work": "W-cold-reasons"
+          }
+        ],
+        "q08": [
+          {
+            "reasons": [
+              {
+                "code": "awaiting_acceptance",
+                "refs": [
+                  "W-cold-reasons"
+                ]
+              }
+            ],
+            "work": "W-cold-reasons"
+          }
+        ],
+        "q09": [
+          {
+            "commitment": "C-m2-explain-work",
+            "missing": [
+              {
+                "code": "awaiting_acceptance",
+                "refs": [
+                  "W-cold-reasons"
+                ]
+              }
+            ],
+            "root": "W-cold-reasons"
+          }
+        ],
+        "q10": [
+          {
+            "action": "principal_accept",
+            "subject": "W-cold-reasons"
+          }
+        ]
+      },
+      "commitment_reasons": [
+        {
+          "code": "active_commitment",
+          "refs": [
+            "W-cold-reasons"
+          ]
+        }
+      ],
+      "commitment_state": "active",
+      "frontier": [
+        {
+          "action": "principal_accept",
+          "subject": "W-cold-reasons"
+        }
+      ],
+      "head": "e3659ee94efdb6e721a25753d65540b307b071ba1b48611b35a54bb5ab1998af",
+      "projection": "778dcbd55828a8e027764b2fc382a19018c7e48f82cc25f8ddfef47d2665aca7",
+      "work_fields": {
+        "accepted_outcome": null,
+        "assignment": "AS-cold-cli-1",
+        "candidate": {
+          "algorithm": "sha1",
+          "digest": "70097e0a2b933713d4fe91e6eddb5c2132951f89",
+          "kind": "git.commit"
+        },
+        "closed_outcome": null,
+        "generation": 1,
+        "parent": null,
+        "result": "R-f04bdc200e27f61ca6da87bd8d99ec86ccbf7d0ee4541b102820e2a1d5881dbf",
+        "state": "submitted"
+      },
+      "work_reasons": [
+        {
+          "code": "awaiting_acceptance",
+          "refs": [
+            "W-cold-reasons"
+          ]
+        }
+      ]
+    },
+    "24": {
+      "answers": {
+        "q01": [],
+        "q02": [
+          {
+            "candidate": {
+              "algorithm": "sha1",
+              "digest": "70097e0a2b933713d4fe91e6eddb5c2132951f89",
+              "kind": "git.commit"
+            },
+            "generation": 1,
+            "state": "closed",
+            "work": "W-cold-reasons"
+          }
+        ],
+        "q07": [
+          {
+            "evidence": [
+              "E-real-cold-1"
+            ],
+            "obligation": "O-cold-reasons",
+            "state": "passed",
+            "version": 1,
+            "work": "W-cold-reasons"
+          }
+        ],
+        "q08": [
+          {
+            "reasons": [],
+            "work": "W-cold-reasons"
+          }
+        ],
+        "q09": [
+          {
+            "commitment": "C-m2-explain-work",
+            "missing": [],
+            "root": "W-cold-reasons"
+          }
+        ],
+        "q10": []
+      },
+      "commitment_reasons": [
+        {
+          "code": "accepted_outcome",
+          "refs": [
+            "W-cold-reasons"
+          ]
+        }
+      ],
+      "commitment_state": "satisfied",
+      "frontier": [],
+      "head": "09ad2ae06114ebb771ecd87d0d386170bdc897febe701b123056c4378fb8bfe4",
+      "projection": "634218f8cfe75cb3281f349346300232638c54edeb9b202ecd17725e105ade15",
+      "work_fields": {
+        "accepted_outcome": "2ea75e79227a5076d8b9b599a3f9ffa77a478e5a82682d18bbdbe61556425524",
+        "assignment": "AS-cold-cli-1",
+        "candidate": {
+          "algorithm": "sha1",
+          "digest": "70097e0a2b933713d4fe91e6eddb5c2132951f89",
+          "kind": "git.commit"
+        },
+        "closed_outcome": "2ea75e79227a5076d8b9b599a3f9ffa77a478e5a82682d18bbdbe61556425524",
+        "generation": 1,
+        "parent": null,
+        "result": "R-f04bdc200e27f61ca6da87bd8d99ec86ccbf7d0ee4541b102820e2a1d5881dbf",
+        "state": "closed"
+      },
+      "work_reasons": []
+    }
+  },
+  "cli_processes": 17,
+  "complete_24_archive": "3e26990bb328f6449c8734a75c6a7c8502afcf8e0fdc9378f15f9548a06c6122",
+  "disposition": "GO for local M2 product and real-acceptance trace",
+  "earlier_original_events": 20,
+  "later_original_events": 24,
+  "object_count": 4,
+  "original_20_archive": "dc9757effb786e67d07b27988b6c9ea7d728ee445f4957bf9ed1a7bbab88e525",
+  "original_feature": "70097e0a2b933713d4fe91e6eddb5c2132951f89",
+  "outcome": "2ea75e79227a5076d8b9b599a3f9ffa77a478e5a82682d18bbdbe61556425524",
+  "receipt_digest": "a7e4312007ff3c1add28a61236e840b606b28c4939e1b8c6e89e8c193bc5f2be",
+  "report_sha256": "0257b7dbdb67520209f80fe2cfef07c5e6d5e3d8f1c6b254af39fbdcda37e443",
+  "reviewed_integration": "066641a3ead3aade78f0af786ed1ee1636daa334",
+  "steps": [
+    [
+      "fresh-checkpoint-20.db",
+      "init"
+    ],
+    [
+      "fresh-checkpoint-20.db",
+      "replay",
+      "--as-of",
+      "2026-11-18T16:10:05.179445Z"
+    ],
+    [
+      "fresh-checkpoint-20.db",
+      "status",
+      "--as-of",
+      "2026-11-18T16:10:05.179445Z"
+    ],
+    [
+      "fresh-checkpoint-20.db",
+      "status",
+      "--revision",
+      "20",
+      "--as-of",
+      "2026-11-18T16:10:05.179445Z"
+    ],
+    [
+      "fresh-checkpoint-20.db",
+      "why",
+      "W-cold-reasons",
+      "--as-of",
+      "2026-11-18T16:10:05.179445Z"
+    ],
+    [
+      "fresh-checkpoint-20.db",
+      "why",
+      "C-m2-explain-work",
+      "--as-of",
+      "2026-11-18T16:10:05.179445Z"
+    ],
+    [
+      "fresh-checkpoint-20.db",
+      "frontier",
+      "--as-of",
+      "2026-11-18T16:10:05.179445Z"
+    ],
+    [
+      "fresh-checkpoint-24.db",
+      "init"
+    ],
+    [
+      "fresh-checkpoint-24.db",
+      "replay",
+      "--as-of",
+      "2026-11-18T16:45:35.089918Z"
+    ],
+    [
+      "fresh-checkpoint-24.db",
+      "status",
+      "--as-of",
+      "2026-11-18T16:45:35.089918Z"
+    ],
+    [
+      "fresh-checkpoint-24.db",
+      "status",
+      "--revision",
+      "24",
+      "--as-of",
+      "2026-11-18T16:45:35.089918Z"
+    ],
+    [
+      "fresh-checkpoint-24.db",
+      "why",
+      "W-cold-reasons",
+      "--as-of",
+      "2026-11-18T16:45:35.089918Z"
+    ],
+    [
+      "fresh-checkpoint-24.db",
+      "why",
+      "C-m2-explain-work",
+      "--as-of",
+      "2026-11-18T16:45:35.089918Z"
+    ],
+    [
+      "fresh-checkpoint-24.db",
+      "frontier",
+      "--as-of",
+      "2026-11-18T16:45:35.089918Z"
+    ],
+    [
+      "fresh-checkpoint-24.db",
+      "status",
+      "--revision",
+      "20",
+      "--as-of",
+      "2026-11-18T16:10:05.179445Z"
+    ],
+    [
+      "fresh-checkpoint-24.db",
+      "propose",
+      "-"
+    ],
+    [
+      "fresh-checkpoint-24.db",
+      "status",
+      "--as-of",
+      "2026-11-18T16:45:35.089918Z"
+    ]
+  ]
+}

@@ -20,6 +20,8 @@ The actual local ledger is separate from the controlled fixture. Its principal a
 
 The local principal accepted that exact outcome at 16:45:35 UTC on 18 November 2026. The single admitted batch recorded `WorkAccepted` at 21, `WorkClosed` at 22, `CommitmentSatisfied` at 23 and the principal's receipt at 24. The owner also confirmed acceptance in the architect chat. Resubmitting the same proposal through the local CLI returned the original receipt `a7e4312007ff3c1add28a61236e840b606b28c4939e1b8c6e89e8c193bc5f2be` at 24. Fresh `why` calls read a closed root and a satisfied commitment.
 
+The independent verifier accepted the product and principal trace at integration `066641a3ead3aade78f0af786ed1ee1636daa334`. It reconstructed two blank ledgers, checked all 24 original event envelopes, derived the accepted outcome from its evidence and exercised 17 fresh CLI processes. Redelivery in the restored ledger returned the same receipt and preserved revision 24. The [independent audit](independent-principal-verification.json) has SHA-256 `6d2c9a2a32e84a06b86830d23a00608dbe67382dbff92b61454d1214f1e9430e`.
+
 The [portable evidence archive](development-log.zip) now contains all 24 original events and four digest-addressed artifacts, including the full independent report. Its SHA-256 is `3e26990bb328f6449c8734a75c6a7c8502afcf8e0fdc9378f15f9548a06c6122`. Its first 20 events and all four artifacts match the earlier 20-event archive byte for byte. That earlier archive, SHA-256 `dc9757effb786e67d07b27988b6c9ea7d728ee445f4957bf9ed1a7bbab88e525`, is preserved at commit `a58cf40`. Rebuilding each checkpoint in an empty database reproduced its head, projection and six historical answers.
 
 ```sh
