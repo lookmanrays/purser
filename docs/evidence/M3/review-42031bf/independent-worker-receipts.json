@@ -1,0 +1,272 @@
+[
+  {
+    "arm": "loop",
+    "issues": [],
+    "releases": [
+      {
+        "after": {
+          "plan_sha256": "6f37452d28d504772fbcc9663ceff13d7b4efc9a6e9efcb0ea696de439601525"
+        },
+        "before": {
+          "plan_sha256": "6f37452d28d504772fbcc9663ceff13d7b4efc9a6e9efcb0ea696de439601525"
+        },
+        "context_work": "W1",
+        "physical_receiver_confirmed": "W1",
+        "response_sha256": "6e0737a28b8ac0f68e7b01e34a69022223711c23066b8bc9ed0983909b338c02",
+        "worker_result": {
+          "changed_criterion": "W2/retry",
+          "own_criterion": "W1/preferences",
+          "own_state": "closed",
+          "prior_candidate": "6dcb12a91c06f00fc75c5e68b6145a727f3749a7",
+          "request": {
+            "request": 1,
+            "role": "executor",
+            "subject": "W1"
+          },
+          "response_sha256": "6e0737a28b8ac0f68e7b01e34a69022223711c23066b8bc9ed0983909b338c02",
+          "subject": "W1",
+          "title": "Disable delivery on disabled channels and allow other channels.",
+          "work_disposition": "retain-submission"
+        }
+      },
+      {
+        "after": {
+          "plan_sha256": "6f37452d28d504772fbcc9663ceff13d7b4efc9a6e9efcb0ea696de439601525"
+        },
+        "before": {
+          "plan_sha256": "6f37452d28d504772fbcc9663ceff13d7b4efc9a6e9efcb0ea696de439601525"
+        },
+        "context_work": "W3",
+        "physical_receiver_confirmed": "W3",
+        "response_sha256": "453e3eb2236269a5b22d9842f5aaefc7c744746cd0e54b61538d52c77a9ae91e",
+        "worker_result": {
+          "changed_criterion": "W2/retry",
+          "own_criterion": "W3/delivery",
+          "own_state": "closed",
+          "prior_candidate": "af70fa43920a23d5e30dd6b4f5502084da6f9e6b",
+          "request": {
+            "request": 2,
+            "role": "executor",
+            "subject": "W3"
+          },
+          "response_sha256": "453e3eb2236269a5b22d9842f5aaefc7c744746cd0e54b61538d52c77a9ae91e",
+          "subject": "W3",
+          "title": "Keep the first occurrence of each event ID in input order within each submitted batch.",
+          "work_disposition": "retain-submission"
+        }
+      },
+      {
+        "after": {
+          "plan_sha256": "6f37452d28d504772fbcc9663ceff13d7b4efc9a6e9efcb0ea696de439601525"
+        },
+        "before": {
+          "plan_sha256": "6f37452d28d504772fbcc9663ceff13d7b4efc9a6e9efcb0ea696de439601525"
+        },
+        "context_work": "W1",
+        "physical_receiver_confirmed": "W1",
+        "response_sha256": "6e0737a28b8ac0f68e7b01e34a69022223711c23066b8bc9ed0983909b338c02",
+        "worker_result": {
+          "changed_criterion": "W2/retry",
+          "own_criterion": "W1/preferences",
+          "own_state": "closed",
+          "prior_candidate": "6dcb12a91c06f00fc75c5e68b6145a727f3749a7",
+          "request": {
+            "request": 3,
+            "role": "executor",
+            "subject": "W1"
+          },
+          "response_sha256": "6e0737a28b8ac0f68e7b01e34a69022223711c23066b8bc9ed0983909b338c02",
+          "subject": "W1",
+          "title": "Disable delivery on disabled channels and allow other channels.",
+          "work_disposition": "retain-submission"
+        }
+      }
+    ],
+    "rework": 13,
+    "source": "42031bfd37a90d2f74905b3c3c64069ccd9cbcc9",
+    "steps": 30,
+    "terminal": "done"
+  },
+  {
+    "arm": "purser",
+    "issues": [],
+    "releases": [
+      {
+        "after": {
+          "head_hash": "6795e6441f5e6ac8691dcc9ab26457bcbca01fbcfdf30e7de2fa3aa987ddd4dd",
+          "revision": 60
+        },
+        "before": {
+          "head_hash": "6795e6441f5e6ac8691dcc9ab26457bcbca01fbcfdf30e7de2fa3aa987ddd4dd",
+          "revision": 60
+        },
+        "context_work": "W1",
+        "physical_receiver_confirmed": "W1",
+        "response_sha256": "7cd3a99395ebc79b45b4cc3804cfea61c1a8d970a5c19c983345ee7960f0a3a4",
+        "worker_result": {
+          "changed_criterion": "W2/retry",
+          "own_criterion": "W1/preferences",
+          "own_state": "closed",
+          "prior_candidate": "6dcb12a91c06f00fc75c5e68b6145a727f3749a7",
+          "request": {
+            "request": 1,
+            "role": "executor",
+            "subject": "W1"
+          },
+          "response_sha256": "7cd3a99395ebc79b45b4cc3804cfea61c1a8d970a5c19c983345ee7960f0a3a4",
+          "subject": "W1",
+          "title": "Disable delivery on disabled channels and allow other channels.",
+          "work_disposition": "retain-submission"
+        }
+      },
+      {
+        "after": {
+          "head_hash": "6795e6441f5e6ac8691dcc9ab26457bcbca01fbcfdf30e7de2fa3aa987ddd4dd",
+          "revision": 60
+        },
+        "before": {
+          "head_hash": "6795e6441f5e6ac8691dcc9ab26457bcbca01fbcfdf30e7de2fa3aa987ddd4dd",
+          "revision": 60
+        },
+        "context_work": "W3",
+        "physical_receiver_confirmed": "W3",
+        "response_sha256": "9b594bebaa33a3a94922afb539b558f3c5fc4f19baaa4b9743f25e85db638020",
+        "worker_result": {
+          "changed_criterion": "W2/retry",
+          "own_criterion": "W3/delivery",
+          "own_state": "closed",
+          "prior_candidate": "af70fa43920a23d5e30dd6b4f5502084da6f9e6b",
+          "request": {
+            "request": 2,
+            "role": "executor",
+            "subject": "W3"
+          },
+          "response_sha256": "9b594bebaa33a3a94922afb539b558f3c5fc4f19baaa4b9743f25e85db638020",
+          "subject": "W3",
+          "title": "Keep the first occurrence of each event ID in input order within each submitted batch.",
+          "work_disposition": "retain-submission"
+        }
+      },
+      {
+        "after": {
+          "head_hash": "6795e6441f5e6ac8691dcc9ab26457bcbca01fbcfdf30e7de2fa3aa987ddd4dd",
+          "revision": 60
+        },
+        "before": {
+          "head_hash": "6795e6441f5e6ac8691dcc9ab26457bcbca01fbcfdf30e7de2fa3aa987ddd4dd",
+          "revision": 60
+        },
+        "context_work": "W1",
+        "physical_receiver_confirmed": "W1",
+        "response_sha256": "7cd3a99395ebc79b45b4cc3804cfea61c1a8d970a5c19c983345ee7960f0a3a4",
+        "worker_result": {
+          "changed_criterion": "W2/retry",
+          "own_criterion": "W1/preferences",
+          "own_state": "closed",
+          "prior_candidate": "6dcb12a91c06f00fc75c5e68b6145a727f3749a7",
+          "request": {
+            "request": 3,
+            "role": "executor",
+            "subject": "W1"
+          },
+          "response_sha256": "7cd3a99395ebc79b45b4cc3804cfea61c1a8d970a5c19c983345ee7960f0a3a4",
+          "subject": "W1",
+          "title": "Disable delivery on disabled channels and allow other channels.",
+          "work_disposition": "retain-submission"
+        }
+      }
+    ],
+    "rework": 25,
+    "source": "42031bfd37a90d2f74905b3c3c64069ccd9cbcc9",
+    "steps": 48,
+    "terminal": "done"
+  },
+  {
+    "arm": "loop_equal_verifier",
+    "issues": [],
+    "releases": [
+      {
+        "after": {
+          "plan_sha256": "e5c83df3e3659ec15ee0737778916439997cdc2a3f3754eab4dbc2a5b44dc327"
+        },
+        "before": {
+          "plan_sha256": "e5c83df3e3659ec15ee0737778916439997cdc2a3f3754eab4dbc2a5b44dc327"
+        },
+        "context_work": "W1",
+        "physical_receiver_confirmed": "W1",
+        "response_sha256": "0adcc106d08c16441293fcf8d24adebda3f3b9a77605a56bfb2ffc8d58018bc8",
+        "worker_result": {
+          "changed_criterion": "W2/retry",
+          "own_criterion": "W1/preferences",
+          "own_state": "closed",
+          "prior_candidate": "6dcb12a91c06f00fc75c5e68b6145a727f3749a7",
+          "request": {
+            "request": 1,
+            "role": "executor",
+            "subject": "W1"
+          },
+          "response_sha256": "0adcc106d08c16441293fcf8d24adebda3f3b9a77605a56bfb2ffc8d58018bc8",
+          "subject": "W1",
+          "title": "Disable delivery on disabled channels and allow other channels.",
+          "work_disposition": "retain-submission"
+        }
+      },
+      {
+        "after": {
+          "plan_sha256": "e5c83df3e3659ec15ee0737778916439997cdc2a3f3754eab4dbc2a5b44dc327"
+        },
+        "before": {
+          "plan_sha256": "e5c83df3e3659ec15ee0737778916439997cdc2a3f3754eab4dbc2a5b44dc327"
+        },
+        "context_work": "W3",
+        "physical_receiver_confirmed": "W3",
+        "response_sha256": "3ca21a2e4d14639e335fe0216e59c1a26e1ff489313ed448a3d3fcbe1f3511f9",
+        "worker_result": {
+          "changed_criterion": "W2/retry",
+          "own_criterion": "W3/delivery",
+          "own_state": "closed",
+          "prior_candidate": "af70fa43920a23d5e30dd6b4f5502084da6f9e6b",
+          "request": {
+            "request": 2,
+            "role": "executor",
+            "subject": "W3"
+          },
+          "response_sha256": "3ca21a2e4d14639e335fe0216e59c1a26e1ff489313ed448a3d3fcbe1f3511f9",
+          "subject": "W3",
+          "title": "Keep the first occurrence of each event ID in input order within each submitted batch.",
+          "work_disposition": "retain-submission"
+        }
+      },
+      {
+        "after": {
+          "plan_sha256": "e5c83df3e3659ec15ee0737778916439997cdc2a3f3754eab4dbc2a5b44dc327"
+        },
+        "before": {
+          "plan_sha256": "e5c83df3e3659ec15ee0737778916439997cdc2a3f3754eab4dbc2a5b44dc327"
+        },
+        "context_work": "W1",
+        "physical_receiver_confirmed": "W1",
+        "response_sha256": "0adcc106d08c16441293fcf8d24adebda3f3b9a77605a56bfb2ffc8d58018bc8",
+        "worker_result": {
+          "changed_criterion": "W2/retry",
+          "own_criterion": "W1/preferences",
+          "own_state": "closed",
+          "prior_candidate": "6dcb12a91c06f00fc75c5e68b6145a727f3749a7",
+          "request": {
+            "request": 3,
+            "role": "executor",
+            "subject": "W1"
+          },
+          "response_sha256": "0adcc106d08c16441293fcf8d24adebda3f3b9a77605a56bfb2ffc8d58018bc8",
+          "subject": "W1",
+          "title": "Disable delivery on disabled channels and allow other channels.",
+          "work_disposition": "retain-submission"
+        }
+      }
+    ],
+    "rework": 25,
+    "source": "42031bfd37a90d2f74905b3c3c64069ccd9cbcc9",
+    "steps": 48,
+    "terminal": "done"
+  }
+]
