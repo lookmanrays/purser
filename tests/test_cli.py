@@ -1,11 +1,14 @@
 """A fresh interpreter for every public command; expected replies come from M0."""
 
+import hashlib
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from itertools import groupby
 from pathlib import Path
@@ -16,6 +19,22 @@ ROOT = Path(__file__).resolve().parents[1]
 WIRE = json.loads((ROOT / "docs/contracts/wire-v1.json").read_bytes())
 EXPECTED = WIRE["expected"]
 AS_OF = EXPECTED["replay_as_of"]
+
+
+def published_digest(path):
+    # Read the three installed SQLite views in one snapshot, outside the product API.
+    with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)) as db:
+        db.execute("BEGIN")
+        projection = {}
+        for table, sort_keys in (
+            ("records", "id"), ("receipts", "actor_id,proposal_id"),
+            ("edges", "kind,from_id,to_id"),
+        ):
+            rows = db.execute(f"SELECT body FROM {table} ORDER BY {sort_keys}")
+            projection[table] = [json.loads(body) for (body,) in rows]
+    raw = json.dumps(projection, ensure_ascii=False, allow_nan=False, sort_keys=True,
+                     separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(b"purser/projection/v1\x00" + raw).hexdigest()
 
 
 class PublicCLI(unittest.TestCase):
@@ -110,6 +129,10 @@ class PublicCLI(unittest.TestCase):
         unsupported = dict(create, proposal_id="p-unsupported", base_revision=8, ops=[{"op": "unknown"}])
         rejected = self.propose(unsupported, 4)["receipt"]
         self.assertEqual((rejected["disposition"], rejected["code"]), ("rejected", "unknown_op"))
+        live = self.command("status", "--as-of", AS_OF)
+        self.assertEqual(live["projection_hash"], published_digest(self.db))
+        self.assertEqual(self.command("replay", "--as-of", AS_OF), live)
+        self.assertEqual(published_digest(self.db), live["projection_hash"])
 
     def test_errors_do_not_create_or_change_a_store(self):
         for args in (("status",), ("why", "missing"), ("replay",), ("propose", "-")):
