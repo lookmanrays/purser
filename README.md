@@ -3,3 +3,28 @@
 Purser is a local research kernel for coding work that survives a change of agent or a process restart. It tracks commitments, scoped authority, observations and the evidence needed to close work.
 
 Read the [architecture](docs/architecture-v0.5.md), the [implementation plan](docs/implementation-plan-v0.5.md) and the [delivery record](docs/delivery.md) for the current milestone and adopted amendments.
+
+## Try the local CLI
+
+Run these commands from this checkout with Python 3.11 or newer. The database lives in a private temporary directory for this example.
+
+```sh
+workspace=$(mktemp -d)
+python3.11 -m purser --db "$workspace/purser.db" init
+python3.11 -m purser --db "$workspace/purser.db" propose - <<'JSON'
+{
+  "v": 1,
+  "proposal_id": "p-create",
+  "commitment": "C-retries",
+  "base_revision": 0,
+  "ops": [
+    {"op": "commitment.create", "id": "C-retries", "root": "W-root", "statement": "Add bounded notification retries."}
+  ],
+  "justification": []
+}
+JSON
+python3.11 -m purser --db "$workspace/purser.db" why C-retries
+python3.11 -m purser --db "$workspace/purser.db" replay
+```
+
+The creation receipt records revision 2. `why` explains that the commitment awaits activation. Running the identical proposal again returns its existing receipt. The [wire contract](docs/contracts/kernel-v1.md) describes activation, historical reads and JSON exit codes.
