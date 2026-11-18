@@ -4,7 +4,7 @@ The orchestrator integrates worker candidates on `lookman/purser-development`. E
 
 ## Current implementation
 
-M0 through M3 passed their local engineering gates. The integrated kernel can reconsider a decision, reopen its dependent work and explain why a sibling stayed closed. All 66 scripted E2 trials completed. Both original arms passed 20/20 primary cases. Purser used 500 rework steps against the plain loop’s 260. M4-A and M4-B are underway on the grant and Git implementations. [CLI example](../README.md) · [M3 decision and evidence](evidence/M3/acceptance.md) · [M4 assignments](evidence/M4/dispatch.md)
+M0 through M3 passed their local engineering gates. All 66 scripted E2 trials completed. Both original arms preserved the two unaffected siblings in 20/20 primary cases. Purser used 500 rework steps against the plain loop’s 260. The M4 CLI can now publish an approved change to a registered private Git repository and recover an interrupted write. Whole-product tests passed at `62ac9b6`. The E3 study and final M4 decision are pending. [CLI usage](../README.md) · [M3 decision and evidence](evidence/M3/acceptance.md) · [M4 product verification](evidence/M4/foreground-verification.md)
 
 ## M0 · Design and experimental protocol
 
