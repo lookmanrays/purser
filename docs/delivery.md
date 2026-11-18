@@ -20,4 +20,6 @@ A two-connection test on a temporary local WAL database observed zero rows befor
 
 The first domain is one local coding repository. The sole runtime principal accepts root outcomes, issues grants and waives obligations. Normal executor work uses disposable state. The first shared effect is a guarded update to an allowed local branch. Working credentials, real-model spending, real-agent isolation, public distribution and off-machine backup activation each belong to their stated later gate.
 
+Before M5 runs model-authored Python, qualify the narrow candidate-execution boundary used by the evaluator. Even a frozen test suite imports candidate code. Keep the trusted scorer, journal, provider credential and canonical repository outside that process. M6 additionally qualifies the interactive coding agent, its tools and its transport. The scripted M0 fixture only exercises known, controlled code.
+
 Track the 3,000-line target using physical Python source lines, including comments and blank lines, in the tracked `purser/` production package. Include semantic authority, projection, admission and closure code even if subsequently extracted under another package. Exclude tests, fixtures and separately qualified adapter-only infrastructure. Crossing the target triggers an architectural review. Record the measured scope and count with each integrated code gate.
