@@ -33,21 +33,27 @@ class Plan:
     def __init__(self, directory, *, tasks=TASKS):
         self.file = directory / "plan.json"
         self.invocation = None
-        write_atomic(self.file, encoded({work: {"state": "open", "candidate": None, "verified": {},
-                                                "work": {"id": work, "title": tasks[work]}}
-                                         for work in (*ORDER, PARENT)}))
+        self.publish({work: {"state": "open", "candidate": None, "verified": {},
+                             "work": {"id": work, "title": tasks[work]}} for work in (*ORDER, PARENT)})
+
+    def publish(self, plans):
+        write_atomic(self.file, encoded(plans))
 
     def read(self):
         return json.loads(self.file.read_bytes())
+
+    def publication(self):
+        return self.invocation
 
     def update(self, work, *, diagnosis=(), **fields):
         plans = self.read()
         row = plans[work]
         row.update(fields)
-        if self.invocation is not None:
-            row["_publication"] = {**self.invocation, "subject": work, "candidate": row["candidate"],
+        invocation = self.publication()
+        if invocation is not None:
+            row["_publication"] = {**invocation, "subject": work, "candidate": row["candidate"],
                                    "diagnosis": list(diagnosis)}
-        write_atomic(self.file, encoded(plans))
+        self.publish(plans)
         return {"state": row["state"]}
 
     def context(self, work):

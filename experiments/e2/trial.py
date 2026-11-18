@@ -19,7 +19,7 @@ from experiments.e1.purser_arm import retained_kernel
 from experiments.e1.recovery import failure_record, input_identity
 from experiments.e1.run import Journal, _run_arm
 
-from . import evidence, measure, outcomes, policy
+from . import evidence, measure, outcomes, plan_versions, policy
 from .driver import Driver
 
 
@@ -38,7 +38,7 @@ def participant(directory, assets, arm):
     if arm != "purser":
         data = (directory / "plan.json").read_bytes()
         rows = json.loads(data)
-        return rows, {"plan_sha256": sha(data)}, {"plan": rows}
+        return rows, {"plan_sha256": sha(data)}, {"plan": rows, "plan_versions": plan_versions.retain(directory, assets)}
     store = Store(directory / "kernel.sqlite")
     snap = store.snapshot()
     trace = retained_kernel(store, snap)

@@ -7,6 +7,9 @@ from experiments.e1.executor import PATHS, TASKS, implement, local_check
 from experiments.e1.measurement import probe, same
 from experiments.e1.purser_arm import OBSERVER, Treatment
 
+from . import plan_versions
+from .actions import WorkPorts
+
 LINEAR = "linear"
 EXPONENTIAL = "exponential"
 CHOICES = [LINEAR, EXPONENTIAL]
@@ -30,26 +33,55 @@ def decision(identity, choice, support, supersedes):
             "supersedes": supersedes}
 
 
-class PlanArm(Plan):
+class PlanArm(WorkPorts, Plan):
     def __init__(self, directory):
         super().__init__(directory, tasks=TASK_TITLES)
         self.update("W2", retry_choice=LINEAR, criterion="W2/retry", premise=None)
 
     def receive(self, message):
-        return self.update("W2", premise=message)
+        with plan_versions.delivery(message["id"]):
+            return self.update("W2", premise=message)
 
     def revise(self, message):
+        return self.public_operation("revise", "plan", "W2", "planner", {"adopt": message["id"], "work": "W2"},
+                                     lambda: self.adopt(message))
+
+    def adopt(self, message):
         row = self.context("W2")
         if row["premise"] != message or row["criterion"] != message["criterion"]:
             raise ValueError("plan has no matching new requirement")
         return self.update("W2", retry_choice=message["retry_schedule"])
+
+    def publication(self):
+        return plan_versions.invocation(self.work_actions)
+
+    def publish(self, rows):
+        who = self.publication()
+        with plan_versions.writer(self.file):
+            plan_versions.publish(self.file, rows, who["attempt"] if who else None)
+
+    def update(self, work, *, diagnosis=(), **fields):
+        with plan_versions.writer(self.file):
+            return super().update(work, diagnosis=diagnosis, **fields)
+
+    def public_operation(self, method, kind, work, actor, inputs, operation, oid=None):
+        def mutate():
+            with plan_versions.writer(self.file):
+                return operation()
+        writes = method in ("assign_again", "submit", "verify", "decide", "revise")
+        return super().public_operation(method, kind, work, actor, inputs, mutate if writes else operation, oid)
+
+    def context(self, work):
+        row = super().context(work)
+        row.pop(plan_versions.KEY, None)
+        return row
 
     @staticmethod
     def choice(context):
         return context["retry_choice"]
 
 
-class KernelArm(Treatment):
+class KernelArm(WorkPorts, Treatment):
     def __init__(self, directory, definitions, environment):
         super().__init__(directory, definitions, environment, before_assignments=self.setup_decision, tasks=TASK_TITLES)
 
@@ -66,7 +98,14 @@ class KernelArm(Treatment):
                          assignment=ASSUMPTION, premise={"artifact": encoded(message)})
 
     def revise(self, message):
-        return self.send("planner", [decision(REPLACEMENT, message["retry_schedule"], [], ORIGINAL)])
+        return self.public_operation("revise", "plan", "W2", "planner", {"adopt": message["id"], "work": "W2"},
+                    lambda: self.send("planner", [decision(REPLACEMENT, message["retry_schedule"], [], ORIGINAL)]))
+
+    def record_request(self, request):
+        if self.on_proposal is not None:
+            return super().record_request(request)
+        if self.work_actions is not None:
+            self.work_actions.record(request)
 
     @staticmethod
     def choice(context):
