@@ -1,0 +1,30 @@
+import argparse
+import json
+from pathlib import Path
+
+from .suite import collect_units, freeze_series
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Register, collect and reconstruct the scripted E3 local Git series.")
+    parser.add_argument("command", choices=("freeze", "collect", "report", "verify"))
+    parser.add_argument("directory", type=Path)
+    parser.add_argument("--replicate", type=int)
+    parser.add_argument("--reason")
+    args = parser.parse_args()
+    if args.command != "freeze" and (args.replicate is not None or args.reason is not None):
+        parser.error("replicate and reason belong to the precollection freeze")
+    if args.command == "freeze":
+        freeze_series(args.directory, replicate=1 if args.replicate is None else args.replicate, reason=args.reason)
+    elif args.command == "collect":
+        collect_units(args.directory)
+    else:
+        from .report import render, verify_candidates
+        if args.command == "verify":
+            print(json.dumps(verify_candidates(args.directory), sort_keys=True))
+        else:
+            print(render(args.directory), end="")
+
+
+if __name__ == "__main__":
+    main()
