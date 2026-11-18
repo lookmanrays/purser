@@ -1,0 +1,157 @@
+{
+  "candidate": "02f238ed9f26e38a5878ded099704fe9c17a966c",
+  "archived_m3": {
+    "original_events_unchanged": 108,
+    "cold_cli_samples": 23,
+    "status_samples_with_new_empty_questions": 8,
+    "head_hash": "0bed655e7394d91946ec7a979010e21a6540fe14ed86921b4ed2da0359314294"
+  },
+  "archived_project_ledgers": {
+    "M2": {
+      "revision": 24,
+      "head_hash": "09ad2ae06114ebb771ecd87d0d386170bdc897febe701b123056c4378fb8bfe4",
+      "cold_cli_samples": 1,
+      "original_events_unchanged": 24
+    },
+    "M3": {
+      "revision": 51,
+      "head_hash": "0a329abb5c9fab27d6aa44289c83cb34b63a90384de74ebdf8c356e2f5c459e2",
+      "cold_cli_samples": 4,
+      "original_events_unchanged": 51
+    }
+  },
+  "author_controls": {
+    "test_revoke_wins_reserved_sqlite_cutoff": {
+      "head_hash": "0387672d7908d8abbaeb9474cd12ea32245b8189fa9964cd84343f691696d964",
+      "revision": 29,
+      "transitions": [
+        {
+          "revision": 18,
+          "type": "GrantIssued",
+          "at": "2026-11-18T13:59:59.000000Z",
+          "id": "G-publish"
+        },
+        {
+          "revision": 27,
+          "type": "GrantRevoked",
+          "at": "2026-11-18T13:59:59.000000Z",
+          "id": "G-publish",
+          "in_flight": []
+        }
+      ]
+    },
+    "test_dispatch_wins_reserved_sqlite_cutoff": {
+      "head_hash": "7908f11cfe2792368b5a2b4cf4812c5d8ddf1ff72ab3782706e07837016b49f6",
+      "revision": 32,
+      "transitions": [
+        {
+          "revision": 18,
+          "type": "GrantIssued",
+          "at": "2026-11-18T13:59:59.000000Z",
+          "id": "G-publish"
+        },
+        {
+          "revision": 27,
+          "type": "EffectDispatchAuthorized",
+          "at": "2026-11-18T13:59:59.000000Z",
+          "id": "T1"
+        },
+        {
+          "revision": 29,
+          "type": "GrantRevoked",
+          "at": "2026-11-18T13:59:59.000000Z",
+          "id": "G-publish",
+          "in_flight": [
+            "T1"
+          ]
+        },
+        {
+          "revision": 31,
+          "type": "GitEffectObserved",
+          "at": "2026-11-18T13:59:59.000000Z",
+          "id": "Obs-after-revoke",
+          "state": "confirmed_happened",
+          "reason": "protected_receipt_verified"
+        }
+      ]
+    },
+    "test_exact_m0_intent_and_all_five_outcomes_through_cold_cli": {
+      "head_hash": "0aba7b2e1979038787abb5b2fb49bd8cfbedec4297aed4b782038a3e8413f3dd",
+      "revision": 94,
+      "transitions": [
+        {
+          "revision": 24,
+          "type": "GrantIssued",
+          "at": "2026-11-18T13:59:59.000000Z",
+          "id": "G-publish"
+        },
+        {
+          "revision": 83,
+          "type": "EffectDispatchAuthorized",
+          "at": "2026-11-18T13:59:59.000000Z",
+          "id": "T1"
+        },
+        {
+          "revision": 85,
+          "type": "GitEffectObserved",
+          "at": "2026-11-18T13:59:59.000000Z",
+          "id": "Obs-Git-B",
+          "state": "confirmed_happened",
+          "reason": "protected_receipt_verified"
+        }
+      ],
+      "outcomes": {
+        "W1": "ce2af62ae6a057f7777121471ccf9228556cdf011f92655790cb4bbfe902f979",
+        "W2": "5a3f7fee8997e8ceadeaa6a49fd01aa94dc946e838d0ed17bf81081df7636ab9",
+        "W3": "20fa4a29a72a26f1b583161186df68e20babe63110b8b80aada62c96f1642e11",
+        "W-notify": "3681db2d653024aad38a55938b682d7472d264958793b52fb37bee15d79d84d3",
+        "W-root": "13371a3de0df1fe6f57fa38a2fd4a7206cfc1702cbae252ab9eaf5ddc3bb9e5f"
+      },
+      "cutoff_q05": [
+        {
+          "capability": "git.commit",
+          "commitment": "C-notify",
+          "expires_at": "2026-11-18T14:00:00.000000Z",
+          "grant": "G-publish",
+          "grantee": "executor:beta",
+          "resource": "refs/heads/purser-demo",
+          "state": "active"
+        }
+      ],
+      "cutoff_q06": [
+        {
+          "attempt": "T1",
+          "effect": "F-publish",
+          "state": "dispatching"
+        }
+      ],
+      "cutoff_q10": [
+        {
+          "action": "reconcile",
+          "subject": "F-publish"
+        }
+      ]
+    },
+    "test_native_distinct_same_tree_commits_have_an_authorizable_empty_path_measurement": {
+      "head_hash": "7c186ab038236ba7d45caf682aab94bce3a83bd51646111b53c1b32e010e45f3",
+      "revision": 30,
+      "transitions": [
+        {
+          "revision": 20,
+          "type": "GrantIssued",
+          "at": "2026-11-18T13:59:59.000000Z",
+          "id": "G-publish"
+        },
+        {
+          "revision": 29,
+          "type": "EffectDispatchAuthorized",
+          "at": "2026-11-18T13:59:59.000000Z",
+          "id": "T1"
+        }
+      ],
+      "measured_paths": [],
+      "old": "375bafc9834d8fffec67b629249ad62ef14bbe6c",
+      "target": "d2cecdfd09ed6219f7af99e6e7a9dbbec8633161"
+    }
+  }
+}
