@@ -53,8 +53,19 @@ class WorkView:
         return state, witness
 
     def evaluation(self, key):
-        if key in self._outcomes:
-            return self._outcomes[key]
+        pending = [(key, False)]
+        while pending:
+            work, ready = pending.pop()
+            if work in self._outcomes:
+                continue
+            if ready:
+                self._outcomes[work] = self._evaluate(work)
+            else:
+                pending.append((work, True))
+                pending.extend((child, False) for child in self.children[work] if self.fields(child)["state"] == "closed")
+        return self._outcomes[key]
+
+    def _evaluate(self, key):
         work = self.fields(key)
         children, coverage = self.children[key], work.get("coverage")
         issues, witnesses, obligations = [], [], []
@@ -80,9 +91,7 @@ class WorkView:
         basis = {"work": key, "generation": work["generation"], "candidate": work["candidate"],
                  "coverage": coverage, "children": list(children), "witnesses": witnesses,
                  "decisions": [], "obligations": obligations, "effects": []}
-        result = basis, _reasons(issues), None if issues else digest("outcome", basis)
-        self._outcomes[key] = result
-        return result
+        return basis, _reasons(issues), None if issues else digest("outcome", basis)
 
     def basis(self, work):
         return self.evaluation(work)[0]
@@ -92,7 +101,11 @@ class WorkView:
 
     def closed(self, work):
         f = self.fields(work)
-        return f["state"] == "closed" and f.get("closed_outcome") == self.outcome(work) and self.outcome(work) is not None
+        if f["state"] != "closed":
+            return False
+        current = self.outcome(work)
+        root = self.fields(self.records[work]["commitment"])["root"] == work
+        return current is not None and current == f.get("closed_outcome") and (not root or current == f.get("accepted_outcome"))
 
     def reasons(self, key):
         record = self.records[key]
