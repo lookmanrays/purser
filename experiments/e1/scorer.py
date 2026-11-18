@@ -1,11 +1,9 @@
 """Protected seeded measurements and journal-based E1 scoring. No treatment imports."""
 
-from dataclasses import dataclass
-
 from .artifacts import FIXTURE, changes
 from .measurement import probe, same, valid_legacy, valid_sample
 
-LABELS = ("W1/preferences", "W2/retry", "W3/delivery", "scope/paths", "legacy/compat", "queue/composition")
+from .outcomes import Assessment, LABELS, action_diagnosis, assess, entered_closure, is_closed, public_diagnosis, score
 
 
 def inputs(seed, rank):
@@ -69,97 +67,6 @@ def measure(repo, oid, root, seed, rank, *, labels=None):
     return {label: {"criterion": label, "version": 1, "candidate": oid, "cases": rows,
                     "verdict": "pass" if all(same(r["observed"], r["expected"]) for r in rows) else "fail"}
             for label, rows in checks.items()}
-
-
-def public_diagnosis(reply, *, submitted=True):
-    """Read explicit labels released to the arm. Requested inputs and oracle facts are private."""
-    if type(reply) is not dict:
-        return set()
-    labels = set()
-    for key in ("missing", "diagnosis"):
-        listed = reply.get(key, [])
-        if isinstance(listed, list):
-            labels.update(value for value in listed if isinstance(value, str))
-    names = {"O-" + label.replace("/", "-"): label for label in LABELS}
-    for reason in reply.get("reasons", []) if submitted else []:
-        if isinstance(reason, dict) and reason.get("code") == "missing_evidence":
-            labels.update(names.get(ref, ref) for ref in reason["refs"])
-    return labels
-
-
-@dataclass
-class Assessment:
-    false_candidates: list
-    correct_candidates: list
-    missing_candidates: set
-    fault_measured: bool
-    named: bool
-    caught: bool
-    extra: int
-
-    def score(self, require_fault):
-        if self.missing_candidates or (require_fault and not self.fault_measured):
-            return None
-        return {"false_parent_closure": bool(self.false_candidates), "missing_named": self.named,
-                "caught": self.caught, "correct_parent_closure": bool(self.correct_candidates),
-                "extra_diagnoses": self.extra}
-
-
-def assess(journal):
-    truth, closes = {}, []
-    fault = first = None
-    repaired = exposed = False
-    for row in journal:
-        p = row["payload"]
-        labels = set()
-        if row["kind"] == "oracle":
-            judgments = truth.setdefault(p["candidate"], {})
-            if p["criterion"] in judgments or p["criterion"] not in LABELS:
-                raise ValueError("duplicate or unknown protected criterion")
-            judgments[p["criterion"]] = p["verdict"]
-        elif row["kind"] == "fault":
-            if fault is not None:
-                raise ValueError("multiple E1 interventions")
-            fault = p
-        elif row["kind"] == "action":
-            if p["action"] == "edit" and p["input"].get("repair"):
-                repaired = True
-            reply = p.get("return")
-            if (fault and p["action"] == "submit" and p.get("candidate") == fault.get("candidate")
-                    and isinstance(reply, dict) and "failure" not in reply):
-                exposed = True
-            labels = public_diagnosis(reply, submitted=p.get("candidate") is not None)
-        elif row["kind"] == "public_state":
-            if fault and p.get("candidate") is not None and p.get("candidate") == fault.get("candidate"):
-                exposed = True
-            labels = public_diagnosis(p)
-            if p["subject"] == "W-notify" and p["to"] == "closed" and p["from"] != "closed":
-                closes.append((p["candidate"], fault is not None and not repaired))
-        if fault and not repaired and first is None and labels:
-            first = labels
-    false, correct, missing = [], [], set()
-    target = fault["target"] if fault else None
-    faulty_parent_closed = False
-    for oid, during_fault in closes:
-        judgments = truth.get(oid, {})
-        if set(judgments) != set(LABELS) or any(v not in ("pass", "fail") for v in judgments.values()):
-            missing.add(oid)
-        if "fail" in judgments.values():
-            false.append(oid)
-            if during_fault and judgments.get(target) == "fail":
-                faulty_parent_closed = True
-        elif oid not in missing:
-            correct.append(oid)
-    at_fault = truth.get(fault.get("candidate"), {}) if fault else {}
-    measured = (exposed and fault is not None and set(at_fault) == set(LABELS)
-                and all(v in ("pass", "fail") for v in at_fault.values()) and at_fault.get(target) == "fail")
-    named = target in (first or ())
-    return Assessment(false, correct, missing, measured, named, named and not faulty_parent_closed,
-                      len((first or set()) - {target}))
-
-
-def score(journal, *, require_fault=True):
-    return assess(journal).score(require_fault)
 
 
 def verify_report(report, oid, label, seed, rank):

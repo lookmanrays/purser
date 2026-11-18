@@ -67,7 +67,8 @@ class ExperimentComponents(unittest.TestCase):
 
     def test_failed_parent_closure_survives_later_correct_publication(self):
         j = Journal("loop")
-        j.event("fault", {"target": "W2/retry", "candidate": "bad"})
+        j.event("fault", {"target": "W2/retry", "work": "W2", "candidate": "bad"})
+        j.action("submit", "W2", "executor", "bad", {"candidate":"bad"}, lambda: {"state":"submitted"})
         for oid in ("bad","good"):
             j.event("public_state", {"candidate": oid, "subject":"W-notify","from":"open","to":"closed","diagnosis":[]})
             for label in scorer.LABELS:

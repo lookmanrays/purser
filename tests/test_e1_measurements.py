@@ -28,11 +28,11 @@ def closed(oid):
 
 
 def fault(oid):
-    return event("fault", candidate=oid, target="W2/retry", seed=1001, intervention="skipped_retry_check")
+    return event("fault", candidate=oid, work="W2", target="W2/retry", seed=1001, intervention="skipped_retry_check")
 
 
 def submitted(oid):
-    return event("action", action="submit", candidate=oid, input={}, **{"return":{"state":"submitted"}})
+    return event("action", action="submit", actor="executor", subject="W2", candidate=oid, input={"candidate":oid}, **{"return":{"state":"submitted"}})
 
 
 class MeasurementIntegrity(unittest.TestCase):
@@ -122,11 +122,11 @@ class MeasurementIntegrity(unittest.TestCase):
 
     def test_first_public_diagnosis_wins_and_pre_repair_false_closure_stays(self):
         original = [fault("A"), submitted("A"),
-                    event("action", action="check", input={}, candidate="A",
+                    event("action", action="check", actor="plan_reviewer", subject="W2", input={}, candidate="A",
                           **{"return":{"missing":["scope/paths","unrelated"]}}),
                     event("public_state", candidate="A", subject="W2", diagnosis=["W2/retry"],
                           **{"from":"submitted","to":"submitted"}), closed("A"),
-                    event("action", action="edit", input={"repair":["W2/retry"]}, **{"return":{"edited":"W2"}}),
+                    event("action", action="edit", actor="executor", subject="W2", candidate=None, input={"repair":["W2/retry"]}, **{"return":{"edited":"W2"}}),
                     closed("B"), *truth("A", ["W2/retry"]), *truth("B")]
         scored = scorer.score(original)
         self.assertTrue(scored["false_parent_closure"] and scored["correct_parent_closure"])
@@ -183,11 +183,10 @@ class ReportIntegrity(unittest.TestCase):
         with zipfile.ZipFile(self.root/"raw.zip","w") as archive:
             archive.writestr("freeze.json",encoded(self.freeze))
             a = Artifacts(archive)
-            self.raw["artifacts"] = {
-                "journal":a.put([], "json"), "candidates":a.put({}, "json"), "model":None,
-                "platform":a.put({"referenced_files":[],"definition_artifacts":[],"environment_artifact":None,
-                                  "treatment_trace":None,"start_monotonic_ns":None,"end_monotonic_ns":None,
-                                  "cost_basis":"before_release"}, "json")}
+            from experiments.e1.recovery import failure_record
+            unreleased = failure_record(a, self.freeze, "loop", "primary", 1001, 1,
+                                        reason="setup unavailable", progress={"cost_basis":"before_release"})
+            self.raw["artifacts"] = unreleased["artifacts"]
             key = "primary/1001/loop.json"
             archive.writestr("started/"+key, encoded({"track":"primary","seed":1001,"rank":1,"arm":"loop"}))
             archive.writestr("runs/"+key, encoded(self.raw))
@@ -249,7 +248,7 @@ class ReportIntegrity(unittest.TestCase):
                  ("clean",1001,"loop"):clean_bad}
         with patch.object(report,"inspect_series",return_value=cases):
             text = report.render(self.root)
-        self.assertIn("| purser | 0 | 1 | 19 | 1 |",text)
-        self.assertIn("false close, arm_incomplete",text)
+        self.assertIn("| purser | 0 | 1 | 19 | 1/1 |",text)
+        self.assertIn("| 1001 | arm_incomplete | time_limit | yes |",text)
         self.assertIn("Purser was **missed**",text)
         self.assertIn("clean step-overhead comparison is inconclusive",text)

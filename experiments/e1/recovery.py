@@ -76,9 +76,13 @@ def failure_record(assets, freeze, arm, track, seed, rank, *, reason, progress=N
     elapsed = end - start if start is not None and end is not None else 0
     if elapsed < 0:
         raise ValueError("trial progress clock regressed")
+    stopped = progress.get("end_monotonic_ns") is not None
+    basis = "before_release" if start is None else "exact" if stopped else "observed_lower_bound"
+    end_utc = progress.get("end_utc", progress.get("last_utc"))
     rows.append({"seq": len(rows) + 1, "offset_ns": max(elapsed, rows[-1]["offset_ns"] if rows else 0),
-                 "kind": "terminal", "payload": {"end_reason": "harness_failure", "last_observation": steps,
-                                                "missing": reason, "human_action": None}})
+                 "kind": "terminal", "payload": {"end_reason": "harness_failure", "last_observation": len(rows) or None,
+                        "cost_basis": basis, "end_monotonic_ns": end, "end_utc": end_utc,
+                        "missing": reason, "human_action": None}})
     try:
         git_version = subprocess.check_output(["git", "--version"], text=True, timeout=5).strip()
     except (OSError, subprocess.SubprocessError):
@@ -89,9 +93,11 @@ def failure_record(assets, freeze, arm, track, seed, rank, *, reason, progress=N
              "referenced_files": [entry["pack"] for entry in candidates.values()], "treatment_trace": None,
              **progress.get("platform", {})}
     facts.update(start_monotonic_ns=start, end_monotonic_ns=end, start_utc=progress.get("start_utc"),
-                 end_utc=progress.get("end_utc", progress.get("last_utc")),
+                 end_utc=end_utc, clock_stopped=stopped,
                  budget_reason="harness_failure", failure=reason,
-                 cost_basis=progress.get("cost_basis", "observed_lower_bound"))
+                 cost_basis=basis)
+    facts.setdefault("public_history_complete", False)
+    facts.setdefault("participant_exit", None)
     return {"schema_version": 1, "suite": MANIFEST["id"], "experiment": "E1", "track": track,
             "seed": seed, "arm": arm, "mode": "scripted", "replicate": freeze.get("replicate", 1),
             "inputs": input_identity(freeze, arm),

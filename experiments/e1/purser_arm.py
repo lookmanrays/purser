@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from purser.kernel.gate import admit
 from purser.kernel.store import Store
+from purser.kernel.wire import digest
 
 from .artifacts import encoded, sha
 from .executor import LEAVES, ORDER, PARENT, PARENT_CHECKS, TASKS
@@ -23,6 +24,7 @@ class Treatment:
         self.definitions, self.environment = definitions, environment
         self.count, self.assignments, self.results, self.runs, self.observations = 0, {}, {}, {}, {}
         self.receipts = []
+        self.on_proposal = None
         self.send("principal", [{"op": "commitment.create", "id": SCOPE, "root": "W-root",
                                  "statement": "Implement local notification preferences, retries and delivery."}])
         hold = self.send("principal", [{"op": "commitment.request_acceptance", "id": SCOPE,
@@ -55,6 +57,9 @@ class Treatment:
         self.count += 1
         proposal = {"v": 1, "proposal_id": f"P-{self.count}", "commitment": SCOPE,
                     "base_revision": self.store.snapshot()["revision"], "justification": [], "ops": ops}
+        if self.on_proposal is not None:
+            self.on_proposal({"actor_id": actor, "proposal_id": proposal["proposal_id"], "body": proposal,
+                              "digest": digest("proposal", {"actor_id": actor, "proposal": proposal})})
         receipt = admit(self.store, binding, proposal, clock=lambda: datetime(2026, 1, 1, tzinfo=timezone.utc))
         self.receipts.append({"role": role, "proposal": proposal, "receipt": receipt})
         if receipt["disposition"] == "rejected" and not allow_rejected:
@@ -128,8 +133,12 @@ class Treatment:
         return {"diagnosis": sorted(missing), "reasons": reasons, "receipt": receipt, "row": self.rows()[work]}
 
     def retained(self):
-        import sqlite3
-        from contextlib import closing
-        with closing(sqlite3.connect(self.store.path.as_uri() + "?mode=ro", uri=True)) as db:
-            raw = [body.decode() for body, in db.execute("SELECT body FROM events ORDER BY revision")]
-        return {"original_events": raw, "receipts": self.receipts, "snapshot": self.store.snapshot()}
+        return {**retained_kernel(self.store, self.store.snapshot()), "receipts": self.receipts}
+
+
+def retained_kernel(store, snapshot):
+    import sqlite3
+    from contextlib import closing
+    with closing(sqlite3.connect(store.path.as_uri() + "?mode=ro", uri=True)) as db:
+        events = [body.decode() for body, in db.execute("SELECT body FROM events ORDER BY revision")]
+    return {"original_events": events, "snapshot": snapshot}

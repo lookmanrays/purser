@@ -11,11 +11,11 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import observer, scorer
+from . import capture, observer, scorer
 from .arms import Plan, self_review
 from .artifacts import FIXTURE, MANIFEST, START, Candidates, changes, encoded, extract_tree, git, read_artifact, sha
 from .executor import LEAVES, ORDER, PARENT, PARENT_CHECKS, TASKS, fault_for, implement, inject, local_check
-from .purser_arm import Treatment
+from .purser_arm import Treatment, retained_kernel
 
 
 def utc():
@@ -70,7 +70,7 @@ class Journal:
     def steps(self):
         return sum(event["kind"] == "action" for event in self.rows)
 
-    def action(self, kind, work, actor, oid, inputs, run):
+    def action(self, kind, work, actor, oid, inputs, run, *, before=None, repair_before=None, assets=None):
         limits = MANIFEST["budgets"]["scripted"]
         number = self.steps + 1
         if number > limits["max_steps"]:
@@ -79,6 +79,10 @@ class Journal:
             raise Cutoff("time_limit")
         info = {"action_id": f"action-{number}", "attempt": number, "action": kind, "subject": work,
                 "candidate": oid, "actor": actor, "arm": self.arm, "input": inputs}
+        if before is not None:
+            info["before"] = before
+        if repair_before is not None:
+            info["repair_before"] = repair_before
         self.event("action", info)
         try:
             answer = run()
@@ -87,6 +91,8 @@ class Journal:
             self.persist()
             raise
         info["return"] = answer
+        if assets is not None:
+            info["response_evidence"] = assets.put(capture.response_evidence(info), "json")
         self.persist()
         return answer
 
@@ -98,57 +104,6 @@ def operational_definitions():
                            "fixture": FIXTURE["tree_sha1"]}) for name in scorer.LABELS}
     env = encoded({"python": sys.version, "platform": platform.platform(), "git": git(here, "--version").decode().strip()})
     return defs, env
-
-
-def _record_states(rows, checkpoint, previous, emit, *, work=None, decision=None, recovered=False):
-    for key, row in sorted(rows.items()):
-        state = row["state"]
-        if previous.get(key) == state and not (decision is not None and key == work):
-            continue
-        subject = row["candidate"]
-        evidence = decision if key == work else None
-        event = {"subject": key, "from": previous.get(key), "to": state,
-                 "candidate": subject["digest"] if isinstance(subject, dict) else subject,
-                 "checkpoint": checkpoint, "diagnosis": evidence["diagnosis"] if evidence else [],
-                 "evidence": evidence, "effect_disposition": None}
-        if recovered:
-            event["recovery_read_utc"], event["transition_offset_ns"] = utc(), None
-        emit("public_state", event)
-        previous[key] = state
-
-
-def _published(rows, initial):
-    result = dict(initial)
-    for entry in rows:
-        if entry["kind"] == "public_state":
-            public = entry["payload"]
-            result[public["subject"]] = public["to"]
-    return result
-
-
-def _durable_diagnosis(rows, events, records=()):
-    """An interrupted verdict is public only when the participant retained it for this subject."""
-    action = next((e["payload"] for e in reversed(events) if e["kind"] == "action"), None)
-    if not action or action["actor"] != "independent_verifier":
-        return None, None
-    number, work, oid = action["attempt"], action["subject"], action["candidate"]
-    label, requested = action["input"].get("criterion"), action["input"].get("verdict")
-    if requested not in ("fail", "inconclusive") or work not in rows or any(
-        e["kind"] == "public_state" and (e["payload"].get("evidence") or {}).get("source_action") == number
-        for e in events
-    ):
-        return None, None
-    subject = rows[work]["candidate"]
-    if (subject.get("digest") if isinstance(subject, dict) else subject) != oid:
-        return None, None
-    if records:
-        runs = {r["fields"]["current_run"] for r in records if r["kind"] == "Obligation"
-                and r["fields"]["work"] == work and r["fields"]["title"] == label}
-        approved = any(r["kind"] == "Evidence" and r["fields"]["run"] in runs
-                       and r["fields"]["verdict"] == requested for r in records)
-    else:
-        approved = rows[work].get("verified", {}).get(label) == requested
-    return (work, {"diagnosis": [label], "source_action": number}) if approved else (None, None)
 
 
 def _measure_oracles(repo, oid, checkout, seed, rank, labels, assets, refs, emit, issue):
@@ -169,33 +124,50 @@ class Driver:
     def __init__(self, candidates, adapter, journal, store, seed, track):
         self.candidates, self.adapter, self.j, self.assets = candidates, adapter, journal, store
         self.seed, self.fault = seed, fault_for(seed, track)
-        self.used_fault, self.previous = False, adapter.states()
+        rows, identity = adapter.public_view()
+        self.used_fault = False
+        self.previous = {key: capture.position(row) for key, row in rows.items()}
         self.j.initial_states = dict(self.previous)
+        self.j.platform["initial_public"] = capture.checkpoint(store, rows, identity)
         self.seen = set()
 
     def call(self, action, work, actor, inputs, operation, oid=None):
-        answer = self.j.action(action, work, actor, oid, inputs, operation)
-        decision = None
-        if actor == "closure":
-            decision = answer
-        elif actor == "plan_reviewer" and answer.get("missing"):
-            decision = {"diagnosis": answer["missing"], "source_action": self.j.steps}
-        elif actor == "independent_verifier" and answer["diagnosis"]:
-            decision = {"diagnosis": answer["diagnosis"], "source_action": self.j.steps}
-        if action in ("plan", "submit", "observe", "decide") or decision:
-            self.capture(work, decision)
+        rows, identity = self.adapter.public_view()
+        before = capture.checkpoint(self.assets, rows, identity)
+        repair = capture.repair_basis(self.candidates.work) if action == "edit" and inputs.get("repair") else None
+        number = self.j.steps + 1
+
+        def record_proposal(proposal):
+            self.j.rows[-1]["payload"]["proposal"] = proposal
+            self.j.persist()
+
+        if isinstance(self.adapter, Treatment):
+            self.adapter.on_proposal = record_proposal
+        else:
+            self.adapter.invocation = {"attempt": number, "actor": actor}
+        try:
+            answer = self.j.action(action, work, actor, oid, inputs, operation,
+                                   before=before, repair_before=repair, assets=self.assets)
+        finally:
+            if isinstance(self.adapter, Treatment):
+                self.adapter.on_proposal = None
+            else:
+                self.adapter.invocation = None
+        call = self.j.rows[-1]["payload"]
+        rows, identity = self.adapter.public_view()
+        after = capture.checkpoint(self.assets, rows, identity)
+        call["after"] = after
+        self.j.persist()
+        capture.states(rows, after, self.previous, self.j.event, action=call,
+                       decision=capture.returned_decision(call))
         return answer
 
-    def capture(self, work, decision=None):
-        rows, checkpoint = self.adapter.public_view()
-        _record_states(rows, checkpoint, self.previous, self.j.event, work=work, decision=decision)
-
     def reconcile(self):
-        self.previous = _published(self.j.rows, self.j.initial_states)
-        rows, checkpoint = self.adapter.public_view()
-        records = self.adapter.store.snapshot()["projection"]["records"] if isinstance(self.adapter, Treatment) else ()
-        work, decision = _durable_diagnosis(rows, self.j.rows, records)
-        _record_states(rows, checkpoint, self.previous, self.j.event, work=work, decision=decision, recovered=True)
+        rows, identity = self.adapter.public_view()
+        snapshot = self.adapter.store.snapshot() if isinstance(self.adapter, Treatment) else None
+        capture.reconcile(self.assets, rows, identity, snapshot, self.j.rows, self.j.initial_states,
+                          self.j.platform, self.j.event, self.candidates.work)
+        self.j.persist()
 
     def one(self, work, repair):
         candidates, adapter = self.candidates, self.adapter
@@ -262,7 +234,7 @@ class Driver:
                               {"criterion": label, "witness": ref, "verdict": verdict["verdict"]}, verify, oid)
         decision = self.call("decide", work, "closure", {"request": "close", "public_review": audit},
                              lambda: adapter.decide(work, audit), oid)
-        return self.previous[work] == "closed", decision["diagnosis"]
+        return scorer.is_closed(self.previous[work][0]), decision["diagnosis"]
 
     def execute(self):
         self.call("plan", PARENT, "planner", {"schedule": list(ORDER)}, lambda: {"work_order": list(ORDER)})
@@ -295,23 +267,22 @@ def reconcile_interrupted(directory, assets, arm, progress, *, seed=None, rank=N
             failures.append(item)
 
     try:
-        records = ()
+        snapshot = None
         if arm == "purser":
             from purser.kernel.store import Store
             from purser.kernel.workview import WorkView
-            snapshot = Store(Path(directory) / "kernel.sqlite").snapshot()
-            records = snapshot["projection"]["records"]
+            store = Store(Path(directory) / "kernel.sqlite")
+            snapshot = store.snapshot()
             rows = {r["work"]: r for r in WorkView(snapshot["projection"]).answers()["q02"]
                     if r["work"] in (*ORDER, PARENT)}
             checkpoint = {"revision": snapshot["revision"], "head_hash": snapshot["head_hash"]}
-            trace = {"snapshot": snapshot, "source": "interrupted_public_read"}
+            trace = {**retained_kernel(store, snapshot), "source": "interrupted_public_read"}
         else:
             raw = (Path(directory) / "plan.json").read_bytes()
             rows = json.loads(raw)
             checkpoint, trace = {"plan_sha256": sha(raw)}, {"plan": rows}
-        previous = _published(journal, saved.get("initial_states", {}))
-        work, decision = _durable_diagnosis(rows, journal, records)
-        _record_states(rows, checkpoint, previous, emit, work=work, decision=decision, recovered=True)
+        capture.reconcile(assets, rows, checkpoint, snapshot, journal, saved.get("initial_states", {}),
+                          facts, emit, Path(directory) / "worker")
         if not facts.get("treatment_trace"):
             facts["treatment_trace"] = assets.put(trace, "json")
             refs.append(facts["treatment_trace"])
@@ -324,7 +295,7 @@ def reconcile_interrupted(directory, assets, arm, progress, *, seed=None, rank=N
     for event in journal:
         p = event["payload"]
         if event["kind"] == "fault" or (event["kind"] == "public_state" and p["subject"] == PARENT
-                                       and p["to"] in ("closed", "done")):
+                                       and scorer.is_closed(p["to"])):
             oid = p.get("candidate")
             if isinstance(oid, str) and len(oid) == 40 and all(c in "0123456789abcdef" for c in oid):
                 targets.add(oid)
@@ -376,6 +347,7 @@ def _run_arm(driver, journal):
 
 
 def attempt(directory, assets, freeze, arm, track, seed, rank, *, progress=None):
+    from .accounting import validity_for
     from .recovery import failure_record, input_identity
     journal = Journal(arm, progress=progress, released=False)
     metadata = journal.platform
@@ -409,6 +381,11 @@ def attempt(directory, assets, freeze, arm, track, seed, rank, *, progress=None)
     if terminal in ("done", "blocked", "idle") and journal.end - journal.start > MANIFEST["budgets"]["scripted"]["max_elapsed_s"] * 10**9:
         terminal = "time_limit"
 
+    if terminal is not None:
+        metadata["participant_exit"] = {"reason": terminal, "end_monotonic_ns": journal.end,
+                                        "end_utc": journal.ended}
+        journal.persist()
+
     # Once the alarm is disarmed, a durable write can still be visible after its acknowledgment was lost.
     try:
         if driver is not None:
@@ -432,21 +409,22 @@ def attempt(directory, assets, freeze, arm, track, seed, rank, *, progress=None)
                 except Exception as exc:
                     issue(f"protected observation {oid}", exc)
         if not errors:
-            summary = scorer.score(journal.rows) if track == "primary" else None
+            summary = scorer.score(journal.rows, candidates=journal.candidates,
+                                   history_complete=metadata.get("public_history_complete", False)) if track == "primary" else None
             if terminal == "done" and track == "primary" and summary is None:
                 raise ValueError("completed primary case lacks intervention or independent evidence")
             journal.event("terminal", {"end_reason": terminal, "last_observation": len(journal.rows) or None,
                                        "end_monotonic_ns": journal.end, "end_utc": journal.ended,
-                                       "missing": None, "human_action": None})
+                                       "missing": None, "human_action": None, "cost_basis": "exact"})
             metadata.update({"start_utc": journal.started, "end_utc": journal.ended, "start_monotonic_ns": journal.start,
                              "end_monotonic_ns": journal.end, "budget_reason": terminal, "failure": None,
-                             "cost_basis": "exact"})
+                             "cost_basis": "exact", "clock_stopped": True})
             return {"schema_version": 1, "suite": MANIFEST["id"], "experiment": "E1", "track": track,
                     "seed": seed, "arm": arm, "mode": "scripted", "replicate": freeze.get("replicate", 1),
                     "inputs": input_identity(freeze, arm),
                     "artifacts": {"journal": assets.put(journal.rows, "json"), "candidates": assets.put(journal.candidates, "json"),
                                   "platform": assets.put(metadata, "json"), "model": None},
-                    "terminal": terminal, "validity": "complete" if terminal == "done" else "arm_incomplete",
+                    "terminal": terminal, "validity": validity_for(terminal),
                     "cost": {"steps": journal.steps, "elapsed_ns": journal.end-journal.start,
                              "model_calls": 0, "input_tokens": 0, "output_tokens": 0, "spend_usd_micros": 0}, "score": summary}
     except Exception as exc:
