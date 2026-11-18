@@ -49,8 +49,8 @@ def all_pass(grades):
     return conjunction(value == "pass" if value in ("pass", "fail") else None for value in grades.values())
 
 
-def assess(journal, track, checkpoint, verdicts, *, delivery, qualification, submitted, unchanged, final_oid,
-           endpoint_known, history_complete, action_sequence_complete):
+def assess(history, track, verdicts, *, delivery, qualification, submitted, unchanged, final_oid,
+           endpoint_known, action_sequence_complete):
     def passed(oid, label, version):
         verdict = criteria(oid, verdicts, version)[label]
         return verdict == "pass" if verdict in ("pass", "fail") else None
@@ -60,9 +60,9 @@ def assess(journal, track, checkpoint, verdicts, *, delivery, qualification, sub
     facts = dict.fromkeys(FIELDS)
     facts.update(final_pass=all_pass(final_grades), final_candidate=final_oid, final_criteria=final_grades,
                  rework_observed=None, stale_at_delivery=None, new_bad_closure=None, closure_observations=[],
-                 reopened_subjects=[], rework_actions=[], checkpoint_candidate=None, checkpoint_work=None,
+                 reopened_subjects=[], reopen_observations=[], rework_actions=[], checkpoint_candidate=None, checkpoint_work=None,
                  observed_retention=None, observed_reopened=None, observed_invalid_closure=None)
-    faults = [e for e in journal if e["kind"] == "fault"]
+    faults = [e for e in history.journal if e["kind"] == "fault"]
     received = [e for e in faults if e["payload"].get("publicly_delivered") is True]
     if not received:
         if track != "clean" and delivery is False:
@@ -72,7 +72,7 @@ def assess(journal, track, checkpoint, verdicts, *, delivery, qualification, sub
     # A witnessed change and a qualifying registered change have distinct evidence.
     fault = received[0]
     p = fault["payload"]
-    before = checkpoint(p.get("before")) or {}
+    before = history.checkpoint(p.get("before")) or {}
     oid = p.get("candidate")
     facts.update(checkpoint_candidate=oid, checkpoint_work=before)
     reached = checkpoint_eligibility(before, oid, track, lambda item,label: passed(item,label,measure.OLD),
@@ -80,66 +80,48 @@ def assess(journal, track, checkpoint, verdicts, *, delivery, qualification, sub
     if track != "clean":
         facts["intervention_reached"] = conjunction([delivery, reached, qualification])
 
-    previous = before
-    reopened = set()
-    uncertain_sibling = uncertain_closure = False
-    stale, bad_closes, bad_states = [], [], []
-    for e in journal:
+    for e in history.journal:
         payload = e["payload"]
         if (e["kind"] == "action" and payload.get("after_intervention") is True
                 and payload.get("action") in REWORK and payload.get("subject") in WORK):
             facts["rework_actions"].append(payload["attempt"])
-        if e["seq"] < fault["seq"] or e["kind"] not in ("fault", "public_state"):
-            continue
-        at_delivery = e is fault
-        ck = payload.get("checkpoint") if e["kind"] == "public_state" else payload.get("after")
-        states = checkpoint(ck)
-        if states is None:
-            uncertain_closure = uncertain_sibling = True
-            previous = {}
-            continue
+
+    retained = []
+    saw_delivery = False
+    for publication, seq, prior, states, at_delivery in history.public_states_after(fault):
+        saw_delivery |= at_delivery
         for subject in ("W1", "W3"):
             status, candidate = states[subject]
             if status not in CLOSED:
-                if before.get(subject, (None, None))[0] in CLOSED or (
-                        payload.get("subject") == subject and payload.get("from") in CLOSED):
-                    reopened.add(subject)
-                else:
-                    uncertain_sibling = True
+                retained.append(False)
+                if prior is not None and prior[subject][0] in CLOSED:
+                    facts["reopen_observations"].append({"subject": subject, "publication": publication,
+                                                         "candidate": prior[subject][1], "at_delivery": at_delivery})
             elif candidate != before.get(subject, (None, None))[1]:
-                valid = passed(candidate, LEAVES[subject], measure.OLD)
-                if valid is False:
-                    reopened.add(subject)
-                if valid is None:
-                    uncertain_sibling = True
-        new = states["W2"]
-        if new[0] in CLOSED:
-            valid = passed(new[1], LEAVES["W2"], measure.NEW)
-            invalid = None if valid is None else not valid
-            bad_states.append(invalid)
-            entered = ("W2" in previous and entered_closure(previous["W2"], new)
-                       or payload.get("subject") == "W2" and payload.get("from") not in (*CLOSED, None))
-            if at_delivery or entered:
-                (stale if at_delivery else bad_closes).append(invalid)
-                facts["closure_observations"].append({"seq": e["seq"], "at_delivery": at_delivery,
-                                                      "candidate": new[1], "revised_pass": valid})
-            elif "W2" not in previous and invalid is not False:
-                uncertain_closure = True
-        previous = states
+                retained.append(passed(candidate, LEAVES[subject], measure.OLD))
+        for subject in ("W2", PARENT):
+            new = states[subject]
+            if new[0] in CLOSED and (at_delivery or prior is not None and entered_closure(prior[subject], new)):
+                facts["closure_observations"].append({"seq": seq, "subject": subject, "publication": publication,
+                                                      "at_delivery": at_delivery, "candidate": new[1],
+                                                      "revised_pass": passed(new[1], LEAVES["W2"], measure.NEW)})
 
-    complete = endpoint_known and history_complete and len(received) == len(faults) == 1
-    facts["reopened_subjects"] = sorted(reopened)
-    facts["observed_retention"] = False if reopened else True if complete and not uncertain_sibling else None
-    facts["observed_reopened"] = len(reopened) if (complete and not uncertain_sibling or len(reopened) == 2) else None
+    complete = saw_delivery and endpoint_known and history.public_complete and len(received) == len(faults) == 1
+    reopens = facts["reopen_observations"]
+    facts["reopened_subjects"] = sorted({item["subject"] for item in reopens})
+    facts["observed_reopened"] = len(reopens)
+    facts["observed_retention"] = conjunction([*retained, True if complete else None])
 
-    def exists(items, certain):
-        return True if True in items else False if certain and None not in items else None
+    def invalid(declarations, covered):
+        passed = [item["revised_pass"] for item in declarations]
+        return True if False in passed else False if covered and None not in passed else None
 
-    facts["stale_at_delivery"] = exists(stale, checkpoint(p.get("after")) is not None)
-    facts["new_bad_closure"] = exists(bad_closes, complete and not uncertain_closure)
-    facts["observed_invalid_closure"] = exists(bad_states, complete and not uncertain_closure)
+    declarations = facts["closure_observations"]
+    facts["stale_at_delivery"] = invalid((item for item in declarations if item["at_delivery"]), saw_delivery)
+    facts["new_bad_closure"] = invalid((item for item in declarations if not item["at_delivery"]), complete)
+    facts["observed_invalid_closure"] = invalid(declarations, complete)
     if facts["intervention_reached"] is True:
-        facts.update(unaffected_both_retained=facts["observed_retention"], unaffected_reopened=facts["observed_reopened"],
+        facts.update(unaffected_both_retained=facts["observed_retention"], unaffected_reopened=len(reopens) if complete else None,
                      affected_invalid_closure=facts["observed_invalid_closure"], rework_observed=len(facts["rework_actions"]))
         if endpoint_known and action_sequence_complete:
             facts["rework_steps"] = facts["rework_observed"]

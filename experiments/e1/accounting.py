@@ -51,7 +51,7 @@ def utc_time(value):
     return result if result.utcoffset() == timedelta(0) else None
 
 
-def check_exit(raw, journal, platform, modern, issue, *, duration=None):
+def check_exit(raw, journal, platform, modern, issue, *, duration=None, before_release_oracles=False):
     """Keep the raw identities for diagnostics. Only a reconciled clock has a comparable cost."""
     endpoint_ok = True
     def check(condition, message):
@@ -95,9 +95,11 @@ def check_exit(raw, journal, platform, modern, issue, *, duration=None):
         clock_ok &= check(type(stopped) is bool and (released or not stopped)
                           and basis == expected_basis == terminal.get("cost_basis"), "clock provenance disagrees with basis")
     if basis == "before_release":
+        offline_only = all(row["kind"] == "terminal" or before_release_oracles
+                           and row["kind"] == "oracle" and same(row["offset_ns"], 0) for row in journal)
         clock_ok &= check((start, end, started, ended) == (None,) * 4 and same(span, 0)
-                          and not [row for row in journal if row["kind"] != "terminal"]
-                          and reason == "harness_failure", "before-release clock has participant activity")
+                          and offline_only and reason == "harness_failure",
+                          "before-release clock has participant activity")
     else:
         times = utc_time(started), utc_time(ended)
         clock_ok &= check(type(start) is int and type(end) is int and 0 <= start <= end

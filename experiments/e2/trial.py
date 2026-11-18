@@ -14,7 +14,7 @@ from purser.kernel.store import Store
 from purser.kernel.wire import KernelError
 
 from experiments.e1 import capture
-from experiments.e1.accounting import kernel_rows, validity_for
+from experiments.e1.accounting import digest, kernel_rows, validity_for
 from experiments.e1.artifacts import FIXTURE, MANIFEST, Candidates, encoded, git, sha
 from experiments.e1.outcomes import LABELS
 from experiments.e1.purser_arm import retained_kernel
@@ -22,8 +22,9 @@ from experiments.e1.recovery import failure_record, input_identity
 from experiments.e1.report import GitPacks, Objects
 from experiments.e1.run import _run_arm, utc
 
-from . import clock, evidence, measure, outcomes, plan_versions, policy
+from . import candidate_evidence, clock, evidence, measure, outcomes, plan_versions, policy
 from .driver import Driver
+from .public_sources import Originals
 
 
 def definitions():
@@ -80,13 +81,9 @@ def participant(directory, assets, arm):
     return kernel_rows(snap["projection"]), {"revision": snap["revision"], "head_hash": snap["head_hash"]}, trace
 
 
-def retain(directory, assets, arm, progress, seed, rank, issue):
+def retain_participant(directory, assets, arm, progress, emit, issue):
     rows, platform = progress["rows"], progress["platform"]
     refs = platform["referenced_files"]
-
-    def emit(kind, payload):
-        offset = max(rows[-1]["offset_ns"] if rows else 0, clock.active_ns(progress["start_monotonic_ns"], time.monotonic_ns(), platform))
-        rows.append({"seq": len(rows) + 1, "offset_ns": offset, "kind": kind, "payload": payload})
 
     try:
         public, identity, trace = participant(directory, assets, arm)
@@ -115,6 +112,8 @@ def retain(directory, assets, arm, progress, seed, rank, issue):
         issue("participant readback", ex)
     try:
         work = directory / "worker"
+        if not (work / ".git").is_dir():
+            raise FileNotFoundError("original working Git repository unavailable")
         status = git(work, "status", "--porcelain=v1", "-z", "--untracked-files=all")
         platform["exit_candidate"] = {"head": git(work, "rev-parse", "HEAD").decode().strip(),
                                       "dirty": bool(status), "status_hex": status.hex(),
@@ -122,39 +121,92 @@ def retain(directory, assets, arm, progress, seed, rank, issue):
                                       platform.get("participant_exit") else "stopped_worker_readback"}
     except Exception as ex:
         issue("exiting worktree", ex)
-    candidates = progress["candidates"]
-    refs.extend(entry["pack"] for entry in candidates.values())
+
+
+def retain(directory, assets, arm, progress, seed, rank, issue, *, interrupted=False):
+    rows = progress.setdefault("rows", [])
+    platform = progress.setdefault("platform", {})
+    refs = platform.setdefault("referenced_files", [])
+    start = progress.get("start_monotonic_ns")
+
+    def emit(kind, payload):
+        offset = clock.active_ns(start, time.monotonic_ns(), platform) if start is not None else 0
+        rows.append({"seq": len(rows) + 1, "offset_ns": max(rows[-1]["offset_ns"] if rows else 0, offset),
+                     "kind": kind, "payload": payload})
+
+    def git_issue(message, error=None):
+        message = f"{message}: {error}" if error is not None else message
+        issues = platform.setdefault("git_evidence_issues", [])
+        if message not in issues:
+            issues.append(message)
+            issue("case Git evidence", ValueError(message))
+
+    if interrupted:
+        damaged = candidate_evidence.preserve_damaged_objects(assets)
+        if damaged:
+            platform["damaged_objects"] = damaged
+            for name in damaged:
+                git_issue(f"original bytes disagreed with object address {name}")
+    if start is not None:
+        retain_participant(directory, assets, arm, progress, emit, issue)
+    mapping = progress.get("candidates", {})
+    original_files = set(assets.archive.namelist())
+    if type(mapping) is dict:
+        for oid, entry in mapping.items():
+            if candidate_evidence.valid_entry(oid, entry) and entry["pack"]["path"] not in original_files:
+                git_issue(f"original candidate {oid} was missing its staged pack {entry['pack']['path']}")
+    objects = Objects(assets.archive)
+    originals = Originals(arm, platform, objects.item, lambda _: None)
+    named = candidate_evidence.original_oids(arm, platform, objects, originals)
+    checkout = platform.get("exit_candidate")
+    if type(checkout) is dict and digest(checkout.get("head"), 40):
+        named.add(checkout["head"])
     platform["policy_blobs"] = {}
-    # The canonical retained objects survive loss of the participant's disposable
-    # working or bare repositories. The same byte/ancestry checks govern both paths.
     with tempfile.TemporaryDirectory(prefix="purser-e2-observe-packs-") as temp:
-        packs, objects = GitPacks(Path(temp)), Objects(assets.archive)
-        for oid, entry in candidates.items():
-            try:
-                repo = packs.restore(oid, entry, objects)
-            except Exception as ex:
-                issue(f"sealed Git candidate {oid}", ex)
-                continue
-            try:
-                platform["policy_blobs"][oid] = evidence.file_ids(repo, oid)
-            except Exception as ex:
-                issue(f"policy Git objects {oid}", ex)
-            measure.collect(repo, [oid], seed, rank, assets, refs, rows, emit, issue)
+        catalog = candidate_evidence.Catalog(objects, GitPacks(Path(temp)))
+        claimed = set(mapping) if type(mapping) is dict else set()
+        seals = candidate_evidence.observe_stage(directory, assets, catalog, claimed | named, git_issue)
+        platform["case_git_packs"] = seals
+        members, entries, repos = candidate_evidence.reconcile(catalog, mapping, seals, named, git_issue, capture=True)
+        if platform.get("git_evidence_issues"):
+            platform["original_candidate_map"] = assets.put(mapping, "json")
+        if members - repos.keys():
+            platform["unavailable_candidate_oids"] = sorted(members - repos.keys())
+        progress["candidates"] = entries
+        refs.extend(seal["pack"] for seal in seals)
+        stage_reports = measure.stage_reports(assets, seed, rank) if interrupted else None
+        for oid in sorted(members):
+            repo = repos.get(oid)
+            if repo is not None:
+                try:
+                    platform["policy_blobs"][oid] = evidence.file_ids(repo, oid)
+                except Exception as ex:
+                    issue(f"policy Git objects {oid}", ex)
+            measure.collect(repo, [oid], seed, rank, assets, refs, rows, emit, issue, stage_reports=stage_reports)
     return progress
 
 
 def recover(directory, assets, arm, progress, *, seed, rank):
-    if not progress or progress["cost_basis"] == "before_release":
-        return progress
-    saved = deepcopy(progress)
-    saved["platform"].setdefault("recovery_issues", [])
+    saved = deepcopy(progress or {})
+    saved.setdefault("platform", {})
+    saved.setdefault("initial_states", {})
     def issue(stage, error):
         saved["platform"].setdefault("recovery_issues", []).append({"stage": stage, "error": str(error)})
-    return retain(directory, assets, arm, saved, seed, rank, issue)
+    return retain(directory, assets, arm, saved, seed, rank, issue, interrupted=True)
 
 
-def failure(*args, **kwargs):
-    return dict(failure_record(*args, **kwargs, duration=clock.active_ns), experiment="E2")
+def failure(assets, freeze, arm, track, seed, rank, *, reason, progress=None):
+    progress = progress or {}
+    platform = progress.setdefault("platform", {})
+    platform.setdefault("case_git_packs", [])
+    mapping = progress.get("candidates", {})
+    if type(mapping) is not dict or any(not candidate_evidence.valid_entry(oid, entry) for oid, entry in mapping.items()):
+        platform["original_candidate_map"] = assets.put(mapping, "json")
+        platform.setdefault("git_evidence_issues", []).append("unreconciled malformed candidate map at failure")
+        entries = mapping.items() if type(mapping) is dict else ()
+        progress["candidates"] = {oid: entry for oid, entry in entries if candidate_evidence.valid_entry(oid, entry)}
+    return dict(failure_record(assets, freeze, arm, track, seed, rank, reason=reason, progress=progress,
+                               duration=clock.active_ns), experiment="E2")
 
 
 def attempt(directory, assets, freeze, arm, track, seed, rank, *, progress=None):
@@ -188,8 +240,8 @@ def attempt(directory, assets, freeze, arm, track, seed, rank, *, progress=None)
         facts["participant_exit"] = {"reason": reason, "end_monotonic_ns": j.end, "end_utc": j.ended}
         j.persist()
 
-    if j.released:
-        retain(directory, assets, arm, j.checkpoint(), seed, rank, issue)
+    retained = retain(directory, assets, arm, j.checkpoint(), seed, rank, issue, interrupted=bool(errors))
+    j.candidates = retained["candidates"]
     if not errors:
         try:
             from .report import derive_case

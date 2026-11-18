@@ -7,15 +7,15 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from experiments.e1.accounting import EXITS, READ_ERRORS, check_exit, journal_prefix, utc_time
-from experiments.e1.artifacts import MANIFEST, REGISTRATION, START, encoded, extract_tree, sha
+from experiments.e1.accounting import EXITS, READ_ERRORS, check_exit, digest, journal_prefix, utc_time
+from experiments.e1.artifacts import MANIFEST, REGISTRATION, START, encoded, sha
 from experiments.e1.executor import PARENT
 from experiments.e1.measurement import same
-from experiments.e1.outcomes import CLOSED, LABELS
+from experiments.e1.outcomes import CLOSED
 from experiments.e1.recovery import input_identity
 from experiments.e1.report import GitPacks, Objects, parse, require, wire_valid
 
-from . import checkpoint, clock, evidence, measure, operations, outcomes, policy
+from . import candidate_evidence, checkpoint, clock, evidence, measure, operations, outcomes, policy
 from .public_history import read_participant
 from .public_sources import identity
 from .suite import schedule, validate_freeze
@@ -195,26 +195,44 @@ def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None):
         measurement = dict(platform["checkpoint_measurement"])
         measurement["checkpoint"] = views.checkpoint(measurement.get("checkpoint"))
         platform["checkpoint_measurement"] = measurement
-    repos = {}
+    named = candidate_evidence.original_oids(arm, platform, objects, views.originals)
+    end = platform.get("exit_candidate")
+    if (type(end) is dict and end.get("source") in ("after_participant_exit", "stopped_worker_readback")
+            and utc_time(end.get("observed_utc")) and digest(end.get("head"), 40)
+            and platform.get("start_monotonic_ns") is not None):
+        named.add(end["head"])
+    problems = platform.get("git_evidence_issues", [])
+    if type(problems) is list:
+        for problem in problems:
+            issue(f"captured Git evidence: {problem}")
+    else:
+        issue("malformed captured Git evidence issues")
+    original_map = platform.get("original_candidate_map")
+    if original_map is not None:
+        original = read("original candidate map", lambda: objects.item(original_map))
+        unavailable_oids = platform.get("unavailable_candidate_oids", [])
+        if type(original) is dict and type(unavailable_oids) is list:
+            named.update(oid for oid in unavailable_oids if digest(oid, 40)
+                         and candidate_evidence.valid_entry(oid, original.get(oid)))
+    catalog = candidate_evidence.Catalog(objects, packs)
+    case_candidates, _, repos = candidate_evidence.reconcile(
+        catalog, candidates, platform.get("case_git_packs"), named, issue,
+        references=platform.get("referenced_files"))
     blobs = {}
-    for oid, entry in candidates.items():
-        repo = read(f"Git {oid}", lambda: packs.restore(oid, entry, objects))
-        if repo is not None:
-            repos[oid] = repo
-            actual = read(f"Git policy blobs {oid}", lambda: evidence.file_ids(repo, oid))
-            if actual is not None:
-                blobs[oid] = actual
-                declared = read("declared policy blobs", lambda: platform.get("policy_blobs", {}).get(oid))
-                if (declared is not None or raw.get("validity") == "complete") and not same(actual, declared):
-                    issue(f"retained policy blob identities differ for {oid}")
-            if oid != START and entry["parent"] not in candidates:
-                issue(f"missing archived parent of {oid}")
+    for oid, repo in repos.items():
+        actual = read(f"Git policy blobs {oid}", lambda: evidence.file_ids(repo, oid))
+        if actual is not None:
+            blobs[oid] = actual
+            declared = read("declared policy blobs", lambda: platform.get("policy_blobs", {}).get(oid))
+            if (declared is not None or raw.get("validity") == "complete") and not same(actual, declared):
+                issue(f"retained policy blob identities differ for {oid}")
     def validate_pause():
         clock.validate(platform, journal, raw)
         return True
     pause_ok = read("participant scoring pause", validate_pause, False)
     duration = clock.active_ns if pause_ok else lambda start, end, facts: None
-    basis, _ = read("terminal accounting", lambda: check_exit(raw, journal, platform, True, issue, duration=duration),
+    basis, _ = read("terminal accounting", lambda: check_exit(raw, journal, platform, True, issue, duration=duration,
+                                                              before_release_oracles=True),
                     ("unavailable", False))
     history = read_participant(arm, journal, platform, views.item, issue, originals=views.originals,
                                track=track, seed=seed, unavailable=missing)
@@ -235,17 +253,17 @@ def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None):
     if arm == "purser" and type(actual_trace) is dict:
         retained = read("kernel artifacts", lambda: dict(actual_trace["kernel_artifacts"]), {})
         disclosed = read("missing kernel artifacts", lambda: dict(actual_trace.get("missing_kernel_artifacts", {})), {})
-        for digest, ref in retained.items():
-            if read("kernel witness", lambda: sha(objects.blob(ref))) != digest:
+        for checksum, ref in retained.items():
+            if read("kernel witness", lambda: sha(objects.blob(ref))) != checksum:
                 issue("kernel witness checksum mismatch")
         if history.public_complete:
             expected = read("original kernel witness digests", lambda: kernel_witnesses(actual_trace["snapshot"]), set())
             recovered = {key[1] for key in objects.content}
-            for digest in sorted(expected - retained.keys()):
-                if digest not in disclosed:
-                    issue(f"original kernel witness lacks its retained object or missing-evidence reason: {digest}")
-                elif digest not in recovered:
-                    missing(f"original kernel witness unavailable: {digest}")
+            for checksum in sorted(expected - retained.keys()):
+                if checksum not in disclosed:
+                    issue(f"original kernel witness lacks its retained object or missing-evidence reason: {checksum}")
+                elif checksum not in recovered:
+                    missing(f"original kernel witness unavailable: {checksum}")
     faults = [e for e in events if e["kind"] == "fault"]
     if track == "clean" and faults or len(faults) > 1:
         issue("unregistered or duplicate intervention")
@@ -254,58 +272,10 @@ def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None):
             issue("clean member received a changed premise or instructions")
         else:
             missing("clean assignment throughout the participant history cannot be proven")
-    verdicts, witnesses, seen, ambiguous = {}, {}, set(), set()
-    for event in journal:
-        if event["kind"] != "oracle":
-            continue
-        p = event["payload"]
-        key = p.get("candidate"), p.get("criterion"), p.get("version")
-        if type(key[0]) is not str or type(key[1]) is not str or type(key[2]) is not int:
-            issue("malformed protected observation identity")
-            continue
-        def inspect():
-            oid, label, version = key
-            require(oid in repos, "oracle lacks authenticated Git candidate")
-            report = objects.item(p["evidence"])
-            grade = measure.grade(report, oid, label, seed, rank, version)
-            require(p["expected"] == "all specified cases pass"
-                    and grade == report["verdict"] == p["verdict"] == p["observed"], "retained verdict differs")
-            return grade, report
-        result = read(f"oracle {key}", inspect)
-        if key in seen:
-            ambiguous.add(key)
-            issue(f"duplicate oracle {key}")
-        seen.add(key)
-        if result is not None:
-            verdicts[key], witnesses[key] = result
-    for key in ambiguous:
-        verdicts.pop(key, None)
-        witnesses.pop(key, None)
-
-    if rerun:
-        for oid, repo in repos.items():
-            keys = [k for k in witnesses if k[0] == oid]
-            for version in sorted({k[2] for k in keys}):
-                labels = sorted(k[1] for k in keys if k[2] == version)
-                cache_key = (oid, seed, rank, version)
-                measured = measurements.setdefault(cache_key, {})
-                missing_labels = [label for label in labels if label not in measured]
-                if missing_labels:
-                    with extract_tree(repo, oid) as root:
-                        try:
-                            measured.update(measure.check(repo, oid, Path(root), seed, rank, version, missing_labels))
-                        except ERRORS:
-                            for label in missing_labels:
-                                result = read(f"reexecute {oid} v{version} {label}", lambda: measure.check(
-                                    repo, oid, Path(root), seed, rank, version, [label]))
-                                if result:
-                                    measured.update(result)
-                for label in labels:
-                    key = (oid, label, version)
-                    if not same(witnesses[key], measured.get(label)):
-                        issue(f"reexecuted protected evidence differs for {key}")
-                        verdicts.pop(key, None)
-                        witnesses.pop(key, None)
+    from .protected_slots import read_slots
+    verdicts, witnesses, protected_slots = read_slots(
+        journal, platform, objects, case_candidates, repos, seed, rank,
+        rerun=rerun, measurements=measurements, issue=issue)
 
     pause = platform.get("checkpoint_measurement")
     admitted = submitted = None
@@ -356,8 +326,15 @@ def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None):
     facts = evidence.score(history, track, verdicts, platform, release=delivered, qualification=admitted,
                            submitted=submitted, endpoint_known=observed_exit,
                            step_boundaries=costs["step_comparable"] and history.ordering_complete,
-                           final_subject=final_subject, known_candidates=repos)
-    if basis == "before_release" and not events[:-1] and not history.action_lower_bound and not observed_exit:
+                           final_subject=final_subject, known_candidates=case_candidates, available_candidates=repos)
+    facts["protected_slots"] = protected_slots
+    if basis == "before_release" and (case_candidates - {START} or history.action_lower_bound or observed_exit):
+        issue("before-release accounting conflicts with evidence from a later stage of this case")
+        basis = "unavailable"
+        if not history.action_lower_bound:
+            facts["charged_attempts_observed"] = None
+    elif (basis == "before_release" and all(e["kind"] in ("oracle", "terminal") for e in journal)
+            and not history.action_lower_bound and not observed_exit):
         if track != "clean":
             facts["intervention_reached"] = False
         costs.update(active_lower_ns=0, witnessed_elapsed_ns=0)
@@ -382,10 +359,6 @@ def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None):
         if (not whole or not observed_exit or not closed_parent or facts["final_pass"] is None
                 or track != "clean" and (expected is None or reached is not True)):
             issue("completed run lacks its registered endpoint or checkpoint evidence")
-        for oid in candidates:
-            if any((oid, label, version) not in verdicts for version, labels in ((measure.OLD, LABELS), (measure.NEW, measure.REVISED))
-                   for label in labels):
-                issue(f"completed run lacks a protected candidate observation for {oid}")
     healthy = bool(track == "clean" and cohort is True and observed_exit and receipt["reason"] == raw.get("terminal") == "done"
                    and closed_parent and facts["final_pass"] is True)
     return Case(raw, facts, basis, tuple(issues), costs["step_comparable"], costs["elapsed_comparable"], healthy,
@@ -395,6 +368,7 @@ def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None):
 
 def inspect_series(directory, *, strict=False, rerun=False):
     result, measurements = {}, {}
+    disputes = []
     schema = parse((REGISTRATION / "raw.schema.json").read_bytes())
     with zipfile.ZipFile(directory / "raw.zip") as archive, tempfile.TemporaryDirectory(prefix="purser-e2-readback-") as tmp:
         names = archive.namelist()
@@ -415,7 +389,10 @@ def inspect_series(directory, *, strict=False, rerun=False):
             else:
                 require(re.fullmatch(r"objects/[0-9a-f]{64}\.(json|bin|pack)", name), "invalid object member name")
                 if strict:
-                    require(sha(archive.read(name)) == tail.split(".")[0], "incorrect object address")
+                    try:
+                        require(sha(archive.read(name)) == tail.split(".")[0], "incorrect object address")
+                    except ERRORS as error:
+                        disputes.append(f"{name}: {error}")
         starts = [n.removeprefix("started/") for n in names if n.startswith("started/")]
         require(starts == [s for s in suffixes if s in starts], "registered cases started out of order")
         objects, packs = Objects(archive), GitPacks(Path(tmp))
@@ -442,19 +419,21 @@ def inspect_series(directory, *, strict=False, rerun=False):
                     case.healthy_clean = False
                     case.issues += tuple(binding)
             except ERRORS as error:
-                if strict:
-                    raise ValueError(f"{suffix}: {error}") from error
                 case = Case({"terminal": "unavailable", "validity": "unavailable", "cost": {}},
                             dict.fromkeys(outcomes.FIELDS), "unavailable", (str(error),))
             if strict and case.issues:
-                raise ValueError(f"{suffix}: {' | '.join(case.issues)}")
+                disputes.append(f"{suffix}: {' | '.join(case.issues)}")
             result[track, seed, arm] = case
         record_count = sum("runs/" + suffix in names for suffix in suffixes)
         if strict and replicate == 1:
             require(record_count == len(units), f"official E2 replicate 1 requires all {len(units)} registered records")
         stats = {"records": record_count, "started": len(starts), "registered": len(units), "replicate": replicate, "git_packs": len(packs.repos),
                  "reexecuted_seed_candidate_versions": len(measurements),
+                 "reexecuted_seed_candidate_criteria": sum(len(group) for group in measurements.values()),
                  "missing_registered": len(units) - record_count}
+        if disputes:
+            raise ValueError(f"reexecuted {stats['reexecuted_seed_candidate_criteria']} protected criteria; "
+                             + " | ".join(disputes))
     return result, stats
 
 

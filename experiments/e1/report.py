@@ -146,7 +146,7 @@ class Objects:
             if key not in self.content:
                 self.content[key] = read_artifact(self.archive, ref)
             return self.content[key]
-        except (KeyError, zipfile.BadZipFile) as exc:
+        except (KeyError, FileNotFoundError, zipfile.BadZipFile) as exc:
             raise ValueError("unavailable object " + ref["path"]) from exc
 
     def references(self, value):
@@ -171,6 +171,17 @@ class GitPacks:
     def __init__(self, directory):
         self.directory, self.repos, self.entries = directory, {}, {}
 
+    def unpack(self, reference, objects):
+        pack = objects.blob(reference)
+        path = self.directory / reference["sha256"]
+        if path not in self.repos:
+            path.mkdir(exist_ok=True)
+            git(path, "init", "-q", "--bare", "--object-format=sha1")
+            git(path, "index-pack", "--stdin", data=pack)
+            git(path, "fsck", "--full", "--no-dangling")
+            self.repos[path] = path
+        return path
+
     def restore(self, oid, entry, objects):
         key = oid, encoded(entry)
         if key in self.entries:
@@ -178,14 +189,7 @@ class GitPacks:
         require(digest(oid, 40) and digest(entry["tree"], 40) and entry["start"] == START
                 and (entry["parent"] is None if oid == START else digest(entry["parent"], 40)),
                 "invalid Git candidate identity")
-        pack = objects.blob(entry["pack"])
-        path = self.directory / entry["pack"]["sha256"]
-        if path not in self.repos:
-            path.mkdir(exist_ok=True)
-            git(path, "init", "-q", "--bare", "--object-format=sha1")
-            git(path, "index-pack", "--stdin", data=pack)
-            git(path, "fsck", "--full", "--no-dangling")
-            self.repos[path] = path
+        path = self.unpack(entry["pack"], objects)
         git(path, "merge-base", "--is-ancestor", START, oid)
         ancestry = git(path, "rev-list", "--parents", "-n", "1", oid).decode().split()
         require(ancestry == [oid] + ([entry["parent"]] if entry["parent"] else [])

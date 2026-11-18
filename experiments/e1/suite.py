@@ -177,7 +177,8 @@ def collect_cases(directory, pinned, registration, units, run_case, *, recover=N
             except Exception as error:
                 reason = f"{type(error).__name__}: {error}"
                 progress = json.loads(progress_file.read_bytes()) if progress_file.exists() else {}
-                if progress or working.exists():
+                bound = started.exists() or f"started/{key}.json" in members
+                if bound and (progress or working.exists() or staged.namelist()):
                     try:
                         progress = recover(working, assets, arm, progress, seed=seed, rank=rank)
                     except Exception as inspection:

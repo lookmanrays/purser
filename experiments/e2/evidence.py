@@ -36,7 +36,7 @@ def submitted_at(history, ck, work, oid, attempt=None):
 
 
 def score(history, track, verdicts, platform, *, release, qualification, submitted, endpoint_known,
-          step_boundaries, final_subject, known_candidates):
+          step_boundaries, final_subject, known_candidates, available_candidates):
     from .checkpoint import unchanged_policy
 
     journal = history.journal
@@ -51,11 +51,11 @@ def score(history, track, verdicts, platform, *, release, qualification, submitt
             unchanged[subject] = unchanged_policy(ids, subject, prior, p.get("candidate"))
     end = platform.get("exit_candidate") or {}
     head = end.get("head")
-    observed_head = head if head in known_candidates and end.get("dirty") is False else None
-    facts = outcomes.assess(journal, track, history.checkpoint, verdicts, delivery=release,
+    observed_head = head if head in available_candidates and end.get("dirty") is False else None
+    facts = outcomes.assess(history, track, verdicts, delivery=release,
                             qualification=qualification, submitted=submitted, unchanged=unchanged,
                             final_oid=observed_head if final_subject else None, endpoint_known=endpoint_known,
-                            history_complete=history.public_complete, action_sequence_complete=step_boundaries)
+                            action_sequence_complete=step_boundaries)
     facts["clean_exposure"] = history.clean_exposure
     facts["charged_attempts_observed"] = history.action_lower_bound
     latest, source, publication = observed_head, None, None
@@ -70,7 +70,10 @@ def score(history, track, verdicts, platform, *, release, qualification, submitt
             latest, source = action["candidate"], "last_witnessed_public_submission"
         elif len(known_candidates) == 1:
             latest, = known_candidates
-            source = "sealed_starting_fixture" if latest == START else "sole_surviving_sealed_candidate"
+            if latest in available_candidates:
+                source = "sealed_starting_fixture" if latest == START else "sole_surviving_sealed_candidate"
+            else:
+                source = "recorded_candidate_with_unavailable_git"
     phase = measure.OLD if track == "clean" else measure.NEW
     grades = outcomes.criteria(latest, verdicts, phase)
     facts.update(exit_git_head=head, exit_git_dirty=end.get("dirty"), last_observed_candidate=latest,

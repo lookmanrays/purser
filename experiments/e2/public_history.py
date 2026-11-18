@@ -10,7 +10,7 @@ from purser.kernel.workview import WorkView
 
 from . import attribution as attr
 from . import operations, policy
-from .public_sources import Originals
+from .public_sources import Originals, identity
 
 
 def event(kind, payload, original=None):
@@ -110,6 +110,15 @@ class Participant:
 
     def checkpoint(self, ck):
         return self.source.lookup(ck)
+
+    def public_states_after(self, fault):
+        receipt = fault["payload"].get("after")
+        reported = {identity(self.arm, receipt): fault["seq"]}
+        for row in self.journal:
+            if row["kind"] == "public_state" and row["seq"] >= fault["seq"]:
+                key = identity(self.arm, row["payload"].get("checkpoint"))
+                reported.setdefault(key, row["seq"])
+        return self.source.states_after(receipt, reported)
 
     def incomplete(self, message):
         self.actions_complete = False

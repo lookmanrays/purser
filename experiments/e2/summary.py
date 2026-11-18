@@ -95,7 +95,7 @@ def render_summary(cases, *, stats=None):
            "Twenty matched primary ranks were registered. Count columns show the total and the number of seeds "
            "with an observed value. Missing binary outcomes can range from zero to one. Thresholds use those bounds. "
            "A question mark marks an unavailable measurement.", "",
-           "| Arm | Complete | Incomplete | Invalid or missing | Checkpoint reached | Both retained | Bad W2 closure | Rework steps / measured | Final pass | Total steps / measured |",
+           "| Arm | Complete | Incomplete | Invalid or missing | Checkpoint reached | Both retained | Invalid affected closure | Rework steps / measured | Final pass | Total steps / measured |",
            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]
     def total(group, key):
         s, n = aggregate(group, key)
@@ -152,7 +152,7 @@ def render_summary(cases, *, stats=None):
         return shown(v)
     for arm in ARMS:
         out.extend(["", f"## Primary coverage · {arm}", "",
-                    "| Seed | Validity / exit | Reached | Both retained | Siblings reopened | Invalid W2 closure | Rework | Final pass | Steps | Elapsed s |",
+                    "| Seed | Validity / exit | Reached | Both retained | Reopen transitions | Invalid affected closure | Rework | Final pass | Steps | Elapsed s |",
                     "| ---: | --- | --- | --- | ---: | --- | ---: | --- | ---: | ---: |"])
         for seed, c in zip(seeds, primary[arm], strict=True):
             status = f"{c.raw.get('validity','unavailable')} / {c.raw.get('terminal','unavailable')}" if c else "missing"
@@ -181,6 +181,36 @@ def render_summary(cases, *, stats=None):
         fields = [shown(value(c,k)) for k in ("checkpoint_candidate", "unaffected_both_retained","stale_at_delivery","new_bad_closure")]
         out.append(f"| {arm} | {c.raw.get('terminal','unavailable') if c else 'missing'} | " + " | ".join([*fields, work(c), shown(value(c,"final_pass")),
                                                                                         cost(c,"steps"), cost(c,"elapsed_ns")]) + " |")
+    reopening_counts, witnesses = [], []
+    for (track, seed, arm), case in sorted(cases.items()):
+        name = f"{track} / {seed} / {arm}"
+        count = case.facts.get("observed_reopened")
+        if count is not None:
+            siblings = ", ".join(case.facts["reopened_subjects"]) or "—"
+            exact = shown(value(case, "unaffected_reopened"))
+            reopening_counts.append(f"| {name} | {count} | {siblings} | {exact} |")
+        for field in ("reopen_observations", "closure_observations"):
+            for item in case.facts.get(field, []):
+                head = item["publication"]
+                publication = f"{head[0]} / `{head[1]}`" if isinstance(head, tuple) else f"`{head}`"
+                if field == "reopen_observations":
+                    event, grade = "reopened", "—"
+                else:
+                    event = "closed at delivery" if item["at_delivery"] else "closed"
+                    grade = shown(item["revised_pass"])
+                witnesses.append(f"| {name} | {publication} | {item['subject']} | {event} "
+                                 f"| `{item['candidate']}` | {grade} |")
+    if reopening_counts:
+        out.extend(["", "## Observed sibling reopenings", "",
+                    "An incomplete history gives a lower bound on the number of transitions.", "",
+                    "| Case | Transitions observed | Distinct siblings observed reopening | Exact eligible total |",
+                    "| --- | ---: | --- | ---: |", *reopening_counts])
+    if witnesses:
+        out.extend(["", "## Public reopening and closure evidence", "",
+                    "Each reopening identifies the previously closed candidate. Each closure grades revised retry "
+                    "on the candidate declared by that subject.", "",
+                    "| Case | Plan digest or kernel revision / hash | Subject | Public observation | Git candidate | Revised retry passes |",
+                    "| --- | --- | --- | --- | --- | --- |", *witnesses])
     diagnosed = [(key, c) for key,c in cases.items() if c.issues or c.unavailable or c.raw.get("validity") != "complete"]
     if diagnosed:
         out.extend(["", "## Unavailable or disputed observations", ""])
@@ -190,8 +220,8 @@ def render_summary(cases, *, stats=None):
             facts = c.facts
             observed = [("witnessed participant exit", "physical_exit"), ("clean exposure", "clean_exposure"),
                         ("both siblings continuously retained", "observed_retention"),
-                        ("bad W2 state", "observed_invalid_closure"), ("stale W2 at receipt", "stale_at_delivery"),
-                        ("new bad W2 closure", "new_bad_closure"), ("final Git criteria pass", "final_pass")]
+                        ("invalid affected closure", "observed_invalid_closure"), ("stale closure at receipt", "stale_at_delivery"),
+                        ("new invalid affected closure", "new_bad_closure"), ("final Git criteria pass", "final_pass")]
             out.append("  Observed facts — " + ", ".join(f"{label} {shown(facts.get(field))}" for label,field in observed) + ".")
             candidate = value(c, "last_observed_candidate")
             if candidate:
@@ -210,5 +240,20 @@ def render_summary(cases, *, stats=None):
                                + ", ".join(f"{label} {grade or '?'}" for label, grade in grades.items()) + ".")
             if facts.get("exit_git_dirty") is True:
                 out.append(f"  The stopped working tree was dirty at `{facts['exit_git_head']}`.")
+    observations = []
+    for (track, seed, arm), case in sorted(cases.items()):
+        for oid, slots in sorted(case.facts.get("protected_slots", {}).items()):
+            for slot in slots:
+                grade = slot["verdict"] or "?"
+                history = slot["historical_verdict"] or "?"
+                source = slot["source"] or "unavailable"
+                observations.append(f"| {track} / {seed} / {arm} | `{oid}` | {slot['criterion']} "
+                                    f"| {slot['version']} | {history} | {grade} | {source} "
+                                    f"| {slot['original']} | {slot['replay']} |")
+    if observations:
+        out.extend(["", "## Protected Git observations", "",
+                    "| Case | Candidate | Criterion | Version | Retained verdict | Available grade "
+                    "| Grade source | Original journal row | Independent replay |",
+                    "| --- | --- | --- | ---: | --- | --- | --- | --- | --- |", *observations])
     out.extend(["", "The scripted protocol permits zero model calls, tokens and spend.", ""])
     return "\n".join(out)

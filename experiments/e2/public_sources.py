@@ -166,6 +166,51 @@ class Originals:
     def position(self, ck):
         return self.index.get(identity(self.arm, ck))
 
+    def states_after(self, receipt, reported):
+        """Yield each public head once, with its actual predecessor when recoverable."""
+        first = self.position(receipt)
+        if first is not None:
+            for index in range(first, len(self.publications)):
+                point = self.publications[index]
+                key = identity(self.arm, point.checkpoint)
+                prior = self.publications[index - 1].states if index else None
+                yield key, reported.get(key), prior, point.states, index == first
+        if self.complete or self.arm == "purser":
+            # Kernel transition identity and adjacency come from replayed SQLite batches.
+            return
+
+        # A retained plan view carries the content address of its own predecessor.
+        # Missing generations can leave locally provable pairs outside the original prefix.
+        start = identity(self.arm, receipt)
+        def generation(rows):
+            stamp = rows[PARENT].get(PLAN_VERSION) if rows else None
+            if isinstance(stamp, dict) and type(stamp.get("number")) is int and stamp["number"] > 0:
+                return stamp["number"]
+            return None
+
+        start_number = generation(self.plan_heads.get(start))
+        detached = []
+        for key, rows in self.plan_heads.items():
+            if key in self.index:
+                continue
+            number = generation(rows)
+            if number is not None and number <= len(self.publications):
+                continue
+            if start_number is not None and number is not None:
+                if number < start_number or number == start_number and key != start:
+                    continue
+            elif key not in reported:
+                continue
+            detached.append((key, number, rows))
+        for key, number, rows in sorted(detached, key=lambda item: (item[0] != start, item[1] or 0)):
+            prior = None
+            if number is not None:
+                previous = rows[PARENT][PLAN_VERSION].get("previous")
+                parent_rows = self.plan_heads.get(previous) if digest(previous, 64) else None
+                if generation(parent_rows) == number - 1:
+                    prior = public_rows(parent_rows, self.arm)
+            yield key, reported.get(key), prior, public_rows(rows, self.arm), key == start
+
     def context(self, ck, work):
         key = identity(self.arm, ck)
         require(work in WORK and key is not None, "unidentified worker context source")

@@ -61,11 +61,14 @@ class ActualPlan(unittest.TestCase):
         self.assertEqual((primary.raw["cost"]["steps"],primary.facts["rework_steps"]), (30,13))
         stress = self.read_case(self.sample["closed-affected"], reexecute=True)
         self.assertEqual(stress.issues, ())
-        old, new = stress.facts["closure_observations"]
+        old, new, parent = stress.facts["closure_observations"]
+        self.assertEqual((old["subject"], new["subject"], parent["subject"]), ("W2", "W2", "W-notify"))
         self.assertTrue(old["at_delivery"])
         self.assertFalse(old["revised_pass"])
         self.assertNotEqual(old["candidate"], new["candidate"])
         self.assertTrue(new["revised_pass"])
+        self.assertTrue(parent["revised_pass"])
+        self.assertNotEqual(parent["publication"], new["publication"])
         self.assertTrue(stress.facts["stale_at_delivery"])
         self.assertFalse(stress.facts["new_bad_closure"])
 
