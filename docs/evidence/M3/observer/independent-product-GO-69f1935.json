@@ -1,0 +1,243 @@
+{
+  "disposition": "GO for candidate-specific independent local M3-A product qualification",
+  "env": {
+    "git": "git version 2.50.1 (Apple Git-155)",
+    "locale": "C",
+    "python": "3.11.15",
+    "sqlite": "3.53.1",
+    "timezone": "UTC"
+  },
+  "evidence": {
+    "additional-defects/independent-results.json": {
+      "bytes": 4452,
+      "sha256": "11ae983d82746e3a6d9bb77e4674ff3cd3e5fda709a7a7400c69aed670dd82af"
+    },
+    "additional-defects/typed-negative-replay.json": {
+      "bytes": 399,
+      "sha256": "399842782452cac31b91c4990b2d9c926ada5e0ccc0972876422115e1224b266"
+    },
+    "basis_and_observation_controls.py": {
+      "bytes": 4182,
+      "sha256": "88fbb570de8f1299ce8006d537c10c7453b7ee48190ecaca832a3f42e2dd2360"
+    },
+    "concurrency.py": {
+      "bytes": 7268,
+      "sha256": "092b6d8583ba2c8d9064fb734539d80ab707f1ac2e0c65b5a24b6ff6fca622fe"
+    },
+    "expanded_support.py": {
+      "bytes": 4957,
+      "sha256": "c4924e88f486d21dc7e96e055a34542e617b4c17c8884fc4f24d06f22cd7aef9"
+    },
+    "fixture.py": {
+      "bytes": 7284,
+      "sha256": "14792ed3dd44c8576b5bf3f8f13ea6c4c46626be6d9108fb76ca8f2a72aa70ac"
+    },
+    "mixed-evidence-verified/disposition.json": {
+      "bytes": 56298,
+      "sha256": "023fbcf0f7b4879ca2044dcf51755c28cbb3669b98727d456bd58e39187c915c"
+    },
+    "mixed.py": {
+      "bytes": 7477,
+      "sha256": "b33b02870723895362f57ff3f11a1097b5ecb149f984f5b82b8f94014675a603"
+    },
+    "release-evidence/callback-witness.jsonl": {
+      "bytes": 15817,
+      "sha256": "50387761b4792bc32e98ea02ce0c9232b7b985a75f5c8008f9a733f06ff1d38c"
+    },
+    "release-evidence/disposition.json": {
+      "bytes": 8061,
+      "sha256": "65b66e6166971e25a0ad01af4af39a74f2e14e543e39c6d81ce935218d2e338e"
+    },
+    "retained-e1-readers.json": {
+      "bytes": 241,
+      "sha256": "8350c5735f73b6534c9bc60206058ed3694d5ace61ea3cefed990b3858435bb6"
+    },
+    "support-boundaries/independent.json": {
+      "bytes": 3471,
+      "sha256": "e395d02df1d469fb541ea37948dd953239797bcde1967f54d13b2c1374b40bec"
+    }
+  },
+  "joined_candidate": "69f193586de83a7c4eb72974f2038e3ba72d4c5e",
+  "legacy_checks": {
+    "E1_reports": [
+      [
+        "v1",
+        "70097e0a2b933713d4fe91e6eddb5c2132951f89",
+        "43c0b17ea308f914fdafd311c9cbb2eaa4c6ce7faf0dce61d8aacd7396009658"
+      ],
+      [
+        "v2",
+        "e3a155633058cd20274ce5e9cfaca224b41f5b5b",
+        "0a82c9a1bbc7addcb1789adf3aa403ab65dfcd4b858d28811bfdcb87faa1fd21"
+      ]
+    ],
+    "M0_vectors": 3,
+    "M2_accepted_revision": 24,
+    "M2_head": "09ad2ae06114ebb771ecd87d0d386170bdc897febe701b123056c4378fb8bfe4",
+    "M2_projection": "634218f8cfe75cb3281f349346300232638c54edeb9b202ecd17725e105ade15"
+  },
+  "local_release": {
+    "controls": 6,
+    "physical_entries": [
+      [
+        "D1-P",
+        51
+      ],
+      [
+        "D4-P",
+        51
+      ],
+      [
+        "D5-killed",
+        51
+      ],
+      [
+        "D5-restart",
+        52
+      ],
+      [
+        "D6-revised",
+        63
+      ]
+    ]
+  },
+  "mixed_graph_and_writer_order": {
+    "close-first": {
+      "cold": {
+        "head_hash": "a50964e6bc578f84c8d50aee9293cff33b0f35c0aeeb4a7b67f5e22c17712ac1",
+        "historical_revisions": [
+          50,
+          65,
+          67,
+          72,
+          95
+        ],
+        "projection_hash": "a0906287047d611d339d50a29489529fedc977e6bbb43cec32985984245c3f43",
+        "revision": 95
+      },
+      "exact_impact": [
+        "D-original",
+        "W-cycle-x",
+        "W-cycle-y",
+        "W9"
+      ],
+      "invalidation_revision": 72,
+      "prepared_close": [
+        "admitted",
+        67
+      ]
+    },
+    "invalidate-first": {
+      "cold": {
+        "head_hash": "f35f3357229097f2b8a43f58b39c3d75059b0db7dfb9c82315055e2074681b86",
+        "historical_revisions": [
+          50,
+          65,
+          67,
+          68,
+          91
+        ],
+        "projection_hash": "1dbbb2088cc4bf4d58cb5739be560eb8f0b7baaf01fcec0d5fde69531c0391b1",
+        "revision": 91
+      },
+      "exact_impact": [
+        "D-original",
+        "W-cycle-x",
+        "W-cycle-y",
+        "W9"
+      ],
+      "invalidation_revision": 67,
+      "prepared_close": [
+        "rejected",
+        68
+      ]
+    }
+  },
+  "original_M0_reference": "a514c3505f0d6236148f475a029ac26305a13e8ef3d279a5dd7eeb9875a9ad04",
+  "product_commit": "1243dde2d23f9dc67986d78ea2d60099bff2b7c4",
+  "product_tree": "c2d2e50c748324fc0b4fe697ccf490efc47c15f9",
+  "regressions": {
+    "additional_support_cases": {
+      "multi_level_fixed_point": [
+        151,
+        "36c4667973b0c76d60fcf505c6b4883fd73bf61a6ade3ef2f828e34ba903d393",
+        "4d35a31fd743d253deb54d82e9c7b1679a074e56ff25f1a068b9b27d39977fa3"
+      ],
+      "same_candidate_fresh_generation": [
+        122,
+        "866fa26f223df180dd3b8b2ce242a45d514a252b706f62d09f0bf6a7b48e63d3",
+        "52787bd4683882f8b49eb312f7e66598e36a9ca6958e8641a67bd923fe9079fb"
+      ],
+      "unchanged_any": [
+        103,
+        "c0133ff18f1ae7d161c7754a990ff7f76011239a5dce747b7c821e1a081d4963",
+        "238bdb4023dcbd5d9911922be004bd02d58eb3b9196e17275c082dcfe19f351a"
+      ],
+      "unchanged_k_of_n": [
+        103,
+        "3a3f012332ab8214610cca7ec325b601f3edcd1c6d8cbe91288a5a10ef9d6ef7",
+        "8bfa17ef56858c47e6ad081c63537b42d512f66b9164a2c9c658a516e09bacae"
+      ]
+    },
+    "structural_direct_work_support": {
+      "current": "39fca60836f59d5ce37a30ef768a24007d938f2468b05bbdd780adee454c37d6",
+      "new_public_close_events_on_prior_evidence": 0,
+      "old_attempt": {
+        "actor_id": "closure:independent",
+        "code": "closure_blocked",
+        "details": {
+          "reasons": [
+            {
+              "code": "invalidated_support",
+              "refs": [
+                "W-covered",
+                "W-sentinel"
+              ]
+            },
+            {
+              "code": "missing_evidence",
+              "refs": [
+                "O-W-sentinel"
+              ]
+            }
+          ],
+          "work": "W-sentinel"
+        },
+        "digest": "229d14dd70b691803f92623bd71fb2c1c824776c8537b64e0c17353279e2a528",
+        "disposition": "rejected",
+        "proposal_id": "ind-a16a9f1cd6764d7690d5548f5d4aec3a",
+        "revision": 105
+      },
+      "old_evidence_current": {
+        "evidence": [],
+        "obligation": "O-W-sentinel",
+        "state": "open",
+        "version": 1,
+        "work": "W-sentinel"
+      },
+      "prior": "c8c2f3c190863a6c39f6a45c24a684d3dcb83be102bf2330866e9d0722ea1283"
+    },
+    "typed_premise_as_verification_evidence": {
+      "cold_revision": 67,
+      "head": "5119ed41296fcdf024361602d8b9920dc1dc49ee3d1726ccf261b51acf249a29",
+      "new_evidence_or_retries": 0,
+      "original_events": 67,
+      "replayed_receipt": {
+        "actor_id": "verifier:queue",
+        "code": "witness_mismatch",
+        "details": {},
+        "digest": "c0e4bd0a3a09f8b9f009822f1eeabaffaa1815fa934bea4cbf81fe16aa307ef6",
+        "disposition": "rejected",
+        "proposal_id": "ind-eade8dd885b94cdf8a188754ca020cb8",
+        "revision": 66
+      }
+    }
+  },
+  "repository_tests": {
+    "command": "python -B -m unittest discover",
+    "duration_s": 86.13,
+    "passed": 124
+  },
+  "scope": "The E2 evaluator, scheduled study, genuine project submission and real verdict are distinct pending work. All new tests used private controlled data.",
+  "supplement_reference": "b0a129e08d436355afa92d3f00bbb5f413f7560f7eb39cc01a91de50248fd9ef"
+}
