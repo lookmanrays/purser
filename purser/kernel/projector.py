@@ -29,8 +29,8 @@ def _receipt(projection, data, revision, end):
     records = {(r["actor_id"], r["proposal_id"]): r for r in projection["receipts"]}
     prior = records.get(identity)
     if (data["disposition"] not in ("pending", "admitted", "rejected")
-            or prior and (prior["digest"] != data["digest"] or prior["disposition"] != "pending"
-                          or data["disposition"] == "pending")):
+            or prior is not None and (prior["digest"] != data["digest"] or prior["disposition"] != "pending"
+                                      or data["disposition"] == "pending")):
         raise KernelError("integrity_error", {"revision": revision})
     records[identity] = dict(data, revision=end)
     return {**projection, "receipts": [records[k] for k in sorted(records)]}
