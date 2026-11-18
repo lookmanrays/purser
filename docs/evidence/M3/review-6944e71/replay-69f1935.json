@@ -1,0 +1,209 @@
+{
+  "after": {
+    "consumer_actions": [
+      "rework"
+    ],
+    "consumer_criterion": [
+      "open",
+      {
+        "evidence": null,
+        "id": "O-W-consumer",
+        "run": null,
+        "version": 1,
+        "waiver": null
+      }
+    ],
+    "objects": {
+      "W-aggregate": {
+        "closed": true,
+        "generation": 1,
+        "outcome": "f6c5f1ba9311da7ee88e29993826f82ace83799340b553d4cdb6cb172c28cdf4",
+        "recorded_closure": "f6c5f1ba9311da7ee88e29993826f82ace83799340b553d4cdb6cb172c28cdf4",
+        "state": "closed"
+      },
+      "W-consumer": {
+        "closed": false,
+        "generation": 1,
+        "outcome": null,
+        "recorded_closure": null,
+        "state": "stale"
+      },
+      "W-unrelated": {
+        "closed": true,
+        "generation": 1,
+        "outcome": "5ef0207d6af51e705a86f43233162c0ab42f02c405daacdac2d46ffeec9c1eff",
+        "recorded_closure": "5ef0207d6af51e705a86f43233162c0ab42f02c405daacdac2d46ffeec9c1eff",
+        "state": "closed"
+      },
+      "W9": {
+        "closed": true,
+        "generation": 2,
+        "outcome": "3a7731cf982f579c03a2df7a25253512293d7ef3a9a85bce5e95a6d6f89a15aa",
+        "recorded_closure": "3a7731cf982f579c03a2df7a25253512293d7ef3a9a85bce5e95a6d6f89a15aa",
+        "state": "closed"
+      }
+    },
+    "revision": 89
+  },
+  "candidate": "69f193586de83a7c4eb72974f2038e3ba72d4c5e",
+  "downstream_reclose": {
+    "actor_id": "closure:test",
+    "code": "closure_blocked",
+    "details": {
+      "reasons": [
+        {
+          "code": "invalidated_support",
+          "refs": [
+            "W-aggregate",
+            "W-consumer"
+          ]
+        },
+        {
+          "code": "missing_evidence",
+          "refs": [
+            "O-W-consumer"
+          ]
+        }
+      ],
+      "work": "W-consumer"
+    },
+    "digest": "b3594f1af6cbbb1764c9188898993c7c0251ea3a80050391270b7cc0791d6c81",
+    "disposition": "rejected",
+    "proposal_id": "p-38",
+    "revision": 89
+  },
+  "invalidated": {
+    "consumer_actions": [],
+    "consumer_criterion": [
+      "open",
+      {
+        "evidence": null,
+        "id": "O-W-consumer",
+        "run": null,
+        "version": 1,
+        "waiver": null
+      }
+    ],
+    "objects": {
+      "W-aggregate": {
+        "closed": false,
+        "generation": 1,
+        "outcome": null,
+        "recorded_closure": null,
+        "state": "open"
+      },
+      "W-consumer": {
+        "closed": false,
+        "generation": 1,
+        "outcome": null,
+        "recorded_closure": null,
+        "state": "submitted"
+      },
+      "W-unrelated": {
+        "closed": true,
+        "generation": 1,
+        "outcome": "5ef0207d6af51e705a86f43233162c0ab42f02c405daacdac2d46ffeec9c1eff",
+        "recorded_closure": "5ef0207d6af51e705a86f43233162c0ab42f02c405daacdac2d46ffeec9c1eff",
+        "state": "closed"
+      },
+      "W9": {
+        "closed": false,
+        "generation": 1,
+        "outcome": null,
+        "recorded_closure": null,
+        "state": "stale"
+      }
+    },
+    "revision": 71
+  },
+  "old": {
+    "consumer_actions": [],
+    "consumer_criterion": [
+      "passed",
+      {
+        "evidence": "E-consumer",
+        "id": "O-W-consumer",
+        "run": "V-consumer",
+        "version": 1,
+        "waiver": null
+      }
+    ],
+    "objects": {
+      "W-aggregate": {
+        "closed": true,
+        "generation": 1,
+        "outcome": "6fb04313d9c2a1f538a4519e76a9c0d1408984fa3b36d22da4493af26de1d274",
+        "recorded_closure": "6fb04313d9c2a1f538a4519e76a9c0d1408984fa3b36d22da4493af26de1d274",
+        "state": "closed"
+      },
+      "W-consumer": {
+        "closed": true,
+        "generation": 1,
+        "outcome": "313f17ee3e32fa9ead9f1df2979223eee744017915dc75ff3cca308fec3ce204",
+        "recorded_closure": "313f17ee3e32fa9ead9f1df2979223eee744017915dc75ff3cca308fec3ce204",
+        "state": "closed"
+      },
+      "W-unrelated": {
+        "closed": true,
+        "generation": 1,
+        "outcome": "5ef0207d6af51e705a86f43233162c0ab42f02c405daacdac2d46ffeec9c1eff",
+        "recorded_closure": "5ef0207d6af51e705a86f43233162c0ab42f02c405daacdac2d46ffeec9c1eff",
+        "state": "closed"
+      },
+      "W9": {
+        "closed": true,
+        "generation": 1,
+        "outcome": "37aaed22b0c9603238d2a5cd37166a4b65217c45261e921ce2f0dfbf7a221a25",
+        "recorded_closure": "37aaed22b0c9603238d2a5cd37166a4b65217c45261e921ce2f0dfbf7a221a25",
+        "state": "closed"
+      }
+    },
+    "revision": 67
+  },
+  "reclosed_support": {
+    "consumer_actions": [
+      "rework"
+    ],
+    "consumer_criterion": [
+      "open",
+      {
+        "evidence": null,
+        "id": "O-W-consumer",
+        "run": null,
+        "version": 1,
+        "waiver": null
+      }
+    ],
+    "objects": {
+      "W-aggregate": {
+        "closed": true,
+        "generation": 1,
+        "outcome": "f6c5f1ba9311da7ee88e29993826f82ace83799340b553d4cdb6cb172c28cdf4",
+        "recorded_closure": "f6c5f1ba9311da7ee88e29993826f82ace83799340b553d4cdb6cb172c28cdf4",
+        "state": "closed"
+      },
+      "W-consumer": {
+        "closed": false,
+        "generation": 1,
+        "outcome": null,
+        "recorded_closure": null,
+        "state": "stale"
+      },
+      "W-unrelated": {
+        "closed": true,
+        "generation": 1,
+        "outcome": "5ef0207d6af51e705a86f43233162c0ab42f02c405daacdac2d46ffeec9c1eff",
+        "recorded_closure": "5ef0207d6af51e705a86f43233162c0ab42f02c405daacdac2d46ffeec9c1eff",
+        "state": "closed"
+      },
+      "W9": {
+        "closed": true,
+        "generation": 2,
+        "outcome": "3a7731cf982f579c03a2df7a25253512293d7ef3a9a85bce5e95a6d6f89a15aa",
+        "recorded_closure": "3a7731cf982f579c03a2df7a25253512293d7ef3a9a85bce5e95a6d6f89a15aa",
+        "state": "closed"
+      }
+    },
+    "revision": 88
+  }
+}
