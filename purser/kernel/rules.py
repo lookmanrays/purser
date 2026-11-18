@@ -22,3 +22,8 @@ def candidate(value):
     return (all(type(v) is str for v in value.values())
             and re.fullmatch(r"[0-9a-f]+", value["digest"]) is not None
             and len(value["digest"]) == size.get((value["kind"], value["algorithm"])))
+
+
+def witnesses_run(observation, run_id, run):
+    """Only the observation of this exact verification run can supply its evidence."""
+    return observation.get("run") == run_id and observation["observer"] == run["observer"]

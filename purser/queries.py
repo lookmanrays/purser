@@ -36,9 +36,9 @@ def why(snapshot, as_of, record_id):
     else:
         reasons = view.reasons(record_id)
     result = {"v": 1, "revision": snapshot["revision"], "as_of": as_of, "record": record, "reasons": reasons}
-    if record["kind"] == "WorkItem" and any(
+    if record["kind"] == "WorkItem" and (view.graph.outgoing[record_id] or view.graph.acquired(record_id) or any(
         r["commitment"] == record["commitment"] and r["kind"] in ("Assumption", "Decision") for r in records.values()
-    ):
+    )):
         causes = []
         for ref in record["fields"].get("causes", []):
             observation = records[ref]
@@ -49,4 +49,7 @@ def why(snapshot, as_of, record_id):
                                "edges": at_change.edges_for(record_id)})
         result["support"] = {"edges": view.graph.edges_for(record_id), "causes": causes,
                              "basis": view.basis(record_id), "outcome": view.outcome(record_id)}
+        acquired, current = view.graph.acquired(record_id), view.graph.work_outcomes(record_id)
+        if acquired or current:
+            result["support"]["work_outcomes"] = {"acquired": acquired, "current": current}
     return result

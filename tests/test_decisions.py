@@ -14,7 +14,7 @@ from purser.driver import context_pack, tick
 from purser.kernel.artifacts import Artifacts
 from purser.kernel.gate import admit
 from purser.kernel.store import Store
-from purser.kernel.wire import KernelError
+from purser.kernel.wire import KernelError, canonical, digest
 from purser.kernel.workview import WorkView
 from tests import test_work as work
 
@@ -189,6 +189,37 @@ class DecisionKernel(unittest.TestCase):
         self.assertEqual(h.send(rework, base=base, allow=True)["code"], "stale_base")
         self.assertEqual(h.send(rework)["code"], "ok")
 
+    def test_premise_cannot_certify_a_run_even_in_original_history(self):
+        h = self.h
+        self.setup_w2(submitted=False)
+        h.send({"op": "result.submit", "id": "R-main", "assignment": "AS-A", "candidate": h.candidate},
+               work.role("executor", "executor:test", "AS-A"))
+        h.send({"op": "run.open", "id": "V-main", "obligation": "O-retry", "result": "R-main"})
+        h.send(observation("Obs-confirm", finding="confirms"), observer())
+        op = {"op": "evidence.record", "id": "E-wrong", "run": "V-main", "observation": "Obs-confirm", "verdict": "pass"}
+        proposal = request("wrong-witness", h.base, op)
+        verifier = work.role("verifier", assignment="V-main")
+        refused = admit(self.store, verifier, proposal)
+        self.assertEqual((refused["disposition"], refused["code"], refused["revision"]),
+                         ("rejected", "witness_mismatch", h.base + 1))
+        self.assertEqual(admit(Store(self.store.path), verifier, proposal), refused)
+        self.assertEqual(h.view().qualification("O-retry")[0], "open")
+        self.assertNotIn("Obs-confirm", [o["id"] for o in self.cli("context", "AS-A")["observations"]])
+        self.assertEqual(self.cli("why", "Obs-confirm")["record"]["fields"]["assumption"], "A1")
+        prior = self.store.snapshot()
+        seq = prior["revision"] + 1
+        forged = {"v": 1, "event_version": 1, "revision": seq, "type": "EvidenceRecorded",
+                  "batch_start": seq, "batch_size": 1, "proposal_id": "forged", "actor_id": verifier["actor_id"],
+                  "at": "2026-11-18T12:00:00.000000Z", "prev_hash": prior["head_hash"],
+                  "data": {k: v for k, v in op.items() if k != "op"} | {"commitment":work.C, "verifier":verifier["actor_id"]}}
+        forged["hash"] = digest("event", forged)
+        with closing(sqlite3.connect(self.store.path)) as conn, conn:
+            conn.execute("INSERT INTO events VALUES (?,?)", (seq, canonical(forged)))
+        with self.assertRaises(KernelError) as invalid:
+            self.store.replay()
+        self.assertEqual((invalid.exception.code, invalid.exception.details["revision"]), ("integrity_error", seq))
+        self.assertEqual(self.store.snapshot(revision=prior["revision"]), prior)
+
     def test_removed_and_transient_incoming_membership_stale_supersession(self):
         h = self.h
         h.child("W2")
@@ -318,3 +349,125 @@ class DecisionKernel(unittest.TestCase):
         self.assertEqual(tick(self.store, {"executor:test": adapter})["receipt"]["disposition"], "admitted")
         self.assertEqual(len(called), 1)
         self.assertEqual(called[0][0]["id"], "D-old")
+
+    def test_acquired_direct_outcomes_follow_selected_coverage_through_a_structural_chain(self):
+        for rule in ("all", "any", "k_of_n"):
+            for selected in (False, True):
+                with self.subTest(rule=rule, selected=selected):
+                    self.check_support_chain(rule, selected)
+
+    def check_support_chain(self, rule, selected):
+        h = work.WorkTests()
+        h.setUp()
+        self.addCleanup(h.doCleanups)
+        h.child("Aggregate")
+        h.child("Structural")
+        h.child("Child-S", "Structural")
+        h.child("Direct")
+        h.child("Consumer")
+        h.child("Untouched")
+        items = ["Child-A", "Child-B", "Child-Z"]
+        for key in items:
+            h.child(key, "Aggregate")
+        h.coverage("Aggregate", rule, 2 if rule == "k_of_n" else None)
+        h.coverage("Structural")
+        changed = "Child-A" if selected else "Child-Z"
+        if rule == "all" and not selected:
+            changed = "Outside"
+            h.child(changed)
+        h.send([premise("A1"), decision(), link(changed, "D-old"), link("Structural", "Aggregate"),
+                link("Direct", "Aggregate"), link("Consumer", "Structural")])
+
+        def qualify(key, label, payload):
+            subject = {"kind": "artifact.bytes", "algorithm": "sha256", "digest": Artifacts(h.store.path).put(payload)}
+            result = h.submit(key, label, subject)
+            h.run_verification("O-"+key, result, label, candidate=subject, report=b"Observed " + payload)
+            h.close(key)
+
+        for key in [*items, "Child-S", "Direct", "Consumer", "Untouched"] + (["Outside"] if changed == "Outside" else []):
+            h.send(h.criterion(key, "O-"+key), work.OWNER)
+        for key in [*items, "Child-S", "Untouched"] + (["Outside"] if changed == "Outside" else []):
+            qualify(key, key, key.encode())
+        h.close("Aggregate")
+        h.close("Structural")
+        for key in ("Direct", "Consumer"):
+            qualify(key, key, key.encode())
+        old = h.view()
+        old_revision = h.base
+        self.assertEqual(old.graph.acquired("Consumer"), {"Structural": old.outcome("Structural")})
+        self.assertEqual(old.graph.acquired("Structural"), {"Aggregate": old.outcome("Aggregate")})
+        self.assertEqual(old.graph.acquired("Direct"), {"Aggregate": old.outcome("Aggregate")})
+        h.send(observation(), observer())
+        affected = h.view().answers()["q04"][0]["affected"]
+        self.assertEqual(affected, sorted([changed, "D-old"]))
+        h.send(decision("D-new", (), (), "D-old"))
+        qualify(changed, "Changed", b"new supported candidate")
+        if not h.view().closed("Aggregate"):
+            h.close("Aggregate")
+        if not h.view().closed("Structural"):
+            h.close("Structural")
+        updated = WorkView(Store(h.store.path).replay()["projection"])
+        self.assertEqual(updated.records["Untouched"], old.records["Untouched"])
+        for key in ("Aggregate", "Structural"):
+            self.assertTrue(updated.closed(key))
+            self.assertEqual(updated.outcome(key) != old.outcome(key), selected)
+        self.assertEqual(updated.fields("Structural")["generation"] > old.fields("Structural")["generation"], selected)
+        for key, support in (("Direct", "Aggregate"), ("Consumer", "Structural")):
+            self.assertEqual(updated.graph.acquired(key), {support: old.outcome(support)})
+            if selected:
+                self.assertEqual(updated.fields(key)["state"], "stale")
+                self.assertEqual(updated.qualification("O-"+key)[0], "open")
+                self.assertEqual(h.close(key, allowed=False)["code"], "closure_blocked")
+                self.assertIn({"action":"rework", "subject":key}, updated.answers()["q10"])
+                clarify = subprocess.check_output([sys.executable, "-B", "-m", "purser", "--db", str(h.store.path),
+                                                   "why", key], cwd=SOURCE)
+                self.assertEqual(json.loads(clarify)["support"]["work_outcomes"], {
+                    "acquired":{support:old.outcome(support)}, "current":{support:updated.outcome(support)}})
+                qualify(key, "Revised-"+key, b"Reworked under new support " + key.encode())
+                self.assertGreater(h.view().fields(key)["generation"], old.fields(key)["generation"])
+                self.assertTrue(h.view().closed(key))
+            else:
+                self.assertEqual(updated.records[key], old.records[key])
+                self.assertEqual(updated.outcome(key), old.outcome(key))
+                self.assertTrue(updated.closed(key))
+        past = WorkView(h.store.snapshot(revision=old_revision)["projection"])
+        self.assertTrue(past.closed("Consumer"))
+        self.assertEqual(past.outcome("Consumer"), old.outcome("Consumer"))
+
+    def test_work_dependency_cycle_with_coverage_stays_blocked_and_local(self):
+        h = self.h
+        h.child("Aggregate")
+        h.child("Child", "Aggregate")
+        h.coverage("Aggregate")
+        h.send([premise("A1"), decision(), link("Child", "D-old"), link("Child", "Aggregate")])
+        self.assertEqual(h.close("Aggregate", allowed=False)["code"], "closure_blocked")
+        self.assertEqual(h.send({"op":"work.assign", "id":"AS-cycle", "work":"Child", "executor":"executor:test"},
+                                allow=True)["code"], "invalidated_support")
+        h.send(observation(), observer())
+        view = WorkView(self.store.replay()["projection"])
+        self.assertEqual(view.answers()["q04"], [{"assumption":"A1", "affected":["Child","D-old"]}])
+        self.assertFalse(view.closed("Aggregate"))
+
+    def test_removing_and_restoring_direct_support_before_and_after_structural_closure(self):
+        h = self.h
+        for parent in ("Automatic", "Peer"):
+            h.child(parent)
+            leaf = "Leaf-"+parent
+            h.child(leaf, parent)
+            h.coverage(parent)
+            h.send(h.criterion(leaf, "O-"+leaf), work.OWNER)
+            result = h.submit(leaf, leaf)
+            h.run_verification("O-"+leaf, result, leaf)
+            h.close(leaf)
+        h.close("Peer")
+        unbound = h.view().outcome("Automatic")
+        h.send(link("Automatic", "Peer"))
+        bound = h.view().outcome("Automatic")
+        self.assertIsNotNone(bound)
+        self.assertNotEqual(bound, unbound)
+        h.close("Automatic")
+        h.send({"op":"dependency.remove", "id":"Automatic", "support":"Peer"})
+        h.send(link("Automatic", "Peer"))
+        self.assertNotEqual(h.view().outcome("Automatic"), bound)
+        h.close("Automatic")
+        self.assertTrue(h.view().closed("Automatic"))

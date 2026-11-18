@@ -10,6 +10,7 @@ EVENTS = {
     "PremiseObserved": "assumption finding observer artifact_sha256",
     "DependencyAdded": "support",
     "DependencyRemoved": "support",
+    "WorkSupportUpdated": "state generation supports causes",
 }
 
 
@@ -114,7 +115,19 @@ def project(projection, name, data, revision):
                     update(item, state="reconsidering", causes=sorted({*row["fields"]["causes"], key}))
                 else:
                     stale(item, key)
+    elif name == "WorkSupportUpdated":
+        old = require(key, "WorkItem")
+        if type(data["generation"]) is not int or graph.transition(key) != data:
+            raise error
+        values = {k: data[k] for k in ("state", "generation", "causes")}
+        if not old.get("assignment"):
+            values["structural_supports"] = data["supports"]
+        if old["generation"] != data["generation"] or old["state"] != data["state"]:
+            values.update(closed_outcome=None, accepted_outcome=None)
+        update(key, **values)
     else:
+        from .workview import WorkView
+        before = WorkView(projection)
         support = data["support"]
         require(key, "WorkItem")
         target = require(support, "WorkItem", "Decision", "Assumption")
@@ -130,7 +143,8 @@ def project(projection, name, data, revision):
         update(key)  # Version outgoing membership, including deletions, in the dependent's read set.
         for item in sorted({key} | graph.affected(key)):
             f = records[item]["fields"]
-            if f.get("assignment") or f.get("state") == "closed":
+            if (f.get("assignment") or f.get("state") == "closed" or f.get("structural_supports")
+                    or (item in graph.parents or f.get("coverage")) and before.outcome(item) is not None):
                 stale(item, support)
     return {**projection, "records": [records[k] for k in sorted(records)],
             "edges": [edges[k] for k in sorted(edges)]}
