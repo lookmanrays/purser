@@ -1,5 +1,6 @@
 """The local event log and its transactionally published SQLite projection."""
 import os
+import re
 import sqlite3
 from contextlib import closing, contextmanager
 from copy import deepcopy
@@ -82,23 +83,58 @@ def _batches(db):
         raise KernelError("integrity_error", {"revision": sequence})
 
 
+def _checkpoint(db):
+    """Read the one surviving chain checkpoint, including its storage identity."""
+    entry = db.execute("SELECT type FROM sqlite_schema WHERE name='head' COLLATE NOCASE "
+                       "AND type IN ('table','view')").fetchone()
+    if entry is None:
+        return None
+    columns = [row[1:] for row in db.execute("PRAGMA table_xinfo(head)")]
+    if entry != ("table",) or columns != [
+        ("id", "INTEGER", 0, None, 1, 0), ("revision", "INTEGER", 1, None, 0, 0),
+        ("hash", "TEXT", 1, None, 0, 0),
+    ]:
+        raise KernelError("integrity_error")
+    # Fetch stored text as bytes so invalid UTF-8 cannot escape the integrity error protocol.
+    rows = db.execute("SELECT id, CASE WHEN typeof(revision)='integer' THEN revision END, "
+                      "CASE WHEN typeof(hash)='text' THEN CAST(hash AS BLOB) END FROM head LIMIT 2").fetchall()
+    if not rows:
+        return None
+    slot, revision, value = rows[0]
+    if (len(rows) != 1 or slot != 1 or type(revision) is not int
+            or not 0 <= revision <= MAX_INTEGER):
+        raise KernelError("integrity_error")
+    if value is None or not re.fullmatch(rb"[0-9a-f]{64}", value):
+        raise KernelError("integrity_error", {"revision": revision})
+    checkpoint_hash = value.decode("ascii")
+    if revision == 0 and checkpoint_hash != ZERO_HASH:
+        raise KernelError("integrity_error", {"revision": 0})
+    return revision, checkpoint_hash
+
+
 def _fold(db, requested=None):
+    checkpoint = _checkpoint(db)
     current = {"revision": 0, "head_hash": ZERO_HASH, "projection": empty_projection()}
     if requested == 0:
         return current
     for events in _batches(db):
         end = events[-1]["revision"]
-        if requested is not None and requested < end:
-            raise KernelError("bad_revision")
         projection = current["projection"]
         for e in events:
             if e["v"] != 1:
                 raise KernelError("unsupported_version", {"revision": e["revision"]})
             projection = apply_event(projection, e["type"], e["data"], e["revision"], end,
                                      event_version=e["event_version"])
+            if checkpoint is not None and e["revision"] == checkpoint[0]:
+                if checkpoint != (end, e["hash"]):
+                    raise KernelError("integrity_error", {"revision": checkpoint[0]})
+        if requested is not None and requested < end:
+            raise KernelError("bad_revision")
         current = {"revision": end, "head_hash": events[-1]["hash"], "projection": projection}
         if requested == end:
             return current
+    if checkpoint is not None and checkpoint[0] > current["revision"]:
+        raise KernelError("integrity_error", {"revision": current["revision"] + 1})
     if requested is not None:
         raise KernelError("bad_revision")
     return current
@@ -112,7 +148,6 @@ def _verify_projection(db, snapshot):
     if db.execute("SELECT revision,hash FROM head WHERE id=1").fetchone() != (
         snapshot["revision"], snapshot["head_hash"]
     ):
-        _check_retained_head(db, snapshot)
         raise KernelError("integrity_error")
     for table, keys in _KEYS.items():
         columns = ", ".join(keys)
@@ -123,26 +158,6 @@ def _verify_projection(db, snapshot):
                 raise KernelError("integrity_error")
         if expected:
             raise KernelError("integrity_error")
-
-
-def _check_retained_head(db, snapshot):
-    anchor = db.execute("SELECT revision,hash FROM head WHERE id=1").fetchone()
-    if anchor is None:
-        return  # A log-only restore has no independent high water.
-    revision, expected = anchor
-    if type(revision) is not int or revision < 0:
-        raise KernelError("integrity_error")
-    if revision > snapshot["revision"]:
-        raise KernelError("integrity_error", {"revision": snapshot["revision"] + 1})
-    if revision == 0:
-        actual = ZERO_HASH
-    else:
-        event = decode(db.execute("SELECT body FROM events WHERE revision=?", (revision,)).fetchone()[0])
-        if event["batch_start"] + event["batch_size"] - 1 != revision:
-            raise KernelError("integrity_error", {"revision": revision})
-        actual = event["hash"]
-    if expected != actual:
-        raise KernelError("integrity_error", {"revision": revision})
 
 
 def _publish(db, snapshot, previous=None):
@@ -230,7 +245,6 @@ class Store:
         with self._transaction(write=True) as db:
             current = _fold(db)
             _projection_schema(db)
-            _check_retained_head(db, current)
             _publish(db, current)
             return current
 
