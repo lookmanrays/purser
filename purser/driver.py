@@ -51,7 +51,7 @@ def context_pack(snapshot, assignment_id, *, as_of=None):
     }
 
 
-def tick(store, executors=None, *, clock=None):
+def tick(store, executors=None, *, clock=None, repository=None):
     """Dispatch at most one eligible local action. An executor returns its candidate identity."""
     snapshot = store.snapshot()
     view = WorkView(snapshot["projection"])
@@ -60,6 +60,29 @@ def tick(store, executors=None, *, clock=None):
     executors = {} if executors is None else executors
     for action in actions:
         name, work_id = action["action"], action["subject"]
+        if name in ("authorize_dispatch", "reconcile") and repository is not None:
+            effect = view.fields(work_id)
+            if effect["repository_instance"] != repository.binding["repository_instance"]:
+                continue
+            from .effects.foreground import dispatch_effect, reconcile_effect
+
+            token = uuid4().hex
+            operation = ({"op": "effect.authorize", "id": "T-" + token, "effect": work_id}
+                         if name == "authorize_dispatch" else
+                         {"op": "effect.reconcile", "id": "Obs-" + token, "effect": work_id,
+                          "attempt": effect["attempt"]})
+            proposal = {"v": 1, "proposal_id": "p-git-" + token, "base_revision": snapshot["revision"],
+                        "commitment": view.records[work_id]["commitment"], "ops": [operation],
+                        "justification": [work_id]}
+            options = {} if clock is None else {"clock": clock}
+            if name == "authorize_dispatch":
+                receipt, issued = dispatch_effect(store, repository, proposal, **options)
+                details = {"issued": issued}
+            else:
+                receipt = reconcile_effect(store, repository, proposal, **options)
+                details = {"observation": receipt["details"].get("state")}
+            return {"v": 1, "state": "dispatched" if receipt["disposition"] == "admitted" else "refused",
+                    "action": action, "revision": receipt["revision"], "receipt": receipt, **details}
         if name not in ("execute", "evaluate_close"):
             continue
         work = view.fields(work_id)

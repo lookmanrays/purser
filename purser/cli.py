@@ -37,7 +37,8 @@ def arguments(argv):
     commands.add_parser("init")
     proposal = commands.add_parser("propose", allow_abbrev=False)
     proposal.add_argument("file", metavar="FILE", help="UTF-8 JSON proposal, or - for stdin")
-    commands.add_parser("run", help="run one eligible local driver turn")
+    driver = commands.add_parser("run", help="run one eligible local driver turn", allow_abbrev=False)
+    driver.add_argument("--git-binding", metavar="FILE", help="attach the owner's registered local Git repository")
     context = commands.add_parser("context", allow_abbrev=False)
     context.add_argument("assignment_id", metavar="ASSIGNMENT")
     context.add_argument("--revision", type=int, metavar="N")
@@ -71,6 +72,19 @@ def local_store(path, initializing):
         raise KernelError("unavailable") from exc
 
 
+def local_repository(path):
+    from .effects.git import GitRepository
+
+    try:
+        with os.fdopen(os.open(path, os.O_RDONLY | os.O_NONBLOCK), "rb") as source:
+            info = os.fstat(source.fileno())
+            if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o022:
+                raise KernelError("unauthenticated")
+            return GitRepository(decode(source.read()))
+    except OSError as exc:
+        raise KernelError("unavailable") from exc
+
+
 def run(args):
     store = local_store(args.db, args.command == "init")
     if args.command == "init":
@@ -94,7 +108,15 @@ def run(args):
         }
     if args.command == "run":
         from .driver import tick
-        result = tick(store)
+
+        if args.git_binding is None:
+            result = tick(store)
+        else:
+            from .effects.git import GitError
+            try:
+                result = tick(store, repository=local_repository(args.git_binding))
+            except GitError as exc:
+                raise KernelError("unavailable", {"reason": exc.code}) from exc
         return (4 if result.get("receipt", {}).get("disposition") == "rejected" else 0), result
     as_of = format_time(args.as_of or datetime.now(timezone.utc))
     if args.command == "context":

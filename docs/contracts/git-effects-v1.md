@@ -30,3 +30,19 @@ A busy writer, changed precondition, unreadable or rewritten refs, a mismatched 
 The private directory inode carries a BSD flock. Before authorization the broker acquires its exclusive lock. The actual Git writer inherits the open-file description across exec, with hooks, remote transports and background maintenance disabled. Closing the broker’s descriptor leaves a surviving Git writer’s lock in place. The read-only observer requests a nonblocking shared lock and keeps it through all reads. Native commands change cwd to the open directory descriptor before Git starts, so renaming or replacing the registered pathname cannot redirect an already authorized write. Reftable’s one stack-list rename publishes both refs and their logs together. [Git reftable transactions](https://git-scm.com/docs/reftable#_update_transactions) · [Git update-ref](https://git-scm.com/docs/git-update-ref)
 
 The qualified model is a trusted local launcher on the tested POSIX host, a controlled private repository, retained refs and the foreground writer protocol. Native Git lock residue after forced child death keeps the operation pending. Deliberate replacement of all protected history by its owner, untrusted executor containment, and host or storage loss have separate qualification boundaries.
+
+## Running a governed effect
+
+After trusted initialization, save `repo.binding` as JSON in an owner-controlled file. The local principal approves a grant naming the assignment, generation, repository, branch, files and expiry. The [gate contract](effects-v1.md) gives the exact proposal fields. A trusted launcher passes the executor’s assignment binding and its `effect.request` proposal to `purser.effects.foreground.request_effect(store, repo, executor_binding, proposal)`. The launcher obtains the paths from Git. The caller retains the complete proposal and its returned receipt so an interrupted delivery can be retried with the original ID and base revision.
+
+The owner can take a single foreground action with the ordinary CLI. `REPO_JSON` is the path to the saved binding and `DB` is the workspace ledger.
+
+```sh
+python3.11 -m purser --db "$DB" frontier
+python3.11 -m purser --db "$DB" run --git-binding "$REPO_JSON"
+python3.11 -m purser --db "$DB" status
+```
+
+On `authorize_dispatch`, the first `run` reports the durable cutoff receipt and whether it issued the Git write. The effect stays in question 6 until an observer settles it. A subsequent `run` on `reconcile` reads the registered repository independently and records `confirmed_happened`, `confirmed_absent` or `pending`. A confirmed absence can make a fresh attempt eligible while the grant and precondition hold. A pending observation retains the reason on its observation record, accessible through `why`. Restart with the same binding and ledger to resume.
+
+A trusted caller with its own transport can instead pass the original single-operation proposal to `dispatch_effect(store, repo, proposal)` or `reconcile_effect(store, repo, proposal)`. Both live in `purser.effects.foreground`. Exact redelivery returns the recorded receipt even when the repository is offline. A worker that resubmits the identical intent under a new proposal ID receives its current disposition. The established expiry, grant and closure rules apply on every new attempt.
