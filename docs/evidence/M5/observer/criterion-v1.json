@@ -1,0 +1,32 @@
+{
+  "base": "29ade2e5f46b779ff9e657d199eaff580b004a41",
+  "commitment": "C-purser-delivery",
+  "conditions": [
+    "Bind the immutable submitted Git revision, live assignment/generation/result/run and retained criterion/environment bytes. Before any model trial, freeze implementation and scorer, all arms and seed schedule, prompts/parameters, adapter, model/provider or local model identity, interventions, budgets and permitted data/destination; preserve originals and label every repeat separately.",
+    "Demonstrate that an actual model response informed a consequential public work action or decision by the shared executor. Trace request/response, parsed choice and resulting artifact, disposition or tool action with times/identities on the enrolled candidate. An E3 task supplies its prepared Git commit. A canned response or disabled backend is a component control; an unavailable, failed, timed-out or rejected real call is retained honestly. Keep model, scripted and dogfood populations separately identifiable.",
+    "Use the same authorized model conditions and tool opportunities across the two original and diagnostic arms. Respect 96 public actions, 900 elapsed seconds, 8 model calls, 64,000 input tokens and 12,000 output tokens per arm/seed. Before paid service use, obtain actual human authorization for provider, host, permitted data and total monetary ceiling. A qualifying user-authorized local model may have zero service charge. Record actual usage/cost or unknown with provenance, maintain authorized total, and inhibit unauthorized requests. No secret token enters retained evidence.",
+    "Qualify model-authored candidate evaluation through the actual isolated host boundary before importing or executing candidate code. Use a disposable candidate and bounded behavioral probes with bounded CPU, memory, wall time and restricted egress. Keep scorer truth, credentials, canonical repository, journal and protected witnesses with the controller. Exercise normal and unavailable/bounded failure paths and verify output handling using benign fixtures.",
+    "Independently reconstruct the original real-model E1–E3 public actions, fault checkpoints, exact artifacts and external truth according to expected-matrix-v1.json. Verify all scheduled denominator rows, independent absolute and no-advantage decisions, diagnostic comparisons, clean/stress, per-case budgets, missingness and original elapsed/cost provenance. A fresh offline read must reproduce the report without rerunning an arm or invoking a provider.",
+    "Preserve a reproducible candidate and results for the human owner’s explicit go/revise/stop choice and operating/budget rationale. The orchestrator records the authentic project-scoped owner decision separately. Neither this verifier, a canned operator nor a synthetic trial can supply that decision."
+  ],
+  "disposition": {
+    "fail": "A demonstrated material violation of model causality, isolation, authority, budget, measured evidence or reporting at the enrolled boundary.",
+    "open_or_inconclusive": "If genuine authorized model access, necessary source/evidence or model trial observations are unavailable, retain measured facts and missing denominators and leave the real-model condition open. Component qualification alone cannot establish pass.",
+    "pass": "The integrated engineering and qualifying genuinely authorized real-model evidence meet these conditions and the report faithfully states its scientific findings, including ties, adverse results and measured failures."
+  },
+  "expected_matrix_sha256": "500ed98f7408cd4e4c1cd802272148b153072963c1a14c43e8511352ad0aa5a1",
+  "frozen_sources": {
+    "docs/implementation-plan-v0.5.md": "e7ad1f76a62a1ab2ffeb35549b36c7b79f75d69a157bef3f41a55b9b732bdbd7",
+    "experiments/manifests/v1/manifest.json": "1c51ce44eb1887bc5cf08ee98afd7714faa7b23cf8f9b62c998c128f9ce54b73",
+    "experiments/manifests/v1/protocol.md": "5722774bffd56969b97c1575b2776cd7b9b3536da99dc1b4e49976be4835b2eb",
+    "experiments/manifests/v1/raw.schema.json": "7886a6f9c2027281d51dd72ee21e093a4d06a7c3479f07e0efe55d0e2465eb1b",
+    "experiments/manifests/v1/worked-examples.json": "69399778226f413e97a804fb9d38b9767ccaaacdaeb236a9d024badcde16d45b"
+  },
+  "id": "purser.m5.integrated.criterion.v1",
+  "obligation": "O-m5-integrated",
+  "observer": "observer:independent-m5",
+  "title": "A genuine authorized real-model study reproduces the frozen comparisons on the submitted integration",
+  "verifier": "verifier:independent-m5",
+  "version": 1,
+  "work": "W-m5-model-study"
+}

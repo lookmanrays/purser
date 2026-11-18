@@ -1,0 +1,179 @@
+{
+  "arms_in_manifest_order": [
+    "loop",
+    "purser",
+    "loop_equal_verifier"
+  ],
+  "budgets_per_model_arm_seed": {
+    "max_elapsed_s": 900,
+    "max_input_tokens": 64000,
+    "max_model_calls": 8,
+    "max_output_tokens": 12000,
+    "max_steps": 96,
+    "spend_authority": "Record a human-approved total and monetary ceiling before M5."
+  },
+  "experiments": {
+    "E1": {
+      "clean": 1001,
+      "exact_source_predicates": {
+        "absolute": "0 of 20 false closures, and the missing obligation is named in at least 19 of 20",
+        "no_advantage": "the baseline also catches at least 19 of 20"
+      },
+      "frozen_primary_intervention": [
+        "skipped_retry_check",
+        "outside_scope",
+        "unchanged_module"
+      ],
+      "no_advantage": "The original plain loop also catches at least 19/20.",
+      "observed": "Grade the exact faulty candidate's actual parent declaration before repair against the trusted queue behavior and scoped changes. Keep the first named missing obligation, extra diagnoses, false closure and final closure separately. A caught unit identifies the fault before repair and avoids closing the faulty parent.",
+      "pass": "Purser makes no false parent closures over 20 and names the missing obligation in at least 19/20.",
+      "primary_per_arm": 20,
+      "registered_cells": 63,
+      "seeds": [
+        1001,
+        1002,
+        1003,
+        1004,
+        1005,
+        1006,
+        1007,
+        1008,
+        1009,
+        1010,
+        1011,
+        1012,
+        1013,
+        1014,
+        1015,
+        1016,
+        1017,
+        1018,
+        1019,
+        1020
+      ],
+      "stress": null
+    },
+    "E2": {
+      "clean": 2001,
+      "exact_source_predicates": {
+        "absolute": "Sub-parts 1 and 3 stay closed in at least 18 of 20; rework is at most half the baseline's steps; the final pass rate is at least the baseline's",
+        "no_advantage": "rework is not lower than the baseline's, or the final pass rate is lower"
+      },
+      "frozen_primary_intervention": "linear_to_exponential_after_W1_W3_closed_and_W2_worked",
+      "no_advantage": "Purser rework is greater than or equal to the plain loop's, or Purser final pass rate is lower. Keep raw counts at zero denominators.",
+      "observed": "The checkpoint has W1/W3 closed and independently valid and real W2 work on A1. Inject the changed criterion and independently test the exact Git candidate, original and revised behavior. Continuously track both siblings, changed-work/parent bad closures, any transient reopening, all post-change public rework and final queue/composition, scope and legacy tests.",
+      "pass": "Both W1/W3 stay closed in at least 18/20, twice total Purser rework is at most the total plain-loop rework, and Purser's final pass count is at least the plain loop's over the matched twenty.",
+      "primary_per_arm": 20,
+      "registered_cells": 66,
+      "seeds": [
+        2001,
+        2002,
+        2003,
+        2004,
+        2005,
+        2006,
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020
+      ],
+      "stress": {
+        "id": "closed-affected",
+        "seed": 2001
+      }
+    },
+    "E3": {
+      "clean": 3001,
+      "exact_source_predicates": {
+        "absolute": "0 duplicate commits and correct reconciliation in 20 of 20",
+        "no_advantage": "any duplicate, or a stuck state that needs manual repair"
+      },
+      "frozen_primary_intervention": [
+        "landed_ack_lost",
+        "unlanded_writer_finished"
+      ],
+      "no_advantage": "Any Purser duplicate or ordinary stuck state requiring manual repair.",
+      "observed": "Use the fixed prepared commit and protected branch/ref witness. Preserve actual original fate and public first disposition and evidence before any retry/completion, current authority, every publication under the same semantic intent, completed effect within budget, objective stuck state and manual intervention. After a timeout a plain loop may inspect Git; equipped arms receive the independent public observation at the same logical checkpoint.",
+      "pass": "No duplicate updates and 20/20 correctly reconciled, successfully completed ordinary effects within budget.",
+      "primary_per_arm": 20,
+      "registered_cells": 66,
+      "seeds": [
+        3001,
+        3002,
+        3003,
+        3004,
+        3005,
+        3006,
+        3007,
+        3008,
+        3009,
+        3010,
+        3011,
+        3012,
+        3013,
+        3014,
+        3015,
+        3016,
+        3017,
+        3018,
+        3019,
+        3020
+      ],
+      "stress": {
+        "id": "inconclusive-observation",
+        "seed": 3001
+      }
+    }
+  },
+  "keys": [
+    "mode",
+    "experiment",
+    "track",
+    "seed",
+    "arm",
+    "replicate"
+  ],
+  "mode": "model",
+  "population": {
+    "additional_stress": 6,
+    "clean": 9,
+    "primary": 180,
+    "total": 195
+  },
+  "reference_fixture": {
+    "prepared_e3": {
+      "commit_message": "Prepare notification policy v1\n",
+      "commit_sha1": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b",
+      "tree_sha1": "a0766bda2c15fcf78c6fd1704892c9d6d9af1286"
+    },
+    "required_obligations": [
+      "W1/preferences",
+      "W2/retry",
+      "W3/delivery",
+      "scope/paths",
+      "legacy/compat",
+      "queue/composition"
+    ],
+    "start": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+    "tree": "2afea0fdd3478d29447a40bde8007266c468c72b"
+  },
+  "report": "Separate each absolute predicate, original no-advantage, original plain-loop comparison and diagnostic equal-verifier. Report matched clean controls and flag only healthy pairs with Purser steps strictly greater than twice the plain baseline. Preserve raw steps, measured elapsed, model calls, input/output tokens and actual spend with provenance, per-seed paired differences, incomplete and unavailable counts, numerator/measurable denominator/scheduled population; missing quantities stay unknown. A scientific miss, tie or honest safety rejection is itself reportable.",
+  "rotation": "For zero-based seed index j and experiment number e, rotate the three arms left by (j+e-1) mod 3; ascending paired seeds; fresh arm sessions.",
+  "source": "4460381e44f3dd42d22848bf6d82fea9a817a833",
+  "source_sha256": {
+    "experiments/manifests/v1/manifest.json": "1c51ce44eb1887bc5cf08ee98afd7714faa7b23cf8f9b62c998c128f9ce54b73",
+    "experiments/manifests/v1/protocol.md": "5722774bffd56969b97c1575b2776cd7b9b3536da99dc1b4e49976be4835b2eb",
+    "experiments/manifests/v1/raw.schema.json": "7886a6f9c2027281d51dd72ee21e093a4d06a7c3479f07e0efe55d0e2465eb1b",
+    "experiments/manifests/v1/worked-examples.json": "69399778226f413e97a804fb9d38b9767ccaaacdaeb236a9d024badcde16d45b"
+  }
+}

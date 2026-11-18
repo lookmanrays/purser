@@ -1,0 +1,28 @@
+# M5 dispatch · Measuring a real model
+
+M5 starts from `29ade2e5f46b779ff9e657d199eaff580b004a41`, which records acceptance of M4 on `79e963b0db70153b29fc9c7dbeed54bead32bcee`. The question is whether storing work, permissions and evidence in Purser changes the behavior and cost of a model doing the same notification task as the two comparison loops. The project owner decides whether that evidence warrants v1. [Adopted plan](../../implementation-plan-v0.5.md) · [Frozen experimental protocol](../../../experiments/manifests/v1/protocol.md)
+
+The real project ledger opened `W-m5-model-study` at revision 70. The independent observer enrolled `O-m5-integrated` v1 at revision 72 before inspecting the implementation. The architect took `AS-m5-integration-1` at revision 74, with head `9ccc8b15d2483159bafc4a1e75fd1ee901a8b228e39b72ab80631daa5da02451`. A fresh CLI read the assigned work, its criterion, its independent verifier and its open obligations. [Criterion](observer/criterion-v1.json) · [Environment](observer/environment-v1.json) · [Expected results](observer/expected-matrix-v1.json)
+
+| Packet | Owner and implementation | Evidence for integration |
+| --- | --- | --- |
+| M5-A | Model adapter worker, `lookman/purser-m5-model`. Connect one replaceable inference service to the existing executor. | Show a typed model response producing an action, a disabled service, a bounded timeout and accounting through interrupted delivery. Keep credentials and protected evidence outside model input. Only an approved destination and budget can release a real request. |
+| M5-B | Experiment worker, `lookman/purser-m5-study`. Implement the common participant, prospective registration, collection and offline report for E1, E2 and E3. | A different model reply can produce a different edit or recovery decision. All arms receive the frozen shared inputs and their specified observations. Preserve each original exposure, iteration, incomplete trial, denominator and cost. |
+| M5-B host qualification | Isolation worker, `lookman/purser-m5-isolation`. Exercise model-authored fixture code with disposable inputs and bounded resources. | A real behavioral observation crosses the operating-system boundary. The outer scorer owns its expected result. Check resource limits and absence of access to the actual project state, credentials and network using ordinary benign fixtures. |
+| M5-G | Architect and independent observer. Join the registered sources and run the authorized model study. | Independently reproduce the result, including negative or missing observations, and record the human’s go, revise or stop decision. The independent observer owns the evidence for the submitted candidate. |
+
+The frozen model population has 195 units. Each of the three arms receives 20 primary seeds for each experiment, three matched clean controls across the experiments and two separate stress controls. Each case permits 96 public actions, 900 seconds, eight model calls, 64,000 input tokens and 12,000 output tokens. Only the synthetic notification fixture and the participant’s allowed public context belong in a model request. A genuine unavailable provider leaves live coverage open. [M0 manifest](../../../experiments/manifests/v1/manifest.json)
+
+## What the scripted arms established
+
+| Experiment | Purser | Plain loop | Loop with same verifier | Registered conclusion |
+| --- | --- | --- | --- | --- |
+| E1 · False completion | Caught 20/20, zero false closures | Caught 20/20, zero false closures | Caught 20/20, zero false closures | Purser met the absolute threshold. The plain loop also met the threshold for no comparative advantage. Clean steps were 42, 24 and 42 respectively. |
+| E2 · Changed premise | Siblings retained 20/20, 500 rework steps | Siblings retained 20/20, 260 rework steps | Siblings retained 20/20, 500 rework steps | All final results passed. Purser missed its half-baseline rework target. In the separate stress case, Purser immediately invalidated the previously closed affected work. |
+| E3 · Lost Git reply | Correct 20/20, zero duplicates, 130 steps | Correct 20/20, zero duplicates, 120 steps | Correct 20/20, zero duplicates, 130 steps | Purser met the absolute threshold and its duplicate/manual-repair condition was false. All three arms achieved the same recovery outcome. |
+
+The E1 replication confirmed the first study’s primary result after improving measurement. Its two replicates retain separate identities. All three scripted studies used zero model calls. [E1 original](../../../experiments/results/e1-scripted-v1/report.md) · [E1 measured replication](../../../experiments/results/e1-scripted-v2/report.md) · [E2](../../../experiments/results/e2-scripted-v1/report.md) · [E3](../../../experiments/results/e3-scripted-v1/report.md)
+
+## Operating decision at dispatch
+
+On 19 November 2026 the host reported LM Studio 0.4.21+2 with one embedding model and an empty loaded-model list. Apple’s `SystemLanguageModel.default.availability` returned `appleIntelligenceNotEnabled`. The local Codex CLI reported a ChatGPT login. Purser’s environment and its project env files had no OpenAI API key. These checks made zero inference requests. The architect requested a named provider, permitted data and total spending decision from the principal. The local integration, canned-response checks and offline report can proceed independently. [LM Studio model inventory](https://lmstudio.ai/docs/developer/rest/list) · [Apple on-device model availability](https://developer.apple.com/documentation/foundationmodels/generating-content-and-performing-tasks-with-foundation-models)

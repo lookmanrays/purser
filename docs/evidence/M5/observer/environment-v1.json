@@ -1,0 +1,19 @@
+{
+  "accepted_reference_host": {
+    "git": "git version 2.50.1 (Apple Git-155)",
+    "git_sha256": "be4afb2b003904725826250de9fb76567bbacf82323457b5a1ec26706b66bcae",
+    "implementation": "CPython",
+    "libpython_sha256": "db517ed35c5958d7c22302b66a99096c51f6b84ed1dcba6a039b0cea614a7dd6",
+    "locale": "C",
+    "machine": "arm64",
+    "python": "3.11.15",
+    "python_sha256": "612bb6e55a95ea6eaf3c9693cf17fbf1a738408ad3bbfce988f712d7321d2c42",
+    "release": "25.5.0",
+    "sqlite": "3.53.1",
+    "system": "Darwin",
+    "timezone": "UTC"
+  },
+  "execution": "The model backend is selected and authorized before prospective collection. Record the actual host, trusted controller, sandbox, adapter, provider or local runtime/model identity, version and limits in the separate precollection registration. Local/funded hosted execution are both eligible within their authorized data and spending boundaries. This criterion supplies no financial authority. Independent report reconstruction uses originals and no model calls.",
+  "id": "purser.m5.integrated.environment.v1",
+  "version": 1
+}
