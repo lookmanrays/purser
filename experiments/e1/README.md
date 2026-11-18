@@ -10,6 +10,7 @@ Run these commands from the repository root. Commit the code and then the genera
 python -m experiments.e1 freeze experiments/results/e1-scripted-v1
 python -m experiments.e1 collect experiments/results/e1-scripted-v1
 python -m experiments.e1 report experiments/results/e1-scripted-v1
+python -m experiments.e1 verify experiments/results/e1-scripted-v1
 ```
 
-The ZIP retains raw run records, journals, observer reports, full Git packs and the arm's own history. Paths in artifact references are relative to the archive root. Identical content shares an object. The clean control uses seed 1001 with a distinct track. The report recomputes E1 outcomes and verifies stored artifact identities before aggregation. Collection refuses an uncommitted or changed freeze and preserves the identity of every started attempt.
+The ZIP retains raw run records, journals, observer reports, full Git packs and the arm's own history. Paths in artifact references are relative to the archive root. Identical content shares an object. The clean control uses seed 1001 with a distinct track. The report recomputes E1 outcomes and verifies stored artifact identities before aggregation. The verify command restores every distinct Git pack in a private repository, checks its tree and parents, and reruns the seed-specific protected checks on those archived bytes. Collection refuses an uncommitted or changed freeze and preserves the identity of every started attempt.

@@ -6,7 +6,7 @@ from purser.kernel.gate import admit
 from purser.kernel.store import Store
 
 from .artifacts import encoded, sha
-from .executor import LEAVES, ORDER, PARENT, PARENT_CHECKS
+from .executor import LEAVES, ORDER, PARENT, PARENT_CHECKS, TASKS
 
 SCOPE = "C-notify"
 PRINCIPAL = "principal:local"
@@ -29,8 +29,8 @@ class Treatment:
                                        "expires_at": "2030-01-01T00:00:00.000000Z"}])
         self.send("principal", [{"op": "approval.answer", "id": hold["details"]["approval_id"],
                                  "request_digest": hold["digest"], "decision": "approve"}])
-        create = [{"op": "work.create", "id": PARENT, "parent": "W-root", "title": "Notification queue"}]
-        create += [{"op": "work.create", "id": w, "parent": PARENT, "title": LEAVES[w]} for w in ORDER]
+        create = [{"op": "work.create", "id": PARENT, "parent": "W-root", "title": TASKS[PARENT]}]
+        create += [{"op": "work.create", "id": w, "parent": PARENT, "title": TASKS[w]} for w in ORDER]
         create += [{"op": "work.coverage", "id": w, "kind": "all", "k": None} for w in ("W-root", PARENT)]
         self.send("planner", create)
         obligations = []
@@ -67,6 +67,13 @@ class Treatment:
 
     def rows(self):
         return {r["work"]: r for r in self.view().answers()["q02"]}
+
+    def public_view(self):
+        from purser.kernel.workview import WorkView
+        snapshot = self.store.snapshot()
+        rows = {r["work"]: r for r in WorkView(snapshot["projection"]).answers()["q02"]
+                if r["work"] in (*ORDER, PARENT)}
+        return rows, {"revision": snapshot["revision"], "head_hash": snapshot["head_hash"]}
 
     def states(self):
         return {k: r["state"] for k, r in self.rows().items() if k in (*ORDER, PARENT)}
