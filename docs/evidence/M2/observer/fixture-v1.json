@@ -1,0 +1,27 @@
+{
+  "base_commit": "dfde81b3643da7f5924634d1391e972b5d679760",
+  "candidate_A": {
+    "algorithm": "sha1",
+    "digest": "dfde81b3643da7f5924634d1391e972b5d679760",
+    "kind": "git.commit"
+  },
+  "candidate_B": "Exact Git commit supplied for observation by the orchestrator, distinct from A. Verify the object and exact checked-out tree with local Git before evaluation.",
+  "checkpoint_identity": "Bind each retained checkpoint to actual SQLite event bytes, the complete revision and head, UTC as-of, and immutable Git candidate identities. State names denote checkpoints, not fixed revisions.",
+  "id": "purser.m2.explain-work.fixture.v1",
+  "isolation": "Fixture construction can use normal scoped local calls. The observer reads disposable copies, separated from the result producer, without selecting approvals. The observer may run public replay on its own copy only; no live external service or model is needed.",
+  "ordering": [
+    "Bind the controlled child result and verifier run to real candidate A. Keep positive A evidence available to arrive after replacement.",
+    "Replace or reassign the child to B with the same declared feature requirement. Before current B has qualifying evidence, seal the missing checkpoint.",
+    "Release late positive A evidence. Attempt a real close through the gate with B still lacking current qualifying evidence; retain the rejected or blocked result and the late checkpoint.",
+    "Only then supply a new observation and passing verdict tied to B and the active run. Close the child and evaluate the root. Withhold a root answer and seal the ready checkpoint. The observer makes no principal decision."
+  ],
+  "scope": "An isolated local fixture, separate from the actual C-m2-explain-work development record. Its synthetic principal setup and independent reference evidence come from the authorized fixture controller before the observer reads it. The real commitment uses this observation independently.",
+  "source_sha256": {
+    "docs/contracts/kernel-v1.md": "673ff1e7241eb04588254662896e4541687af1821afbc1235369d14964bd4e7d",
+    "docs/contracts/lifecycle-v1.json": "be4ee8a73e6c96cffc3332d12e9bbd73ad1e18dd99290d147f24561cb774944b",
+    "docs/evidence/M2/preflight.md": "c2405d87df74c64d7bb880c55394677fa076fa27c2d0ac865b66d3eeaea4b6f7",
+    "experiments/manifests/v1/manifest.json": "1c51ce44eb1887bc5cf08ee98afd7714faa7b23cf8f9b62c998c128f9ce54b73",
+    "experiments/manifests/v1/protocol.md": "5722774bffd56969b97c1575b2776cd7b9b3536da99dc1b4e49976be4835b2eb"
+  },
+  "work_shape": "One active controlled commitment, one root requiring principal acceptance, one child with an explicit obligation and a scoped assignment. The parent supplies concrete stable IDs and authorized setup proposals at handoff."
+}

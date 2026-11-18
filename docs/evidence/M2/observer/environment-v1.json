@@ -1,0 +1,29 @@
+{
+  "binary_sha256": {
+    "git": "179301dcb41ea78accc3fa0048a7e6f6710d891945a751a34addd622020c1818",
+    "libpython": "db517ed35c5958d7c22302b66a99096c51f6b84ed1dcba6a039b0cea614a7dd6",
+    "python": "612bb6e55a95ea6eaf3c9693cf17fbf1a738408ad3bbfce988f712d7321d2c42"
+  },
+  "dependencies": "Python standard library and local Git",
+  "git": "git version 2.50.1 (Apple Git-155)",
+  "id": "purser.m2.explain-work.environment.v1",
+  "implementation": "CPython",
+  "machine": "arm64",
+  "process": {
+    "TZ": "UTC",
+    "candidate_source": "exact detached Git checkout",
+    "locale": "C",
+    "model_credentials": "absent from observer process environment",
+    "python_options": [
+      "-B"
+    ],
+    "sqlite": "disposable copies of local database, verified original events with complete batch boundaries",
+    "utc": "same explicit canonical UTC as-of in all paired public queries"
+  },
+  "python": "3.11.15",
+  "release": "25.5.0",
+  "scope": "trusted local offline verification of controlled source",
+  "sqlite": "3.53.1",
+  "sqlite_extension_origin": "built-in",
+  "system": "Darwin"
+}

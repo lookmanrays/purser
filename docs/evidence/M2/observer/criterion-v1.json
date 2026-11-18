@@ -1,0 +1,21 @@
+{
+  "fixture_sha256": "31ffc7e5e9a76fce881010e6febe6a6c41e66e92e01f3e5465856600ce30bb27",
+  "id": "purser.m2.explain-work.criterion.v1",
+  "independence": "The independent observer may publish the measured observation and verdict when assigned by trusted ingress. Candidate-authored summaries, fixture-role release decisions and real principal actions are separate; the observer never approves the real commitment.",
+  "observable": "The submitted Purser Git candidate explains current evidence needed to close work in a fresh local CLI, then explains why the root still needs its principal.",
+  "outcomes": {
+    "fail": "Available complete evidence contradicts a required assertion.",
+    "inconclusive": "A missing input, unresolvable identity or unavailable observation prevents the assertion being tested.",
+    "pass": "Every required assertion is witnessed and retained."
+  },
+  "required_assertions": [
+    "Identify B independently with git cat-file and the checked-out commit. Check that archived A and B commit objects differ. Pin every command, artifact digest and complete log revision observed.",
+    "At the missing checkpoint, fresh python -B -m purser status/why at a fixed UTC time show child B from q02, the subject/version of its unsatisfied obligation from q07 and missing_evidence from both q08 and the child why. The child remains open for closure.",
+    "After the genuine late A observation/verdict and a close attempt, the exact B child remains unclosed, with the current obligation still missing. Verify the A/B association in admitted work/run facts and the attempted close disposition against the archived proposal/receipt or public decision. Another generation or revision alone does not establish this case.",
+    "After valid independently produced B evidence, the child closes. Fresh CLI why and q08 explain awaiting_acceptance on the still-unclosed root. q09 includes that outstanding commitment requirement and q10 identifies principal_accept. No real root answer is part of this test.",
+    "Stop the fixture worker, use new CLI processes without model credentials or service access, and compare the fixed-revision/fixed-time status and why responses before and after public replay in a disposable copy. All supported q01, q02, q07, q08, q09 and q10 answers must be reproducible.",
+    "Distinguish worker claims from independent evidence. Inspect readable submitted/candidate, observation and artifact references for the exact work, generation, run, criterion version, producer and verifier. Independently hash retained evidence bytes."
+  ],
+  "subject": "C-m2-explain-work",
+  "version": 1
+}
