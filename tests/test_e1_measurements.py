@@ -196,6 +196,23 @@ class ReportIntegrity(unittest.TestCase):
                     warnings.simplefilter("ignore", UserWarning)
                     archive.writestr("runs/"+key, encoded(self.raw))
 
+    def test_archive_reexecution_checks_only_preserved_criteria_when_others_are_unavailable(self):
+        series = self.root / "partial-archive"
+        series.mkdir()
+        with zipfile.ZipFile(series / "raw.zip", "w") as archive:
+            assets = Artifacts(archive)
+            candidates = Candidates(series, assets)
+            reports = scorer.measure(candidates.archive, START, candidates.work, 1001, 1, labels=("W2/retry",))
+            evidence = assets.put(reports["W2/retry"], "json")
+            journal = [event("oracle", candidate=START, criterion="W2/retry", evidence=evidence)]
+            raw = {"artifacts": {"journal": assets.put(journal, "json"),
+                                 "candidates": assets.put(candidates.entries, "json")}}
+        case = report.Case(raw, scorer.assess([]), "observed_lower_bound")
+        with patch.object(report, "inspect_series", return_value={("primary", 1001, "loop"):case}), \
+             patch.object(measurement, "REGISTRATION", self.root / "missing-tests"):
+            checked = report.verify_candidates(series)
+        self.assertEqual(checked, {"runs":1, "independent_git_packs":1, "reexecuted_seed_candidates":1})
+
     def test_archive_alone_represents_unreleased_case_and_verifies_identity(self):
         self.example()
         result = report.inspect_series(self.root)
