@@ -18,16 +18,19 @@ def event(kind, payload, original=None):
 
 
 class Participant:
-    def __init__(self, arm, journal, platform, read, issue, *, originals=None, seed=None, track=None, unavailable=None):
+    def __init__(self, arm, journal, platform, read, issue, *, originals=None, objects=None, seed=None,
+                 track=None, unavailable=None):
         self.arm, self.read, self.issue = arm, read, issue
         self.unavailable = unavailable or issue
-        self.source = originals or Originals(arm, platform, read, issue, unavailable=unavailable)
+        self.source = originals or Originals(arm, platform, read, issue, unavailable=unavailable,
+                                             journal=journal, objects=objects)
         self.seed, self.track = seed, track
         self.qualified_predecessor = (platform.get("checkpoint_measurement") or {}).get("checkpoint")
         self.trace = self.source.trace
         self.public_complete = self.source.complete
         self.modern = type(platform.get("work_admission_version")) is int and platform["work_admission_version"] == 2
-        self.issued_coverage = self.modern
+        self.issue_gaps = []
+        self.preceding_issue = None
         self.actions_complete = self.public_complete and self.modern
         self.ordering_complete = True
         self.receipt_complete = self.public_complete
@@ -35,11 +38,13 @@ class Participant:
         self.clean_exposure = None
         self.prior_changed_exposure = None
         self.fault_receipt = None
+        self.first_delivered = None
         self.action_lower_bound = 0
         self.timeline, self.journal = [], []
         self.final = self.checkpoint(platform.get("final_public"))
         self.ordered, self.claimed = [], {}
         self.requests, self.plan_attempts = {}, defaultdict(list)
+        self.kernel_transmissions = []
         self.known_issues = set()
         self.arrivals = []
         self.visible_change = False
@@ -56,8 +61,9 @@ class Participant:
         else:
             original, ordered = journal_prefix(journal, arm, issue, allowed_actions=operations.ACTIONS)
         if not ordered:
-            self.issued_coverage = False
             self.incomplete("public invocation journal is discontinuous")
+            if not any(row.get("kind") == "public_gap" for row in original):
+                self.issue_gaps.append(None)
         if not self.modern:
             self.unavailable("historical producer cannot establish complete physical work-release coverage")
         for index, p in enumerate(self.points):
@@ -70,7 +76,9 @@ class Participant:
         for slot, row in enumerate(original):
             p = row.get("payload", {})
             try:
-                if row["kind"] == "action":
+                if row["kind"] == "public_gap":
+                    self.issue_gaps.append(self.preceding_issue)
+                elif row["kind"] == "action":
                     self.action(row, slot)
                 elif row["kind"] == "fault":
                     self.fault(row, slot)
@@ -80,12 +88,14 @@ class Participant:
                     if states is not None:
                         require(states[p["subject"]] == (p["to"], p["candidate"]),
                                 "recorded public state differs from participant bytes")
-                    if not self.public_complete:
+                    if self.source.position(p.get("checkpoint")) is None:
                         self.order(None, 1, slot, row)
                 elif row["kind"] in ("terminal", "oracle"):
                     self.order(len(self.points) + 1, 3, slot, row)
             except READ_ERRORS as error:
                 self.incomplete(f"public event {row.get('seq', slot + 1)}: {error}")
+            if row["kind"] in ("action", "fault") and type(p.get("issued_monotonic_ns")) is int:
+                self.preceding_issue = p["issued_monotonic_ns"]
         self.nesting()
         self.publications()
         self.reconcile_decisions()
@@ -103,21 +113,36 @@ class Participant:
             self.clean_exposure = False
         elif self.public_complete and self.actions_complete and self.reads_complete and self.source.initial_linear is True:
             self.clean_exposure = True
-        if len(self.arrivals) == 1:
-            self.fault_receipt = self.arrivals[0]
-        elif not self.arrivals and self.public_complete:
+        if True in self.arrivals:
+            self.fault_receipt = True
+        elif self.public_complete and None not in self.arrivals:
             self.fault_receipt = False
 
     def checkpoint(self, ck):
         return self.source.lookup(ck)
 
+    def issues_through(self, end=None):
+        """The versioned issuer charges before dispatch. A later gap cannot hide earlier work."""
+        return self.modern and all(end is not None and lower is not None and lower >= end
+                                   for lower in self.issue_gaps)
+
+    @property
+    def issued_coverage(self):
+        return self.issues_through()
+
     def public_states_after(self, fault):
         receipt = fault["payload"].get("after")
         reported = {identity(self.arm, receipt): fault["seq"]}
         for row in self.journal:
-            if row["kind"] == "public_state" and row["seq"] >= fault["seq"]:
-                key = identity(self.arm, row["payload"].get("checkpoint"))
-                reported.setdefault(key, row["seq"])
+            if row["kind"] == "public_state":
+                ck = row["payload"].get("checkpoint")
+                if row["seq"] >= fault["seq"] or self.source.compare(receipt, ck) in (-1, 0):
+                    reported.setdefault(identity(self.arm, ck), row["seq"])
+            if row["kind"] == "action" and row["payload"].get("after_intervention") is True:
+                for field in ("port_after", "after"):
+                    ck = row["payload"].get(field)
+                    if self.checkpoint(ck) is not None:
+                        reported.setdefault(identity(self.arm, ck), row["seq"])
         return self.source.states_after(receipt, reported)
 
     def incomplete(self, message):
@@ -156,13 +181,13 @@ class Participant:
         after = self.source.position(p.get("after"))
         entered = self.source.position(p.get("port_before", p.get("before")))
         exited = self.source.position(p.get("port_after", p.get("after")))
-        if self.public_complete:
-            if before is None or after is None:
+        if before is None or after is None:
+            if self.public_complete:
                 self.missing(f"public attempt {p['attempt']} lacks a completed public interval")
-            else:
-                require(before <= after, "invalid invocation boundaries")
-                if method and entered is not None and exited is not None:
-                    require(before <= entered <= exited <= after, "actual port boundaries outside invocation")
+        else:
+            require(before <= after, "invalid invocation boundaries")
+            if method and entered is not None and exited is not None:
+                require(before <= entered <= exited <= after, "actual port boundaries outside invocation")
         return before, entered, exited
 
     def action(self, row, slot):
@@ -171,14 +196,19 @@ class Participant:
         require(type(number) is int and number > 0 and number not in self.numbered, "duplicate attempt identity")
         self.action_lower_bound += 1
         self.numbered[number] = p
-        self.timeline.append(dict(p, kind="action"))
+        self.timeline.append(dict(p, kind="action", preceding_issue_ns=self.preceding_issue))
         method = attr.expected(p)
         if self.modern:
+            p["rework_eligible"] = attr.rework_eligibility(p)
             try:
                 attr.work_request(p, method)
             except READ_ERRORS as error:
-                self.issued_coverage = False
-                self.incomplete(f"public attempt {number} work identity: {error}")
+                descriptions = [p, p.get("work_request"), p.get("work_started")]
+                subjects = [record.get("subject") if isinstance(record, dict) else None
+                            for record in descriptions]
+                # Keep the physical issue and any scalar that all its descriptions establish.
+                self.issue(f"public attempt {number} work identity: {error} "
+                           f"(action, request and work entry subjects {subjects})")
         if self.arm == "purser":
             for request in p.get("requests") or ([p["proposal"]] if p.get("proposal") else []):
                 try:
@@ -195,7 +225,7 @@ class Participant:
         authenticated_return = self.evidence(p)
         p["return_authenticated"] = authenticated_return
         if "parent_attempt" not in p or type(p.get("issued_monotonic_ns")) is not int:
-            self.issued_coverage = False
+            self.issue_gaps.append(self.preceding_issue)
             self.missing(f"public attempt {number} has no physical issue and parent identity")
         if "finished_monotonic_ns" in p and (type(p["finished_monotonic_ns"]) is not int or
                 type(p.get("issued_monotonic_ns")) is not int or p["finished_monotonic_ns"] < p["issued_monotonic_ns"]):
@@ -212,7 +242,8 @@ class Participant:
                     else:
                         self.reads_complete = False
                 elif method is not None:
-                    p["changed_exposure"] = attr.revised(p["input"])
+                    operand = p.get("work_started", {}).get("input", p["input"])
+                    p["changed_exposure"] = attr.revised(operand)
                     self.visible_change |= p["changed_exposure"]
                 return
             if p.get("port_method") is not None:
@@ -232,7 +263,7 @@ class Participant:
                     self.missing(f"public attempt {number} lacks its actual participant-port witness")
             if self.arm == "purser":
                 self.kernel_action(p, method, entered, exited)
-            elif method and self.points:
+            elif method and (self.points or self.source.plan_heads):
                 self.plan_action(p, method, entered, exited)
         except READ_ERRORS as error:
             self.incomplete(f"public attempt {number} attribution: {error}")
@@ -293,7 +324,7 @@ class Participant:
                 require(p.get("port_method") == "context", "prepared context has no matching public port")
                 source = p["context_source"]
                 position = self.source.position(source)
-                if self.public_complete:
+                if self.public_complete or position is not None:
                     require(position is not None and (entered is None or entered <= position)
                             and (exited is None or position <= exited), "packet source outside the actual read")
                 prepared = self.read(p["prepared_context"])
@@ -329,18 +360,25 @@ class Participant:
         if not requests and p.get("proposal"):
             requests = [p["proposal"]]
         if not requests:
+            if not self.public_complete and method and ("port_return" in p or "return" in p):
+                self.missing(f"public attempt {p['attempt']} lacks its original scoped request")
+                return
             require(not method or "return" not in p or "failure" in p["return"],
                     "participant port returned without an original scoped request")
             return
-        require(method is not None and same(p["proposal"], requests[0]), "primary issued proposal ambiguous")
+        require(method is not None and ("proposal" not in p or same(p["proposal"], requests[0])),
+                "primary issued proposal ambiguous")
         unique = {}
         for req in requests:
             unique[attr.request_key(req)] = req
         require(len(unique) == 1, "one charged work port issued multiple distinct proposals")
         key, req = next(iter(unique.items()))
         index = self.requests.get(key)
-        if index is None and not self.public_complete:
-            self.missing(f"public attempt {p['attempt']} has no recoverable original receipt")
+        if not self.public_complete and (index is None or entered is None or exited is None):
+            from .kernel_history import transmitted
+            self.kernel_transmissions.append(transmitted(p, method, req, self.read, self.checkpoint,
+                                                        self.issue, self.unavailable))
+            self.missing(f"public attempt {p['attempt']} lacks its canonical kernel batch or call boundaries")
             return
         require(index is not None, "no matching original receipt for issued body, actor and proposal")
         pub = self.points[index]
@@ -353,6 +391,8 @@ class Participant:
         if method == "submit" and pub.receipt["disposition"] == "admitted":
             p["publicly_submitted"] = True
             p["submission_publication"] = pub.checkpoint
+        elif method == "submit":
+            p["submission_refused_at"] = pub.checkpoint
         try:
             attr.receipt_response(p, method, pub.receipt)
             self.wrapped_response(p, method, pub)
@@ -389,6 +429,15 @@ class Participant:
 
     def plan_action(self, p, method, entered, exited):
         if (entered is None or exited is None) and not self.public_complete:
+            edge = self.source.plan_edge(p.get("port_after", p.get("after")))
+            if (edge and method in attr.PLAN_WRITES
+                    and identity(self.arm, edge[0].checkpoint) ==
+                    identity(self.arm, p.get("port_before", p.get("before")))):
+                reply = attr.plan_operation(p, method, *edge)
+                if method == "submit":
+                    p.update(publicly_submitted=True, submission_publication=edge[1].checkpoint)
+                attr.plan_response(p, method, reply)
+                return
             self.missing(f"public plan attempt {p['attempt']} lacks original port boundaries")
             return
         require(entered is not None and exited is not None, "plan port lacks its original boundaries")
@@ -436,19 +485,20 @@ class Participant:
                 return None
             checksum = record.get("artifact_sha256")
             notice = None
-            try:
-                ref = self.trace["kernel_artifacts"][checksum]
-                content = self.read(ref)
-                require(ref["sha256"] == checksum == sha(encoded(content)), "premise artifact digest mismatch")
-                notice = content
-            except READ_ERRORS as error:
-                self.dispute(f"original premise artifact unavailable: {error}")
+            ref = self.trace.get("kernel_artifacts", {}).get(checksum)
+            if ref is not None:
+                try:
+                    content = self.read(ref)
+                    require(checksum == sha(encoded(content)), "premise artifact digest mismatch")
+                    notice = content
+                except READ_ERRORS as error:
+                    self.source.read_failure("original premise artifact", error)
             if notice is None:
-                # A complete original commits the exact notice digest, so independent
-                # copies of those same frozen bytes can resolve a missing redundant blob.
-                candidate = fallback or (policy.notice(self.seed) if self.seed is not None else None)
-                if candidate is not None and sha(encoded(candidate)) == checksum:
-                    notice = candidate
+                for candidate in (self.trace.get("recovered_bindings", {}).get(checksum), fallback,
+                                  policy.notice(self.seed) if self.seed is not None else None):
+                    if candidate is not None and sha(encoded(candidate)) == checksum:
+                        notice = candidate
+                        break
         return notice if isinstance(notice, dict) and same(notice, policy.notice(notice.get("seed"))) else None
 
     def canonical_fault(self, index, message):
@@ -460,7 +510,7 @@ class Participant:
 
     def fault(self, row, slot):
         p = dict(row["payload"])
-        self.timeline.append(dict(p, kind="fault"))
+        self.timeline.append(dict(p, kind="fault", preceding_issue_ns=self.preceding_issue))
         self.evidence(p)
         self.checkpoint(p.get("before"))
         self.checkpoint(p.get("after"))
@@ -504,12 +554,10 @@ class Participant:
                 self.claimed[index] = p["attempt"]
                 p.update(before=self.points[index-1].checkpoint, after=self.points[index].checkpoint)
             elif self.arm != "purser" and not self.public_complete:
-                prior = self.source.plan_heads.get((p.get("before") or {}).get("plan_sha256"), {}).get("W2", {})
-                later = self.source.plan_heads.get((p.get("after") or {}).get("plan_sha256"), {}).get("W2", {})
-                marker = later.get("_publication", {})
-                if (prior and not same(prior.get("premise"), message) and same(later.get("premise"), message)
-                        and marker.get("attempt") == p["attempt"] and marker.get("actor") == "fixture_observer"
-                        and marker.get("subject") == "W2"):
+                edge = self.source.plan_edge(p.get("after"))
+                if (edge and identity(self.arm, edge[0].checkpoint) == identity(self.arm, p.get("before"))
+                        and not same(edge[0].rows["W2"].get("premise"), message)):
+                    attr.plan_operation(p, "receive", *edge)
                     delivered = True
             if delivered is None and index is None:
                 if self.public_complete and (p.get("disposition") == "head_moved" or before is not None and before == after):
@@ -533,6 +581,7 @@ class Participant:
             if type(start) is not int:
                 continue
             if last is not None and start < last:
+                self.issue_gaps.append(start)
                 self.incomplete(f"public attempt {number} issue precedes a prior issue")
             last = start
             parent = p.get("parent_attempt")
@@ -540,6 +589,7 @@ class Participant:
                 continue
             outer = self.numbered.get(parent)
             if type(parent) is not int or parent >= number or not outer:
+                self.issue_gaps.append(start)
                 self.incomplete(f"public attempt {number} names an impossible physical parent")
                 continue
             end = p.get("finished_monotonic_ns")
@@ -561,7 +611,8 @@ class Participant:
                     self.recover_fault(index, message)
                     source = message["id"]
                 else:
-                    self.issued_coverage = False
+                    owner = self.numbered.get(pub.attempt)
+                    self.issue_gaps.append(owner.get("issued_monotonic_ns") if owner else None)
                     self.incomplete(f"original participant publication {index} has no attributable registered invocation")
                     self.dispute(f"unmatched original publication {index}")
                     if index not in self.known_issues:
@@ -647,6 +698,14 @@ class Participant:
         if work not in WORK:
             return None
         oid = pub.states[work][1]
+        if self.arm != "purser" and method == "submit":
+            reconstructed = {"subject": work, "candidate": oid, "actor": actor, "attempt": attempt,
+                             "input": {"candidate": oid}}
+            try:
+                attr.plan_operation(reconstructed, method, before, pub)
+            except READ_ERRORS as error:
+                self.dispute(f"original plan submission {attempt}: {error}")
+                return None
         # A retained issue whose original request/return is missing can be this
         # very write. Only a demonstrably additional invocation raises the bound.
         candidates = [p for p in self.numbered.values() if self.arm == "purser"
@@ -695,12 +754,22 @@ class Participant:
 
     def order_actions(self):
         actual = [(i,notice) for i,notice in self.faults if notice.get("publicly_delivered") is True]
-        if len(actual) != 1:
+        first_deliveries = [(i, notice) for i, notice in actual if all(
+            notice is other or self.source.compare(notice.get("after"), other.get("after")) in (-1, 0)
+            for _, other in actual)]
+        if not first_deliveries:
             self.ordering_complete = not self.faults
             return
-        index, notice = actual[0]
+        index, notice = first_deliveries[0]
+        self.first_delivered = notice
         first, last = notice.get("issued_monotonic_ns"), notice.get("finished_monotonic_ns")
-        prefix = self.modern and self.issued_coverage and index is not None and self.source.initial_linear is True
+        prefix = self.issues_through(last) and index is not None and self.source.initial_linear is True
+        for _, other in self.faults:
+            if other.get("publicly_delivered") is None:
+                issued = other.get("issued_monotonic_ns")
+                if not (type(issued) is int and type(last) is int and issued >= last
+                        or self.source.compare(notice.get("after"), other.get("before")) in (-1, 0)):
+                    prefix = False
         prior_changed = self.source.initial_linear is False
         if index is not None:
             for pub in self.points[:index]:
@@ -754,7 +823,8 @@ class Participant:
         self.prior_changed_exposure = True if prior_changed else False if prefix else None
 
 
-def read_participant(arm, journal, platform, read, issue, *, originals=None, seed=None, track=None, unavailable=None):
+def read_participant(arm, journal, platform, read, issue, *, originals=None, objects=None, seed=None,
+                     track=None, unavailable=None):
     """Reconstruct public facts from the originals and independently retained physical issues and returns."""
-    return Participant(arm, journal, platform, read, issue, originals=originals, seed=seed, track=track,
+    return Participant(arm, journal, platform, read, issue, originals=originals, objects=objects, seed=seed, track=track,
                        unavailable=unavailable)

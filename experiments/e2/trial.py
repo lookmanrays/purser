@@ -141,6 +141,9 @@ def retain(directory, assets, arm, progress, seed, rank, issue, *, interrupted=F
             issues.append(message)
             issue("case Git evidence", ValueError(message))
 
+    def git_gap(message):
+        issue("case Git source unavailable", FileNotFoundError(message))
+
     if interrupted:
         damaged = candidate_evidence.preserve_damaged_objects(assets)
         if damaged:
@@ -156,25 +159,39 @@ def retain(directory, assets, arm, progress, seed, rank, issue, *, interrupted=F
             if candidate_evidence.valid_entry(oid, entry) and entry["pack"]["path"] not in original_files:
                 git_issue(f"original candidate {oid} was missing its staged pack {entry['pack']['path']}")
     objects = Objects(assets.archive)
-    originals = Originals(arm, platform, objects.item, lambda _: None)
-    named = candidate_evidence.original_oids(arm, platform, objects, originals)
-    checkout = platform.get("exit_candidate")
-    if type(checkout) is dict and digest(checkout.get("head"), 40):
-        named.add(checkout["head"])
+    originals = Originals(arm, platform, objects.item, lambda _: None, journal=rows, objects=objects)
+    named = candidate_evidence.original_oids(arm, platform, objects, originals, rows, start, git_issue)
     platform["policy_blobs"] = {}
     with tempfile.TemporaryDirectory(prefix="purser-e2-observe-packs-") as temp:
         catalog = candidate_evidence.Catalog(objects, GitPacks(Path(temp)))
-        claimed = set(mapping) if type(mapping) is dict else set()
-        seals = candidate_evidence.observe_stage(directory, assets, catalog, claimed | named, git_issue)
+        original = mapping
+        if platform.get("original_candidate_map") is not None:
+            try:
+                original = objects.item(platform["original_candidate_map"])
+            except candidate_evidence.ERRORS as error:
+                git_issue("original candidate map", error)
+                original = {}
+        seals = candidate_evidence.observe_stage(directory, assets, catalog, named, git_issue, original_map=original)
         platform["case_git_packs"] = seals
-        members, entries, repos = candidate_evidence.reconcile(catalog, mapping, seals, named, git_issue, capture=True)
-        if platform.get("git_evidence_issues"):
+        members, entries, repos = candidate_evidence.reconcile(catalog, mapping, seals, named, git_issue,
+                                                                capture=True, original_map=original, unavailable=git_gap)
+        if (platform.get("git_evidence_issues") or members - repos.keys()) and "original_candidate_map" not in platform:
             platform["original_candidate_map"] = assets.put(mapping, "json")
         if members - repos.keys():
             platform["unavailable_candidate_oids"] = sorted(members - repos.keys())
         progress["candidates"] = entries
         refs.extend(seal["pack"] for seal in seals)
         stage_reports = measure.stage_reports(assets, seed, rank) if interrupted else None
+        # The scorer may have published a report before it journaled the observation.
+        # Retain case-local originals even if later losses erased all participant bindings.
+        if stage_reports:
+            known_refs = {ref.get("path") for ref in refs if isinstance(ref, dict)}
+            for (oid, _, _), reports in stage_reports.items():
+                if oid not in members:
+                    for ref, _ in reports:
+                        if ref["path"] not in known_refs:
+                            refs.append(ref)
+                            known_refs.add(ref["path"])
         for oid in sorted(members):
             repo = repos.get(oid)
             if repo is not None:

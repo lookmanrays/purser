@@ -158,7 +158,9 @@ def first_overlap(platform, timeline, complete):
     for entry in timeline:
         issued, finished = entry.get("issued_monotonic_ns"), entry.get("finished_monotonic_ns")
         if type(issued) is not int or issued < start or issued > end:
-            complete = False
+            preceding = entry.get("preceding_issue_ns")
+            if type(preceding) is not int or preceding < observed_until:
+                complete = False
             continue
         if issued >= observed_until:
             continue

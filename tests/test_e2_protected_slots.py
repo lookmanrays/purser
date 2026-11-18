@@ -10,7 +10,7 @@ from experiments.e1.artifacts import Artifacts, Candidates, START
 from experiments.e1.measurement import MeasurementUnavailable
 from experiments.e1.recovery import FileArchive
 from experiments.e1.report import Objects
-from experiments.e2 import measure
+from experiments.e2 import measure, trial
 from experiments.e2.protected_slots import read_slots
 
 
@@ -110,6 +110,25 @@ class ProtectedSlots(unittest.TestCase):
         self.assertEqual((slots["W2/retry", 1]["original"], slots["W2/retry", 1]["replay"]), ("missing", "matched"))
         self.assertEqual(self.read([], candidates=())[3], {})
 
+    def test_historical_only_retains_exact_originals_without_enrolling_or_executing(self):
+        old = next(e["payload"] for e in self.events if e["payload"]["criterion"] == "W2/retry")
+        pause = {"checks": [dict(candidate=START, criterion=old["criterion"], evidence=old["evidence"])]}
+        stage = {"checkpoint_measurement": pause, "referenced_files": [e["payload"]["evidence"] for e in self.events]}
+        history, issues, cache = [], [], {}
+        with patch.object(measure, "run_group", side_effect=AssertionError("unbound OID was probed")):
+            verdicts, witnesses, slots = read_slots(
+                self.events, stage, Objects(self.assets.archive), [], {START: self.repo}, 2001, 1, rerun=True,
+                measurements=cache, issue=issues.append, historical_only=history)
+        self.assertEqual((verdicts, witnesses, slots, cache), ({}, {}, {}, {}))
+        self.assertEqual(len(history), 8)
+        self.assertEqual({r["candidate"] for r in history}, {START})
+        self.assertTrue(all(r["journal"] == "recorded" and r["recordings"][0]["source"] == "journal" for r in history))
+        self.assertEqual({r["recordings"][0]["sha256"] for r in history},
+                         {e["payload"]["evidence"]["sha256"] for e in self.events})
+        retry = next(r for r in history if (r["criterion"], r["version"]) == ("W2/retry", 1))
+        self.assertEqual([o["source"] for o in retry["recordings"]], ["journal", "checkpoint"])
+        self.assertTrue(any("no independent case membership" in s for s in issues))
+
     def test_collector_recovers_durable_report_before_its_journal_row(self):
         with tempfile.TemporaryDirectory() as directory:
             assets = Artifacts(FileArchive(Path(directory)))
@@ -148,6 +167,26 @@ class ProtectedSlots(unittest.TestCase):
                 check.assert_not_called()
             self.assertEqual(refs, [ref])
             self.assertEqual([(r["source"], r["verdict"]) for r in rows], [("case_stage", report["verdict"])])
+
+    def test_collector_attributes_an_unbound_staged_report_without_filling_the_remaining_slots(self):
+        payload = self.events[0]["payload"]
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            case_assets = Artifacts(FileArchive(root))
+            ref = case_assets.put(Objects(self.assets.archive).item(payload["evidence"]), "json")
+            progress = trial.retain(root, case_assets, "loop", {}, 2001, 1, self.fail, interrupted=True)
+            self.assertEqual(progress["candidates"], {})
+            self.assertEqual(progress["rows"], [])
+            self.assertEqual(progress["platform"]["referenced_files"], [ref])
+            historical, issues = [], []
+            with patch.object(measure, "run_group", side_effect=AssertionError("unbound stage report ran")):
+                _, _, slots = read_slots([], progress["platform"], Objects(case_assets.archive), set(), {}, 2001, 1,
+                                         rerun=True, measurements={}, issue=issues.append, historical_only=historical)
+            self.assertEqual(slots, {})
+            self.assertEqual(len(historical), 1)
+            self.assertEqual(historical[0]["journal"], "missing")
+            self.assertEqual(historical[0]["recordings"],
+                             [{"source": "case_stage", "sha256": ref["sha256"], "verdict": payload["verdict"]}])
 
     def test_scope_can_be_measured_when_a_git_export_is_unavailable(self):
         with patch.object(measure, "extract_tree", side_effect=OSError("unavailable export")):

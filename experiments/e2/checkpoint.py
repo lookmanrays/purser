@@ -5,6 +5,7 @@ from subprocess import SubprocessError
 from tempfile import TemporaryDirectory
 
 from experiments.e1 import capture
+from experiments.e1.accounting import READ_ERRORS
 from experiments.e1.artifacts import encoded, extract_tree
 from experiments.e1.executor import LEAVES
 from experiments.e1.measurement import MeasurementUnavailable
@@ -54,7 +55,7 @@ def participant_at(driver, public, checkpoint, objects):
     source = driver.assets.put(trace, "json")
     platform = dict(driver.j.platform, treatment_trace=source, final_public=checkpoint)
     issues = []
-    history = read_participant(arm, list(driver.j.rows), platform, objects.item, issues.append,
+    history = read_participant(arm, list(driver.j.rows), platform, objects.item, issues.append, objects=objects,
                                seed=driver.seed, track=driver.track)
     return history, source
 
@@ -71,13 +72,17 @@ def old_assignment(history, checkpoint, submission_attempt=None):
     """Read the operative W2 law from the original head and from its accepted submission."""
     def selected(ck):
         index = history.source.position(ck)
+        if history.arm != "purser":
+            from .public_sources import identity
+            rows = history.source.plan_heads.get(identity(history.arm, ck))
+            if rows is None:
+                return None
+            row = rows["W2"]
+            return (row.get("criterion") == LEAVES["W2"] and row.get("retry_choice") == policy.LINEAR
+                    and "premise" in row and row["premise"] is None)
         if index is None:
             return None
         original = history.source.publications[index]
-        if history.arm != "purser":
-            row = original.rows["W2"]
-            return (row.get("criterion") == LEAVES["W2"] and row.get("retry_choice") == policy.LINEAR
-                    and "premise" in row and row["premise"] is None)
         decisions = WorkView(original.snapshot["projection"]).graph.decisions("W2")
         return (original.records.get(policy.ASSUMPTION, {}).get("state") == "held" and len(decisions) == 1
                 and decisions[0]["id"] == policy.ORIGINAL and decisions[0]["choice"] == policy.LINEAR
@@ -130,39 +135,52 @@ def qualify(driver, oid):
     return result["qualified"]
 
 
-def validate(pause, states, track, seed, rank, objects, blobs, measured, *, complete, submitted, old_assignment):
-    """Compare the retained admission witness to the independent post-clock Git observation."""
-    if not pause:
-        return
-    if not states and pause.get("checkpoint") is None and not complete and pause.get("qualified") is None:
-        return
+def validate(pause, states, track, seed, rank, objects, blobs, measured, *, complete, submitted, old_assignment,
+             issue, unavailable):
+    """Adjudicate the original admission at its own public head, then audit the recorded answers."""
     if not states:
-        raise ValueError("missing public checkpoint state for the private measurement")
+        if pause.get("checkpoint") is not None or complete:
+            unavailable("old checkpoint public state unavailable")
+        return None
     oid = pause["candidate"]
-    verdicts = {}
-    required = {(candidate,label) for candidate,labels in required_cases(states,oid).items() for label in labels}
+    required = {(candidate, label) for candidate, labels in required_cases(states, oid).items() for label in labels}
+    verdicts, seen = {}, set()
     for row in pause["checks"]:
-        key = row["candidate"], row["criterion"]
-        if key not in required or key in verdicts:
-            raise ValueError("unexpected or repeated protected checkpoint check")
-        report = objects.item(row["evidence"])
-        verdict = measure.grade(report, *key, seed, rank, measure.OLD)
-        if verdict != report["verdict"]:
-            raise ValueError("pre-change verdict disagrees with its observation")
-        other = measured.get((*key, measure.OLD))
-        if (other is not None and report != other) or (complete and other is None):
-            raise ValueError("pre-change measurement disagrees with the independent offline observation")
-        verdicts[key] = verdict
+        try:
+            key = row["candidate"], row["criterion"]
+            if key not in required or key in seen:
+                raise ValueError("unexpected or repeated protected checkpoint check")
+            seen.add(key)
+            ref = row["evidence"]
+            other = measured.get((*key, measure.OLD))
+            try:
+                report = objects.item(ref)
+            except READ_ERRORS:
+                from .public_sources import view_ref
+                if other is None or ref != view_ref(other):
+                    raise
+                report = other
+            verdict = measure.grade(report, *key, seed, rank, measure.OLD)
+            if other is not None and report != other:
+                issue("pre-change measurement disagrees with the independent offline observation")
+                continue
+            if complete and other is None:
+                issue("complete run lacks an independent offline checkpoint observation")
+            verdicts[key] = verdict
+        except READ_ERRORS as error:
+            issue(f"protected checkpoint check: {error}")
     for candidate, value in pause["policy_blobs"].items():
-        if candidate not in blobs or blobs[candidate] != value:
-            raise ValueError("pre-change sibling policy differs from archived Git bytes")
-    if submitted is not None and pause.get("submitted") is not submitted:
-        raise ValueError("recorded old W2 submission differs from the original publication")
-    if old_assignment is not None and pause.get("old_assignment") is not old_assignment:
-        raise ValueError("recorded old W2 law differs from its operative assignment")
-    if pause.get("qualified") is not None or complete:
-        qualified = conjunction([eligible(states, oid, track, verdicts, blobs, submitted), old_assignment])
-        if ((pause.get("qualified") is True and set(verdicts) != required)
-                or qualified is not pause.get("qualified")
-                or type(pause["qualified"]) is not bool):
-            raise ValueError("checkpoint disposition differs from the old public state and queue measurements")
+        if candidate in blobs and blobs[candidate] != value:
+            issue("pre-change sibling policy differs from archived Git bytes")
+    qualified = conjunction([eligible(states, oid, track, verdicts, blobs, submitted), old_assignment])
+    for field, found in (("submitted", submitted), ("old_assignment", old_assignment), ("qualified", qualified)):
+        recorded = pause.get(field)
+        if found is not None and recorded is not None and found is not recorded:
+            issue(f"recorded checkpoint {field} differs from the authenticated observation")
+        elif found is None and (recorded is not None or complete):
+            unavailable(f"original checkpoint {field} cannot be established")
+        elif recorded is None and complete:
+            issue(f"complete run lacks recorded checkpoint {field}")
+    if (pause.get("qualified") is True or complete) and seen != required:
+        issue("original checkpoint measurements omit a required old criterion")
+    return qualified

@@ -4,6 +4,7 @@ from experiments.e1.executor import LEAVES, PARENT
 from experiments.e1.outcomes import CLOSED, LABELS, entered_closure
 
 from . import measure
+from .public_sources import identity
 
 FIELDS = ("intervention_reached", "unaffected_both_retained", "unaffected_reopened",
           "affected_invalid_closure", "rework_steps", "final_pass")
@@ -60,7 +61,8 @@ def assess(history, track, verdicts, *, delivery, qualification, submitted, unch
     facts = dict.fromkeys(FIELDS)
     facts.update(final_pass=all_pass(final_grades), final_candidate=final_oid, final_criteria=final_grades,
                  rework_observed=None, stale_at_delivery=None, new_bad_closure=None, closure_observations=[],
-                 reopened_subjects=[], reopen_observations=[], rework_actions=[], checkpoint_candidate=None, checkpoint_work=None,
+                 reopened_subjects=[], reopen_observations=[], rework_actions=[], rework_undetermined=[],
+                 observed_interval=None, checkpoint_candidate=None, checkpoint_work=None,
                  observed_retention=None, observed_reopened=None, observed_invalid_closure=None)
     faults = [e for e in history.journal if e["kind"] == "fault"]
     received = [e for e in faults if e["payload"].get("publicly_delivered") is True]
@@ -70,7 +72,10 @@ def assess(history, track, verdicts, *, delivery, qualification, submitted, unch
         return facts
 
     # A witnessed change and a qualifying registered change have distinct evidence.
-    fault = received[0]
+    fault = received[0] if len(received) == 1 else next(
+        (row for row in received if row["payload"] is history.first_delivered), None)
+    if fault is None:
+        return facts
     p = fault["payload"]
     before = history.checkpoint(p.get("before")) or {}
     oid = p.get("candidate")
@@ -82,12 +87,18 @@ def assess(history, track, verdicts, *, delivery, qualification, submitted, unch
 
     for e in history.journal:
         payload = e["payload"]
-        if (e["kind"] == "action" and payload.get("after_intervention") is True
-                and payload.get("action") in REWORK and payload.get("subject") in WORK):
-            facts["rework_actions"].append(payload["attempt"])
+        if e["kind"] == "action":
+            eligible = payload.get("rework_eligible", payload.get("action") in REWORK and payload.get("subject") in WORK)
+            counted = conjunction([payload.get("after_intervention"), eligible])
+            if counted is True:
+                facts["rework_actions"].append(payload["attempt"])
+            elif counted is None:
+                facts["rework_undetermined"].append(payload["attempt"])
 
     retained = []
     saw_delivery = False
+    through = history.source.through(p.get("after"))
+    contiguous = {}
     for publication, seq, prior, states, at_delivery in history.public_states_after(fault):
         saw_delivery |= at_delivery
         for subject in ("W1", "W3"):
@@ -105,8 +116,13 @@ def assess(history, track, verdicts, *, delivery, qualification, submitted, unch
                 facts["closure_observations"].append({"seq": seq, "subject": subject, "publication": publication,
                                                       "at_delivery": at_delivery, "candidate": new[1],
                                                       "revised_pass": passed(new[1], LEAVES["W2"], measure.NEW)})
+        if through is not None and publication == identity(history.arm, through):
+            contiguous = {"through": publication, "from": identity(history.arm, p.get("after")),
+                          "both_retained": conjunction(retained), "reopened": len(facts["reopen_observations"]),
+                          "declarations": list(facts["closure_observations"])}
 
-    complete = saw_delivery and endpoint_known and history.public_complete and len(received) == len(faults) == 1
+    one_change = len(received) == 1 and all(e["payload"].get("publicly_delivered") is not None for e in faults)
+    complete = saw_delivery and endpoint_known and history.public_complete and one_change
     reopens = facts["reopen_observations"]
     facts["reopened_subjects"] = sorted({item["subject"] for item in reopens})
     facts["observed_reopened"] = len(reopens)
@@ -117,6 +133,9 @@ def assess(history, track, verdicts, *, delivery, qualification, submitted, unch
         return True if False in passed else False if covered and None not in passed else None
 
     declarations = facts["closure_observations"]
+    if saw_delivery and contiguous:
+        contiguous["invalid_closure"] = invalid(contiguous.pop("declarations"), True)
+        facts["observed_interval"] = contiguous
     facts["stale_at_delivery"] = invalid((item for item in declarations if item["at_delivery"]), saw_delivery)
     facts["new_bad_closure"] = invalid((item for item in declarations if not item["at_delivery"]), complete)
     facts["observed_invalid_closure"] = invalid(declarations, complete)
@@ -124,5 +143,7 @@ def assess(history, track, verdicts, *, delivery, qualification, submitted, unch
         facts.update(unaffected_both_retained=facts["observed_retention"], unaffected_reopened=len(reopens) if complete else None,
                      affected_invalid_closure=facts["observed_invalid_closure"], rework_observed=len(facts["rework_actions"]))
         if endpoint_known and action_sequence_complete:
-            facts["rework_steps"] = facts["rework_observed"]
+            facts["rework_upper"] = facts["rework_observed"] + len(facts["rework_undetermined"])
+            if not facts["rework_undetermined"]:
+                facts["rework_steps"] = facts["rework_observed"]
     return facts

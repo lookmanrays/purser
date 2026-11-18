@@ -41,8 +41,8 @@ class Case:
         return self.comparable_steps and self.comparable_elapsed
 
 
-def inspect_case(raw, schema, objects, packs, rank, *, rerun, measurements):
-    case = derive_case(raw, objects, packs, rank, rerun=rerun, measurements=measurements)
+def inspect_case(raw, schema, objects, packs, rank, *, rerun, measurements, producer_files=None):
+    case = derive_case(raw, objects, packs, rank, rerun=rerun, measurements=measurements, producer_files=producer_files)
     expected = outcomes.raw_score(case.facts) if raw.get("validity") != "infrastructure_invalid" and raw["track"] != "clean" else None
     if not wire_valid(raw, schema, schema):
         case.issues += ("raw record violates frozen schema",)
@@ -116,14 +116,15 @@ def cost_evidence(raw, journal, platform, history, pause_valid, exclusion, issue
                 event_conflict = True
                 break
     endpoint = bool(stopped and reported_exit and within_steps and not physical_conflict and not event_conflict)
-    exact_steps = bool(endpoint and issued and history.actions_complete and same(cost.get("steps"), count)
-                       and (timed or credible_bounds))
+    work_cutoff = bool(endpoint and (timed or credible_bounds))
+    exact_steps = bool(work_cutoff and issued and same(cost.get("steps"), count))
     exact_elapsed = bool(endpoint and timed and same(elapsed, cost.get("elapsed_ns")))
     return {"step_comparable": exact_steps, "elapsed_comparable": exact_elapsed,
             "witnessed_elapsed_ns": elapsed if not physical_conflict and not event_conflict else None,
             "active_lower_ns": lower if not physical_conflict and not event_conflict else None,
             "physical_wall_ns": end - start if interval else None,
-            "admission_ceiling_verified": bool(issued and count <= limit), "physical_exit": receipt is not None}
+            "admission_ceiling_verified": bool(issued and count <= limit), "physical_exit": receipt is not None,
+            "work_cutoff": work_cutoff}
 
 
 def registered_ingress(incoming, track, seed, pause, history):
@@ -140,7 +141,7 @@ def registered_ingress(incoming, track, seed, pause, history):
             and (pause or {}).get("candidate") == incoming.get("candidate"))
 
 
-def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None):
+def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None, producer_files=None):
     issues, unavailable = [], []
     def issue(message):
         if message not in issues:
@@ -195,29 +196,33 @@ def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None):
         measurement = dict(platform["checkpoint_measurement"])
         measurement["checkpoint"] = views.checkpoint(measurement.get("checkpoint"))
         platform["checkpoint_measurement"] = measurement
-    named = candidate_evidence.original_oids(arm, platform, objects, views.originals)
-    end = platform.get("exit_candidate")
-    if (type(end) is dict and end.get("source") in ("after_participant_exit", "stopped_worker_readback")
-            and utc_time(end.get("observed_utc")) and digest(end.get("head"), 40)
-            and platform.get("start_monotonic_ns") is not None):
-        named.add(end["head"])
+    named = candidate_evidence.original_oids(arm, platform, objects, views.originals, journal,
+                                             platform.get("start_monotonic_ns"), issue)
     problems = platform.get("git_evidence_issues", [])
     if type(problems) is list:
         for problem in problems:
             issue(f"captured Git evidence: {problem}")
     else:
         issue("malformed captured Git evidence issues")
-    original_map = platform.get("original_candidate_map")
-    if original_map is not None:
-        original = read("original candidate map", lambda: objects.item(original_map))
-        unavailable_oids = platform.get("unavailable_candidate_oids", [])
-        if type(original) is dict and type(unavailable_oids) is list:
-            named.update(oid for oid in unavailable_oids if digest(oid, 40)
-                         and candidate_evidence.valid_entry(oid, original.get(oid)))
+    sealed_producer = producer_files is None or "experiments/e2/candidate_evidence.py" in producer_files
+    lost = platform.get("unavailable_candidate_oids", [])
+    if type(lost) is not list or any(not digest(oid, 40) for oid in lost):
+        issue("malformed captured unavailable candidate identities")
+        lost = []
+    original = None
+    if platform.get("original_candidate_map") is not None:
+        if sealed_producer and ((type(problems) is list and problems) or lost):
+            original = read("original candidate map", lambda: objects.item(platform["original_candidate_map"]))
+        else:
+            issue("original candidate map lacks registered pre-recovery provenance")
     catalog = candidate_evidence.Catalog(objects, packs)
     case_candidates, _, repos = candidate_evidence.reconcile(
-        catalog, candidates, platform.get("case_git_packs"), named, issue,
-        references=platform.get("referenced_files"))
+        catalog, candidates, platform.get("case_git_packs"), named, issue, original_map=original,
+        references=platform.get("referenced_files"), unavailable=missing,
+        expect_seals=sealed_producer)
+    for oid in lost:
+        if oid not in case_candidates:
+            issue(f"captured unavailable candidate {oid} lacks an independent case observation")
     blobs = {}
     for oid, repo in repos.items():
         actual = read(f"Git policy blobs {oid}", lambda: evidence.file_ids(repo, oid))
@@ -239,9 +244,11 @@ def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None):
     events = history.journal
     quiet = accounted = None
     if pause_ok:
-        quiet = read("physical scoring interval", lambda: clock.quiescence(platform, history.timeline, history.issued_coverage))
+        credit_end = (platform.get("checkpoint_measurement") or {}).get("end_monotonic_ns")
+        pause_issues = history.issues_through(credit_end)
+        quiet = read("physical scoring interval", lambda: clock.quiescence(platform, history.timeline, pause_issues))
         accounted = read("active scoring interval", lambda: clock.exclusion_accounted(platform, history.timeline,
-                                                                                      history.issued_coverage))
+                                                                                      pause_issues))
         if accounted is False:
             issue("participant activity occurred inside the deducted scoring interval")
         elif accounted is None:
@@ -254,8 +261,10 @@ def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None):
         retained = read("kernel artifacts", lambda: dict(actual_trace["kernel_artifacts"]), {})
         disclosed = read("missing kernel artifacts", lambda: dict(actual_trace.get("missing_kernel_artifacts", {})), {})
         for checksum, ref in retained.items():
-            if read("kernel witness", lambda: sha(objects.blob(ref))) != checksum:
-                issue("kernel witness checksum mismatch")
+            try:
+                require(sha(objects.blob(ref)) == checksum, "kernel witness checksum mismatch")
+            except ERRORS as error:
+                history.source.read_failure("kernel witness", error)
         if history.public_complete:
             expected = read("original kernel witness digests", lambda: kernel_witnesses(actual_trace["snapshot"]), set())
             recovered = {key[1] for key in objects.content}
@@ -273,9 +282,10 @@ def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None):
         else:
             missing("clean assignment throughout the participant history cannot be proven")
     from .protected_slots import read_slots
+    historical_protected = []
     verdicts, witnesses, protected_slots = read_slots(
         journal, platform, objects, case_candidates, repos, seed, rank,
-        rerun=rerun, measurements=measurements, issue=issue)
+        rerun=rerun, measurements=measurements, issue=issue, historical_only=historical_protected, unavailable=missing)
 
     pause = platform.get("checkpoint_measurement")
     admitted = submitted = None
@@ -284,13 +294,14 @@ def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None):
                                           pause.get("submission_attempt"))
         old = checkpoint.old_assignment(history, pause.get("checkpoint"), pause.get("submission_attempt"))
         def validate_checkpoint():
-            checkpoint.validate(pause, history.checkpoint(pause["checkpoint"]), track, seed, rank, objects, blobs,
-                                witnesses, complete=raw.get("validity") == "complete", submitted=submitted, old_assignment=old)
-            return pause.get("qualified")
+            return checkpoint.validate(pause, history.checkpoint(pause["checkpoint"]), track, seed, rank, objects,
+                                       blobs, witnesses, complete=raw.get("validity") == "complete",
+                                       submitted=submitted, old_assignment=old, issue=issue, unavailable=missing)
         admitted = read("old checkpoint qualification", validate_checkpoint)
+    old_qualified = admitted
     delivered = history.fault_receipt
-    if len(faults) == 1 and delivered is True and track != "clean":
-        if not registered_ingress(faults[0]["payload"], track, seed, pause, history):
+    if history.first_delivered is not None and track != "clean":
+        if not registered_ingress(history.first_delivered, track, seed, pause, history):
             issue("actual premise lacks its registered identity, trigger or privately qualified predecessor")
             admitted = None
         if history.prior_changed_exposure is True:
@@ -299,19 +310,13 @@ def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None):
         elif history.prior_changed_exposure is None:
             missing("old-task exposure before the registered premise cannot be established")
             admitted = None
-    elif len(faults) > 1:
+    elif delivered is True:
         admitted = None
     whole = history.public_complete and history.final is not None
     end = platform.get("exit_candidate")
     if end is not None:
         def exiting_worktree():
-            status = end["status_hex"]
-            require(type(status) is str and re.fullmatch(r"(?:[0-9a-f]{2})*", status) is not None
-                    and type(end["dirty"]) is bool and end["dirty"] == bool(status)
-                    and end["source"] in ("after_participant_exit", "stopped_worker_readback")
-                    and utc_time(end["observed_utc"]) is not None and end["head"] in repos,
-                    "worktree status or sealed Git identity is unavailable")
-            return end
+            return candidate_evidence.checkout_observation(end)
         end = read("exit candidate", exiting_worktree, {})
     end = end or {}
     final_subject = bool(observed_exit and end.get("source") == "after_participant_exit"
@@ -324,10 +329,16 @@ def derive_case(raw, objects, packs, rank, *, rerun=False, measurements=None):
             missing("done exit lacks a matching closed parent on the exiting Git candidate")
     platform = dict(platform, policy_blobs=blobs, exit_candidate=end)
     facts = evidence.score(history, track, verdicts, platform, release=delivered, qualification=admitted,
-                           submitted=submitted, endpoint_known=observed_exit,
-                           step_boundaries=costs["step_comparable"] and history.ordering_complete,
+                           submitted=submitted, endpoint_known=costs["work_cutoff"],
+                           step_boundaries=history.issued_coverage,
                            final_subject=final_subject, known_candidates=case_candidates, available_candidates=repos)
     facts["protected_slots"] = protected_slots
+    facts["historical_protected_observations"] = historical_protected
+    facts["kernel_transmissions"] = history.kernel_transmissions
+    if arm == "purser" and actual_trace and "original_prefix_revision" in actual_trace:
+        facts["kernel_recovery"] = {field: actual_trace[field]
+                                    for field in ("original_prefix_revision", "recovered_through_revision")}
+    facts.update(checkpoint_qualified=old_qualified, old_submission_observed=submitted, premise_delivered=delivered)
     if basis == "before_release" and (case_candidates - {START} or history.action_lower_bound or observed_exit):
         issue("before-release accounting conflicts with evidence from a later stage of this case")
         basis = "unavailable"
@@ -413,7 +424,8 @@ def inspect_series(directory, *, strict=False, rerun=False):
                     binding.append(str(error))
                 if not same(raw.get("inputs"), input_identity(freeze, arm)):
                     binding.append("raw input pins differ from registration")
-                case = inspect_case(raw, schema, objects, packs, rank, rerun=rerun, measurements=measurements)
+                case = inspect_case(raw, schema, objects, packs, rank, rerun=rerun, measurements=measurements,
+                                    producer_files=freeze["source_files"])
                 case.facts["registration_confirmed"] = not binding
                 if binding:
                     case.healthy_clean = False

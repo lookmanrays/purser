@@ -5,9 +5,11 @@ import unittest
 from pathlib import Path
 
 from experiments.e1.artifacts import START, Artifacts, Candidates
+from experiments.e1.capture import response_evidence
 from experiments.e1.recovery import FileArchive
 from experiments.e1.report import GitPacks, Objects
-from experiments.e2.candidate_evidence import Catalog, observe_stage, preserve_damaged_objects, reconcile
+from experiments.e2.candidate_evidence import (Catalog, checkout_observation, inspected_oids, observe_stage,
+                                               preserve_damaged_objects, reconcile)
 
 
 class CandidateCustody(unittest.TestCase):
@@ -64,6 +66,92 @@ class CandidateCustody(unittest.TestCase):
         self.assertEqual(set(repos), members)
         self.assertEqual(entries[START]["pack"], self.entries[self.edit]["pack"])
         self.assertTrue(any(START in s and "unavailable" in s for s in self.issues))
+
+    def test_referenced_tips_survive_each_omission_and_old_producer(self):
+        refs = [entry["pack"] for entry in self.entries.values()]
+        for omit in (START, self.edit):
+            self.issues.clear()
+            other = self.edit if omit == START else START
+            members, _, repos = reconcile(self.catalog, self.entries, [self.seal(other)], set(), self.issues.append,
+                                           references=refs)
+            self.assertEqual(members, set(self.entries))
+            self.assertEqual(set(repos), members)
+            self.assertEqual(len(self.issues), 1)
+            self.assertIn(f"lacks referenced pack for {omit}", self.issues[0])
+        for modern in (False, True):
+            self.issues.clear()
+            members, _, _ = reconcile(self.catalog, self.entries, None, set(), self.issues.append,
+                                      references=refs, expect_seals=modern)
+            self.assertEqual(members, set(self.entries))
+            self.assertEqual(bool(self.issues), modern)
+        self.issues.clear()
+        members, _, _ = reconcile(self.catalog, self.entries, [self.seal(self.edit)], set(), self.issues.append,
+                                   references=[self.entries[START]["pack"]], expect_seals=False)
+        self.assertEqual(members, {START})
+        self.assertTrue(any("outside this registered producer" in e for e in self.issues))
+
+    def test_broken_seal_map_or_pool_alone_cannot_establish_a_candidate(self):
+        start = self.seal(START)
+        wrong = dict(start["pack"], bytes=start["pack"]["bytes"] + 1)
+        for inventory in (None, [], [start], [start, {"candidate": self.edit, "pack": wrong}],
+                          [start, {"candidate": self.edit, "pack": start["pack"]}]):
+            members, entries, repos = reconcile(self.catalog, self.entries, inventory, {START}, self.issues.append,
+                                                 references=[start["pack"]])
+            self.assertEqual(members, {START})
+            self.assertEqual(set(entries), {START})
+            self.assertEqual(set(repos), {START})
+            self.assertTrue(any("unsupported" in s and self.edit in s for s in self.issues))
+
+    def test_authenticated_original_map_keeps_missing_member_and_checks_available_provenance(self):
+        original = {self.edit: self.entries[self.edit]}
+        (self.stage / self.entries[self.edit]["pack"]["path"]).unlink()
+        absent = []
+        members, entries, _ = reconcile(self.catalog, {}, [self.seal(START)], set(), self.issues.append,
+                                        original_map=original, unavailable=absent.append)
+        self.assertEqual(members, {START, self.edit})
+        self.assertEqual(set(entries), {START})
+        self.assertTrue(any(self.edit in s and "unavailable" in s for s in absent))
+        # A pack produced for another target cannot independently corroborate an old map.
+        original = {self.edit: dict(self.entries[self.edit], pack=self.entries[START]["pack"])}
+        members, _, _ = reconcile(self.catalog, {}, [self.seal(START)], set(), self.issues.append, original_map=original)
+        self.assertEqual(members, {START})
+        self.assertTrue(any("different original tip" in s for s in self.issues))
+
+    def test_scoped_git_inspection_requires_actual_work_and_received_or_returned_bytes(self):
+        work = "W-notify"
+        action = {"arm": "loop", "action": "context", "actor": "planner", "subject": work, "attempt": 1,
+                  "input": {"tool": "git_history", "work": work}, "candidate": self.edit}
+        requested = {k: action[k] for k in ("action", "actor", "subject", "candidate", "input")}
+        action["work_request"] = dict(requested, method="inspect")
+        def observed():
+            return inspected_oids([{"kind": "action", "payload": action}], "loop", Objects(self.assets.archive),
+                                  self.issues.append)
+        self.assertFalse(observed())
+        action["work_started"] = action["work_request"].copy()
+        self.assertFalse(observed())
+        action["return"] = {"value": [self.edit, START]}
+        action["response_evidence"] = self.assets.put(response_evidence(action), "json")
+        self.assertEqual(observed(), {self.edit})
+        action["candidate"] = None
+        for field in ("work_started", "work_request"):
+            action[field]["candidate"] = None
+        self.assertFalse(observed())  # A callback may transform the outer return.
+        ref = self.assets.put(action["return"], "json")
+        action["delivery"] = {"attempt": 1, "state": "received", "subject": work, "payload": ref, "sha256": ref["sha256"]}
+        self.assertEqual(observed(), {self.edit})
+        action["delivery"]["subject"] = "W3"
+        self.assertFalse(observed())
+
+    def test_untyped_exit_hint_cannot_establish_a_git_head(self):
+        observed = {"head": self.edit, "observed_utc": "2026-01-01T00:00:00Z", "source": "stopped_worker_readback",
+                    "dirty": False, "status_hex": ""}
+        self.assertEqual(checkout_observation(observed), observed)
+        rename = dict(observed, dirty=True, status_hex=b"R  new name\x00old name\x00".hex())
+        self.assertEqual(checkout_observation(rename), rename)
+        for changed in ({"dirty": None}, {"status_hex": "bad"}, {"dirty": True}, {"source": "stopped"},
+                        {"dirty": True, "status_hex": "ff"}, {"dirty": True, "status_hex": b"R  new\x00".hex()}):
+            with self.assertRaises(ValueError):
+                checkout_observation(dict(observed, **changed))
 
     def test_bare_and_worker_evidence_after_staged_copy_loss(self):
         for entry in self.entries.values():

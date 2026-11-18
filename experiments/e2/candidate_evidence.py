@@ -8,11 +8,14 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from experiments.e1.accounting import digest
+from experiments.e1.accounting import WORK, digest, utc_time
 from experiments.e1.artifacts import FIXTURE, START, encoded, git, sha
+from experiments.e1.capture import response_evidence
+from experiments.e1.executor import PARENT
+from experiments.e1.measurement import same
 from experiments.e1.recovery import FileArchive, sync_directory, write_atomic
 from experiments.e1.report import require
-from .public_sources import Originals
+from . import attribution
 
 PACK = re.compile(r"objects/([0-9a-f]{64})\.pack\Z")
 OBJECT = re.compile(r"objects/([0-9a-f]{64})\.(?:pack|json|bin)\Z")
@@ -20,7 +23,7 @@ ERRORS = (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError, 
 
 
 def pack_reference(ref):
-    return (type(ref) is dict and digest(ref.get("sha256"), 64)
+    return (type(ref) is dict and ref.keys() == {"path", "sha256", "bytes"} and digest(ref.get("sha256"), 64)
             and ref.get("path") == f"objects/{ref['sha256']}.pack"
             and type(ref.get("bytes")) is int and ref["bytes"] >= 0)
 
@@ -28,21 +31,81 @@ def pack_reference(ref):
 def valid_entry(oid, entry):
     return (digest(oid, 40) and type(entry) is dict and entry.get("start") == START
             and digest(entry.get("tree"), 40) and "parent" in entry
-            and (entry["parent"] is None if oid == START else digest(entry["parent"], 40))
+            and (entry["parent"] is None and entry["tree"] == FIXTURE["tree_sha1"] if oid == START
+                 else digest(entry["parent"], 40) and entry["parent"] != oid)
             and pack_reference(entry.get("pack")))
 
 
-def original_oids(arm, platform, objects, originals):
-    """Read the actual original public candidates, including a preserved pre-change head."""
-    def subjects(source):
-        return {oid for publication in source.publications for state, oid in publication.states.values()
-                if digest(oid, 40)}
-    result = subjects(originals)
-    pause = platform.get("checkpoint_measurement")
-    if type(pause) is dict and pause.get("submission_source") and not originals.complete:
-        earlier = Originals(arm, dict(platform, treatment_trace=pause["submission_source"],
-                                      final_public=pause.get("checkpoint")), objects.item, lambda _: None)
-        result.update(subjects(earlier))
+def checkout_observation(end):
+    require(type(end) is dict and digest(end.get("head"), 40) and utc_time(end.get("observed_utc"))
+            and end.get("source") in ("after_participant_exit", "stopped_worker_readback"),
+            "missing or malformed original checkout observation")
+    status = end.get("status_hex")
+    require(type(status) is str and re.fullmatch(r"(?:[0-9a-f]{2})*", status) is not None
+            and type(end.get("dirty")) is bool and end["dirty"] == bool(status),
+            "worktree status and dirty observation disagree")
+    if status:
+        body = bytes.fromhex(status)
+        require(body.endswith(b"\0"), "worktree status lacks its recorded path terminator")
+        paths = iter(body[:-1].split(b"\0"))
+        for row in paths:
+            require(re.fullmatch(rb"(?:[ MADRCUT][ MADRCUT]|\?\?) .+", row, re.DOTALL) and row[:2] != b"  ",
+                    "malformed porcelain worktree status")
+            if b"R" in row[:2] or b"C" in row[:2]:
+                require(bool(next(paths, b"")), "worktree rename or copy lacks its other path")
+    return end
+
+
+def inspected_oids(journal, arm, objects, issue):
+    """A successful scoped read has passed WorkerTools' candidate check. A bare action has not."""
+    found = set()
+    for row in journal:
+        action = row.get("payload") if type(row) is dict else None
+        if type(action) is not dict or row.get("kind") != "action" or action.get("action") != "context":
+            continue
+        inputs = action.get("input")
+        tool = inputs.get("tool") if type(inputs) is dict else None
+        if tool not in ("git", "git_diff", "git_history"):
+            continue
+        try:
+            work, oid = action["subject"], action["candidate"]
+            require(action.get("arm") == arm and type(action.get("attempt")) is int and action["attempt"] > 0
+                    and work in WORK and inputs == {"work": work, "tool": tool}
+                    and attribution.expected(action) == "inspect", "invalid scoped Git request")
+            attribution.work_request(action, "inspect")
+            if "work_started" not in action:
+                continue
+            delivered, packet = attribution.delivered(action, objects.item)
+            if delivered:
+                require(action["delivery"].get("subject") == work, "Git receiver subject differs from the request")
+            if delivered and tool == "git_history" and work == PARENT:
+                history = packet.get("value") if type(packet) is dict else None
+                require(type(history) is list and history and all(digest(o, 40) for o in history)
+                        and (oid is None or history[0] == oid), "Git history receiver lacks the selected HEAD")
+                found.add(history[0])
+            if not digest(oid, 40):
+                continue
+            if not delivered:
+                reply = action.get("return")
+                if type(reply) is not dict or "failure" in reply:
+                    continue
+                require(same(objects.item(action["response_evidence"]), response_evidence(action)),
+                        "Git return envelope differs from the scoped invocation")
+            found.add(oid)
+        except ERRORS as error:
+            issue(f"scoped Git read at attempt {action.get('attempt')}: {error}")
+    return found
+
+
+def original_oids(arm, platform, objects, originals, journal, start, issue):
+    result = originals.candidate_oids() | inspected_oids(journal, arm, objects, issue)
+    end = platform.get("exit_candidate")
+    if end is not None:
+        try:
+            require(type(start) is int and start >= 0, "checkout observation lacks participant release")
+            result.add(checkout_observation(end)["head"])
+        except ERRORS as error:
+            issue(f"exit candidate: {error}")
     return result
 
 
@@ -121,7 +184,7 @@ def preserve_damaged_objects(assets):
     return damaged
 
 
-def observe_stage(directory, assets, catalog, claimed, issue):
+def observe_stage(directory, assets, catalog, claimed, issue, *, original_map=None):
     """Read complete case-local publications while the collector still owns its stage."""
     refs = {}
     for name in assets.archive.namelist() if isinstance(assets.archive, FileArchive) else ():
@@ -144,7 +207,7 @@ def observe_stage(directory, assets, catalog, claimed, issue):
         except ERRORS as error:
             issue(f"private pack {path.name}", error)
 
-    sources = list(catalog.loaded.values())
+    sources = [catalog.loaded[encoded(ref)] for ref in refs.values() if encoded(ref) in catalog.loaded]
     tips = {pack.tip for pack in sources if pack.tip}
     work = directory / "worker"
     if (work / ".git").is_dir():
@@ -153,10 +216,17 @@ def observe_stage(directory, assets, catalog, claimed, issue):
             head = git(work, "rev-parse", "--verify", "HEAD^{commit}").decode().strip()
         except subprocess.CalledProcessError:
             head = None
-        for oid in sorted({o for o in (*claimed, head) if digest(o, 40)}):
+        original = map_entries(original_map, "original candidate map", issue) if original_map is not None else {}
+        for oid in sorted({o for o in (*original, *claimed, head) if digest(o, 40)}):
             if oid in tips or oid != head and catalog.alternative(oid, sources):
                 continue
             try:
+                if oid in original and oid != head and oid not in claimed:
+                    tree, *parents = git(work, "show", "-s", "--format=%T %P", oid).decode().split()
+                    entry = original[oid]
+                    expected = [entry["parent"]] if entry["parent"] else []
+                    require(tree == entry["tree"] and parents == expected,
+                            "working Git history contradicts original map tree or parent")
                 data = git(work, "pack-objects", "--stdout", "--revs", data=(oid + "\n").encode())
                 ref = assets.put(data, "pack")
                 refs[ref["path"]] = ref
@@ -178,80 +248,153 @@ def observe_stage(directory, assets, catalog, claimed, issue):
     return sorted(seals, key=lambda seal: seal["pack"]["path"])
 
 
-def reconcile(catalog, mapping, seals, named, issue, *, capture=False, references=()):
-    """Verify each observation and recover its bytes without giving pool contents case identity."""
-    named = {oid for oid in named if digest(oid, 40)}
-    declared = {}
-    for oid, entry in mapping.items() if type(mapping) is dict else ():
-        if valid_entry(oid, entry):
-            declared[oid] = entry
-        else:
-            issue(f"malformed candidate entry {oid}")
+def map_entries(mapping, source, issue):
     if type(mapping) is not dict:
-        issue("malformed candidate map")
-    scoped, selected, seal_oids = {}, {}, set()
-    legacy = seals is None
-    if type(seals) is not list:
-        issue("case Git seal inventory unavailable")
+        issue("malformed candidate map" if source == "candidate" else f"malformed {source}")
+        return {}
+    entries = {}
+    for oid, entry in mapping.items():
+        if valid_entry(oid, entry):
+            entries[oid] = entry
+        else:
+            issue(f"malformed {source} entry {oid}")
+    return entries
+
+
+def case_packs(catalog, seals, references, expect_seals, issue):
+    """Read the two case-local pack inventories independently, including partial inventories."""
+    tips, scoped, claimed, absent = {}, {}, {}, {}
+    sealed, referenced = set(), set()
+    if not expect_seals and seals is not None:
+        issue("case Git seal inventory is outside this registered producer")
         seals = []
-        for ref in references if type(references) is list else ():
-            if pack_reference(ref):
-                try:
-                    pack = catalog.load(ref)
-                    if pack.tip:
-                        seals.append({"candidate": pack.tip, "pack": ref})
-                except ERRORS as error:
-                    issue(f"referenced case pack: {error}")
+    elif type(seals) is not list:
+        if expect_seals:
+            issue("case Git seal inventory unavailable or malformed")
+        seals = []
     for seal in seals:
-        if (type(seal) is not dict or not digest(seal.get("candidate"), 40)
-                or not pack_reference(seal.get("pack"))):
-            issue("malformed case Git seal")
+        if (type(seal) is not dict or seal.keys() != {"candidate", "pack"}
+                or not digest(seal["candidate"], 40) or not pack_reference(seal["pack"])):
+            issue(f"malformed case Git seal: {seal}")
             continue
         oid, ref = seal["candidate"], seal["pack"]
+        key = encoded(ref)
+        if key in claimed:
+            issue(f"duplicate or conflicting case Git seal for {ref['path']}: {sorted(claimed[key])}, {oid}")
+        claimed.setdefault(key, set()).add(oid)
         try:
             pack = catalog.load(ref)
+            require(pack.tip == oid, f"asserted {oid} disagrees with original pack tip {pack.tip}")
         except ERRORS as error:
-            issue(f"case Git seal {oid}: {error}")
-            named.add(oid)
+            issue(f"case Git seal {oid} at {ref['path']}: {error}")
+            if ref["path"] not in catalog.objects.archive.namelist():
+                absent[key] = claimed[key]
             continue
-        if pack.tip != oid:
-            issue(f"case Git seal disagrees with original pack tip for {oid}")
+        scoped[key], tips[oid] = pack, pack
+        sealed.add((oid, key))
+
+    if references is not None and type(references) is not list:
+        issue("malformed case referenced-files inventory")
+    for ref in references if type(references) is list else ():
+        if type(ref) is not dict or type(ref.get("path")) is not str:
+            issue("malformed entry in case referenced-files inventory")
             continue
-        scoped[ref["path"]] = pack
-        seal_oids.add(oid)
-        selected[oid] = pack
-    named.update(seal_oids)
-    for oid, entry in declared.items():
+        if not ref["path"].endswith(".pack"):
+            continue
+        key = encoded(ref)
+        referenced.add(key)
+        try:
+            pack = catalog.load(ref)
+            require(pack.tip is not None, "no unique candidate tip with registered ancestry")
+        except ERRORS as error:
+            issue(f"referenced case pack {ref['path']}: {error}")
+            continue
+        scoped[key], tips[pack.tip] = pack, pack
+        if expect_seals and (pack.tip, key) not in sealed:
+            issue(f"case Git seal inventory lacks referenced pack for {pack.tip} at {ref['path']}")
+    if type(references) is list:
+        for oid, key in sorted(sealed):
+            if key not in referenced:
+                issue(f"case referenced-files inventory lacks sealed pack for {oid} at {scoped[key].reference['path']}")
+    return tips, scoped, absent
+
+
+def case_members(catalog, mapping, seals, named, issue, *, capture, references, expect_seals, original_map):
+    """Settle participation from case sources before searching pooled contents."""
+    members = {oid for oid in named if digest(oid, 40)}
+    tips, scoped, absent = case_packs(catalog, seals, references, expect_seals, issue)
+    members.update(tips)
+    declared = map_entries(mapping, "candidate", issue)
+    original = declared if capture else {}
+    if original_map is not None:
+        original = declared if original_map is mapping else map_entries(original_map, "original candidate map", issue)
+    unverified_metadata = {}
+    paths = set(catalog.objects.archive.namelist()) if original else set()
+    for oid, entry in original.items():
+        # This map was obtained from the case's progress BEFORE the collector rebuilt it.
+        # Check any surviving local content for a contradiction, even if its own pack was lost.
         ref = entry["pack"]
-        if not (capture or legacy or oid in named or ref["path"] in scoped):
-            issue(f"candidate map {oid} is unsupported by the case Git seals or original publications")
-            continue
-        try:
-            pack = catalog.load(ref)
-        except ERRORS as error:
-            issue(f"candidate map {oid}: {error}")
-            pack = catalog.alternative(oid, scoped.values())
-            if pack is None:
-                if capture or legacy:
-                    named.add(oid)  # A case-bound original entry with presently unavailable bytes.
+        dedicated = scoped.get(encoded(ref))
+        if dedicated is None and ref["path"] in paths:
+            try:
+                dedicated = catalog.load(ref)
+            except ERRORS as error:
+                issue(f"original candidate map {oid} at {ref['path']}: {error}")
                 continue
-        if pack.commits.get(oid) != (entry["tree"], entry["parent"]):
-            issue(f"candidate map {oid}: declared Git parent or tree disagrees with original objects")
+        pack = dedicated or catalog.alternative(oid, scoped.values())
+        if dedicated and dedicated.tip != oid:
+            issue(f"original candidate map {oid}: its case pack has a different original tip {dedicated.tip}")
+        elif pack and pack.commits.get(oid) != (entry["tree"], entry["parent"]):
+            issue(f"original candidate map {oid}: declared Git parent or tree disagrees with case objects")
+        elif oid not in members:
+            members.add(oid)
+            if pack is None:
+                unverified_metadata[oid] = entry
+    for oid, entry in declared.items():
+        if oid in members:
             continue
-        selected[oid] = pack
-        named.add(oid)
-    for oid in named - selected.keys():
-        alternative = catalog.alternative(oid, scoped.values())
-        if alternative:
-            selected[oid] = alternative
-    if not capture and named - selected.keys():
-        # Seek content for specific independently bound OIDs. A foreign tip, even in a
-        # perfectly valid full pack, cannot add to this case's membership.
-        missing = named - selected.keys()
+        ref = entry["pack"]
+        if absent.get(encoded(ref)) == {oid}:
+            # A surviving scoped descendant can corroborate the writer's map plus its
+            # matching original seal after their dedicated pack has gone missing.
+            cover = catalog.alternative(oid, scoped.values())
+            if cover and cover.commits[oid] == (entry["tree"], entry["parent"]):
+                members.add(oid)
+                continue
+        issue(f"candidate map {oid} is unsupported by independent case evidence "
+              f"(tree {entry['tree']}, parent {entry['parent']}, {ref['path']}, {ref['bytes']} bytes)")
+    return members, declared, tips, scoped, unverified_metadata
+
+
+def reconcile(catalog, mapping, seals, named, issue, *, capture=False, references=None, expect_seals=True,
+              original_map=None, unavailable=None):
+    members, declared, selected, scoped, unverified_metadata = case_members(
+        catalog, mapping, seals, named, issue, capture=capture, references=references, expect_seals=expect_seals,
+        original_map=original_map)
+    available_packs = (catalog.loaded.values() if capture and isinstance(catalog.objects.archive, FileArchive)
+                       else scoped.values())
+    for oid in sorted(members):
+        entry = declared.get(oid)
+        if entry is not None:
+            try:
+                pack = catalog.load(entry["pack"])
+                require(pack.commits.get(oid) == (entry["tree"], entry["parent"]),
+                        "declared Git parent or tree disagrees with original objects")
+                selected[oid] = pack
+            except ERRORS as error:
+                missing_at_capture = capture and entry["pack"]["path"] not in catalog.objects.archive.namelist()
+                report = (unavailable or issue) if missing_at_capture else issue
+                report(f"candidate map {oid}: {error}")
+        if oid not in selected:
+            cover = catalog.alternative(oid, available_packs)
+            if cover:
+                selected[oid] = cover
+    missing = members - selected.keys()
+    if missing and not capture:
         for name in catalog.objects.archive.namelist():
             if not missing:
                 break
-            if not PACK.fullmatch(name) or name in scoped:
+            if not PACK.fullmatch(name):
                 continue
             try:
                 pack = catalog.load(catalog.reference(name))
@@ -261,11 +404,18 @@ def reconcile(catalog, mapping, seals, named, issue, *, capture=False, reference
                 selected[oid] = pack
             missing -= selected.keys()
 
-    for oid in sorted(named):
+    # A missing pre-capture pack can leave the original map as the only binding. If
+    # recovered content disproves its metadata, keep the source dispute, not a graded slot.
+    for oid, entry in unverified_metadata.items():
+        if oid in selected and selected[oid].commits[oid] != (entry["tree"], entry["parent"]):
+            issue(f"original candidate map {oid}: recovered Git parent or tree contradicts the sole case binding")
+            members.remove(oid)
+            del selected[oid]
+    for oid in sorted(members):
         if oid not in selected:
-            issue(f"case candidate Git bytes unavailable for {oid}")
+            (unavailable or issue)(f"case candidate Git bytes unavailable for {oid}")
         if not capture and oid not in declared:
-            issue(f"candidate map lacks case observation {oid}")
+            (issue if oid in selected else unavailable or issue)(f"candidate map lacks case observation {oid}")
     entries = {oid: pack.entry(oid) for oid, pack in sorted(selected.items())}
     repos = {oid: pack.repo for oid, pack in sorted(selected.items())}
-    return named, entries, repos
+    return members, entries, repos

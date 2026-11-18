@@ -63,7 +63,10 @@ def predicates(purser, comparison):
             elif value(case, "intervention_reached") is True:
                 lower = value(case, "rework_observed")
                 low += lower if lower is not None else 0
-                high += MANIFEST["budgets"]["scripted"]["max_steps"] if value(case, "admission_ceiling_verified") else inf
+                upper = value(case, "rework_upper")
+                if upper is None:
+                    upper = MANIFEST["budgets"]["scripted"]["max_steps"] if value(case, "admission_ceiling_verified") else inf
+                high += upper
             else:
                 # Rework is undefined when the required intervention is never reached.
                 return None
@@ -148,7 +151,8 @@ def render_summary(cases, *, stats=None):
     def work(case):
         v = value(case, "rework_steps")
         if v is None and value(case, "rework_observed") is not None:
-            return f"≥{case.facts['rework_observed']} (total ?)"
+            lower, upper = case.facts["rework_observed"], value(case, "rework_upper")
+            return f"{lower}–{upper}" if upper is not None else f"≥{lower} (total ?)"
         return shown(v)
     for arm in ARMS:
         out.extend(["", f"## Primary coverage · {arm}", "",
@@ -198,7 +202,7 @@ def render_summary(cases, *, stats=None):
                 else:
                     event = "closed at delivery" if item["at_delivery"] else "closed"
                     grade = shown(item["revised_pass"])
-                witnesses.append(f"| {name} | {publication} | {item['subject']} | {event} "
+                witnesses.append(f"| {name} | {publication} | {shown(item.get('source_action'))} | {item['subject']} | {event} "
                                  f"| `{item['candidate']}` | {grade} |")
     if reopening_counts:
         out.extend(["", "## Observed sibling reopenings", "",
@@ -209,8 +213,8 @@ def render_summary(cases, *, stats=None):
         out.extend(["", "## Public reopening and closure evidence", "",
                     "Each reopening identifies the previously closed candidate. Each closure grades revised retry "
                     "on the candidate declared by that subject.", "",
-                    "| Case | Plan digest or kernel revision / hash | Subject | Public observation | Git candidate | Revised retry passes |",
-                    "| --- | --- | --- | --- | --- | --- |", *witnesses])
+                    "| Case | Plan digest or kernel revision / hash | Public action | Subject | Public observation | Git candidate | Revised retry passes |",
+                    "| --- | --- | --- | --- | --- | --- | --- |", *witnesses])
     diagnosed = [(key, c) for key,c in cases.items() if c.issues or c.unavailable or c.raw.get("validity") != "complete"]
     if diagnosed:
         out.extend(["", "## Unavailable or disputed observations", ""])
@@ -218,17 +222,37 @@ def render_summary(cases, *, stats=None):
             reasons = [*c.issues, *c.unavailable] or [str(c.raw.get("terminal", "unavailable"))]
             out.append(f"- {' / '.join(str(x) for x in key)} — " + " · ".join(reasons))
             facts = c.facts
-            observed = [("witnessed participant exit", "physical_exit"), ("clean exposure", "clean_exposure"),
+            observed = [("old W2 submission", "old_submission_observed"), ("old checkpoint qualified", "checkpoint_qualified"),
+                        ("premise delivered", "premise_delivered"), ("prior changed exposure", "prior_changed_exposure"),
+                        ("scoring interval quiescent", "clock_pause_quiescent"),
+                        ("scoring exclusion accounted", "exclusion_accounted"),
+                        ("witnessed participant exit", "physical_exit"), ("clean exposure", "clean_exposure"),
                         ("both siblings continuously retained", "observed_retention"),
                         ("invalid affected closure", "observed_invalid_closure"), ("stale closure at receipt", "stale_at_delivery"),
                         ("new invalid affected closure", "new_bad_closure"), ("final Git criteria pass", "final_pass")]
             out.append("  Observed facts — " + ", ".join(f"{label} {shown(facts.get(field))}" for label,field in observed) + ".")
+            interval = facts.get("observed_interval")
+            if interval:
+                out.append(f"  From delivery through `{interval['through']}`, "
+                           f"both retained {shown(interval['both_retained'])}, reopenings {interval['reopened']}, "
+                           f"invalid affected closure {shown(interval['invalid_closure'])}.")
+            kernel = facts.get("kernel_recovery")
+            if kernel:
+                out.append(f"  Canonical SQLite prefix through revision {kernel['original_prefix_revision']}. "
+                           f"Authenticated history through revision {kernel['recovered_through_revision']}.")
+            for transmission in facts.get("kernel_transmissions", ()):
+                head = transmission["observed_head"]
+                stamp = f"r{head['revision']} `{head['head_hash']}`" if head else "unknown"
+                out.append(f"  Captured port return for attempt {transmission['attempt']}, "
+                           f"{transmission['operation']} on {transmission['subject']}, candidate "
+                           f"`{transmission['candidate'] or '?'}`. Receipt {transmission['disposition'] or '?'} "
+                           f"at revision {shown(transmission['receipt_revision'])}, observed head {stamp}.")
             candidate = value(c, "last_observed_candidate")
             if candidate:
                 where = value(c, "last_observed_utc")
                 publication = value(c, "last_observed_publication")
                 if where is None and publication is not None:
-                    where = f"publication {publication}"
+                    where = f"{facts['last_observed_subject']} submission {facts['last_observed_attempt']}, publication {publication}"
                 where = f", {where}" if where else ""
                 grades = facts.get("last_observed_criteria", {})
                 out.append(f"  Last measured candidate `{candidate}` ({value(c,'last_observed_source')}{where}), "
@@ -240,8 +264,13 @@ def render_summary(cases, *, stats=None):
                                + ", ".join(f"{label} {grade or '?'}" for label, grade in grades.items()) + ".")
             if facts.get("exit_git_dirty") is True:
                 out.append(f"  The stopped working tree was dirty at `{facts['exit_git_head']}`.")
-    observations = []
+    observations, historical = [], []
     for (track, seed, arm), case in sorted(cases.items()):
+        for claim in case.facts.get("historical_protected_observations", ()):
+            for record in claim["recordings"]:
+                historical.append(f"| `{claim['candidate']}` | {track} / {seed} / {arm} | {claim['criterion']} "
+                                  f"| {claim['version']} | {record['verdict']} | {record['source']} "
+                                  f"| `{record['sha256']}` | {claim['journal']} |")
         for oid, slots in sorted(case.facts.get("protected_slots", {}).items()):
             for slot in slots:
                 grade = slot["verdict"] or "?"
@@ -250,6 +279,12 @@ def render_summary(cases, *, stats=None):
                 observations.append(f"| {track} / {seed} / {arm} | `{oid}` | {slot['criterion']} "
                                     f"| {slot['version']} | {history} | {grade} | {source} "
                                     f"| {slot['original']} | {slot['replay']} |")
+    if historical:
+        out.extend(["", "## Historical protected observations without established case membership", "",
+                    "These originals record judgments on the named Git subjects. Membership and independent replay "
+                    "for these subjects remain unestablished.", "",
+                    "| Report subject | Case | Criterion | Version | Original verdict | Origin | Report SHA-256 | Journal row |",
+                    "| --- | --- | --- | ---: | --- | --- | --- | --- |", *historical])
     if observations:
         out.extend(["", "## Protected Git observations", "",
                     "| Case | Candidate | Criterion | Version | Retained verdict | Available grade "

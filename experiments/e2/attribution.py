@@ -9,6 +9,7 @@ from purser.kernel.wire import digest
 
 from . import policy
 from .operations import PORTS, method_for
+from .outcomes import REWORK, WORK
 from .public_sources import PLAN_VERSION
 
 
@@ -26,6 +27,22 @@ def work_request(action, method):
     require(same(action.get("work_request"), requested), "issued work request and action differ")
     if "work_started" in action:
         require(same(action["work_started"], requested), "physical work entry differs from the admitted request")
+
+
+def rework_eligibility(action):
+    """Price the witnessed issue when every surviving description gives the same answer."""
+    descriptions = [action, action.get("work_request")]
+    if "work_started" in action:
+        descriptions.append(action["work_started"])
+    answers = []
+    for item in descriptions:
+        if not isinstance(item, dict):
+            return None
+        kind, subject = item.get("action"), item.get("subject")
+        if not isinstance(kind, str) or not isinstance(subject, str):
+            return None
+        answers.append(kind in REWORK and subject in WORK)
+    return answers[0] if len(set(answers)) == 1 else None
 
 
 def delivered(action, read):

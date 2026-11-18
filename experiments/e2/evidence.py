@@ -4,6 +4,7 @@ from experiments.e1.artifacts import START, git
 from experiments.e1.executor import PATHS
 
 from . import measure, outcomes
+from .public_sources import identity
 
 
 def file_ids(repo, oid):
@@ -24,14 +25,14 @@ def published_submissions(history):
 
 
 def submitted_at(history, ck, work, oid, attempt=None):
-    boundary = history.source.position(ck)
-    if boundary is None:
-        return None
     for action in published_submissions(history):
-        commit = history.source.position(action.get("submission_publication"))
-        if (commit is not None and commit <= boundary and action.get("subject") == work
+        order = history.source.compare(action.get("submission_publication"), ck)
+        if (order in (-1, 0) and action.get("subject") == work
                 and action.get("candidate") == oid and (attempt is None or action.get("attempt") == attempt)):
             return True
+    refused = history.numbered.get(attempt, {}).get("submission_refused_at")
+    if refused and history.source.compare(refused, ck) in (-1, 0):
+        return False
     return False if history.public_complete and history.actions_complete else None
 
 
@@ -39,11 +40,10 @@ def score(history, track, verdicts, platform, *, release, qualification, submitt
           step_boundaries, final_subject, known_candidates, available_candidates):
     from .checkpoint import unchanged_policy
 
-    journal = history.journal
-    fault = next((e for e in journal if e["kind"] == "fault" and e["payload"].get("publicly_delivered") is True), None)
+    fault = history.first_delivered
     unchanged = {}
     if fault:
-        p = fault["payload"]
+        p = fault
         before = history.checkpoint(p.get("before")) or {}
         ids = platform.get("policy_blobs", {})
         for subject in ("W1", "W3"):
@@ -56,19 +56,29 @@ def score(history, track, verdicts, platform, *, release, qualification, submitt
                             qualification=qualification, submitted=submitted, unchanged=unchanged,
                             final_oid=observed_head if final_subject else None, endpoint_known=endpoint_known,
                             action_sequence_complete=step_boundaries)
+    for observation in facts["reopen_observations"] + facts["closure_observations"]:
+        key = observation["publication"]
+        attempt = history.claimed.get(history.source.index.get(key))
+        if attempt is None and history.arm != "purser":
+            edge = history.source.plan_edge({"plan_sha256": key})
+            attempt = edge[1].attempt if edge else None
+        observation["source_action"] = attempt
     facts["clean_exposure"] = history.clean_exposure
     facts["charged_attempts_observed"] = history.action_lower_bound
-    latest, source, publication = observed_head, None, None
+    latest, source, publication, subject, attempt = observed_head, None, None, None, None
     if latest:
         source = end.get("source")
     else:
-        submissions = [(history.source.position(p.get("submission_publication")), p)
-                       for p in published_submissions(history) if p.get("candidate") in known_candidates]
-        known_order = [(position, p) for position, p in submissions if position is not None]
-        if known_order:
-            publication, action = max(known_order, key=lambda item: item[0])
-            latest, source = action["candidate"], "last_witnessed_public_submission"
-        elif len(known_candidates) == 1:
+        submissions = [p for p in published_submissions(history) if p.get("candidate") in known_candidates]
+        for action in reversed(submissions):
+            head_at_submit = action["submission_publication"]
+            if all(history.source.compare(p["submission_publication"], head_at_submit) in (-1, 0)
+                   for p in submissions):
+                latest, source = action["candidate"], "last_witnessed_public_submission"
+                publication = identity(history.arm, head_at_submit)
+                subject, attempt = action["subject"], action["attempt"]
+                break
+        if not submissions and len(known_candidates) == 1:
             latest, = known_candidates
             if latest in available_candidates:
                 source = "sealed_starting_fixture" if latest == START else "sole_surviving_sealed_candidate"
@@ -78,6 +88,7 @@ def score(history, track, verdicts, platform, *, release, qualification, submitt
     grades = outcomes.criteria(latest, verdicts, phase)
     facts.update(exit_git_head=head, exit_git_dirty=end.get("dirty"), last_observed_candidate=latest,
                  last_observed_source=source, last_observed_publication=publication,
+                 last_observed_subject=subject, last_observed_attempt=attempt,
                  last_observed_utc=end.get("observed_utc") if observed_head else None,
                  last_observed_pass=outcomes.all_pass(grades), last_observed_criteria=grades,
                  sealed_candidate_criteria={oid: outcomes.criteria(oid, verdicts, phase) for oid in known_candidates})
