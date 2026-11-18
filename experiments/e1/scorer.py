@@ -46,21 +46,26 @@ def expected(case):
     return {"enqueued": len(events), "samples": samples, "pending": 0}
 
 
-def measure(repo, oid, root, seed, rank):
-    cases = inputs(seed, rank)
-    actual = probe(root, cases=[case for _, case in cases])
-    checks = {label: [] for label in LABELS}
-    for i, (label, case) in enumerate(cases):
-        checks[label].append({"input": case, "expected": expected(case),
-                              "observed": actual[i]})
-    paths = changes(repo, oid)
-    invalid = [entry for entry in paths if entry["path"] not in FIXTURE["public_paths"]
-               or entry["old_mode"] != "100644" or entry["new_mode"] != "100644"]
-    checks["scope/paths"].append({"expected": [], "observed": invalid, "all_changes": paths})
-    checks["legacy/compat"].append({
-        "expected": {"tests": 28, "errors": [], "failures": [], "skipped": []},
-        "observed": probe(root, legacy=True),
-    })
+def measure(repo, oid, root, seed, rank, *, labels=None):
+    selected = set(LABELS if labels is None else labels)
+    if not selected.issubset(LABELS):
+        raise ValueError("unknown protected criterion")
+    checks = {label: [] for label in LABELS if label in selected}
+    cases = [(label, case) for label, case in inputs(seed, rank) if label in selected]
+    if cases:
+        actual = probe(root, cases=[case for _, case in cases])
+        for (label, case), observed in zip(cases, actual, strict=True):
+            checks[label].append({"input": case, "expected": expected(case), "observed": observed})
+    if "scope/paths" in selected:
+        paths = changes(repo, oid)
+        invalid = [entry for entry in paths if entry["path"] not in FIXTURE["public_paths"]
+                   or entry["old_mode"] != "100644" or entry["new_mode"] != "100644"]
+        checks["scope/paths"].append({"expected": [], "observed": invalid, "all_changes": paths})
+    if "legacy/compat" in selected:
+        checks["legacy/compat"].append({
+            "expected": {"tests": 28, "errors": [], "failures": [], "skipped": []},
+            "observed": probe(root, legacy=True),
+        })
     return {label: {"criterion": label, "version": 1, "candidate": oid, "cases": rows,
                     "verdict": "pass" if all(same(r["observed"], r["expected"]) for r in rows) else "fail"}
             for label, rows in checks.items()}
