@@ -2,6 +2,10 @@
 
 The orchestrator integrates worker candidates on `lookman/purser-development`. Each gate links the exact reviewed implementation or design candidate, the independent evidence, the decision and any residual scope. The contract for this delivery is [architecture v0.5](architecture-v0.5.md), the [implementation plan](implementation-plan-v0.5.md) and [D-30 on principal approval](decisions/0030-principal-approval.md).
 
+## Current implementation
+
+M0, M1 and M2 passed their gates. The integrated M3 kernel can reconsider a decision, reopen its dependent work and explain why a sibling stayed closed. M3’s comparison experiment is in source qualification. Its original 66 trials have yet to start. The [CLI example](../README.md) exercises the local product, and the [latest source review](evidence/M3/review-1baf2dd/source-review.md) records the remaining evaluator work.
+
 ## M0 · Design and experimental protocol
 
 Accepted at `4460381e44f3dd42d22848bf6d82fea9a817a833` after independent review. See [M0 acceptance](evidence/M0/acceptance.md). M1-A and M1-B are released against the [M1 preflight](evidence/M1/preflight.md).
@@ -67,3 +71,5 @@ Source qualification was withheld. The failed candidate and its recovery-only ch
 The owner instructed the architect to create this next implementation chat and any future Purser chats required to complete the agreed milestones. **Purser · E2 candidate evidence and delivery**, ID `01a1f044-01b8-7570-af10-ca462d7b7467`, takes the clean `lookman/purser-m3-candidate-evidence` worktree at `bdf316d`. This standing instruction covers project chat handoffs. Provider spending, real workspace permissions and the product’s own principal actions continue to use their existing decisions.
 
 The candidate at `82e8807` recovered every expected Git check in the four original crash cases. Its independent reviewers found that a damaged reference could attach another run’s results and that later evidence loss could hide an earlier observed checkpoint. These errors affect the reported study result. The architect [withheld E2 registration and retained the original control evidence](evidence/M3/review-82e8807/source-review.md). The source and recovery handoff are available at `5465c34`. Under the owner’s standing instruction, **Purser · E2 run history and evidence**, ID `01a1f066-fdfa-73f3-ae64-a7a71974f824`, owns the next technical recovery on `lookman/purser-m3-case-history`.
+
+On `1baf2dd`, fresh process stops reproduced the true work histories and the last parent submission. Independent review found a new way to misattribute a Git read and two plan histories with a missing but recoverable middle entry. The source and qualification evidence are retained on `bc54ef4`. **Purser · E2 Git and plan evidence**, ID `01a1f094-9394-7342-8ec4-680592539df9`, owns technical recovery on `lookman/purser-m3-observation-recovery`. [Source qualification and retained originals](evidence/M3/review-1baf2dd/source-review.md)

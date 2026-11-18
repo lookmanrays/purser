@@ -1,0 +1,50 @@
+{
+  "equal-missing": {
+    "latest_witnessed_parent": false,
+    "raw": "58916074831f49a3a7956bb8215d846cde49b4ae358d7b44403919195489f15c",
+    "report": "cc7e41719c94f42b1fdba90c8ca43cacacb0448d3935440d7f4e00a361ef6ede",
+    "same_as_independent": true
+  },
+  "equal-restored": {
+    "latest_witnessed_parent": true,
+    "raw": "32f90c664e16816e6ce29f42b33181e2c97427c7e0725950028e0914b46f8e70",
+    "report": "cf8ee9dfd6cbedf6056647d364774c6e6f1d4882bc4b4565c4bc69d04bdcbe0d",
+    "same_as_independent": true
+  },
+  "explicit-impossible": {
+    "donor_extra": 0,
+    "donor_slots": 40,
+    "raw": "51e3c31c3e5decc56990ce5b33e603866bfe64aa4ef4b45cae745ecfd69cba4d",
+    "receiving_slots": 40,
+    "report": "00f4c3d58695259795ab475885c0d56eea3668905571d4b7b132ae2d02507bc5",
+    "same_as_independent": true
+  },
+  "implicit-genuine-donor": {
+    "donor_extra": 8,
+    "donor_slots": 40,
+    "raw": "9a8c7d23aba44605f22337ec4d9f03ce308585922ad68a87494783b0d9915523",
+    "receiving_slots": 48,
+    "report": "a8ce04444554b3467a181538271ea25ed137d09d2d2a4c3a2db96c43510cbc75",
+    "same_as_independent": true
+  },
+  "implicit-impossible": {
+    "donor_extra": 8,
+    "donor_slots": 40,
+    "raw": "2c68723f9917a865f2644cbd6c4e39a321d6af25b1e93c0a444f6347079517d8",
+    "receiving_slots": 48,
+    "report": "a8ce04444554b3467a181538271ea25ed137d09d2d2a4c3a2db96c43510cbc75",
+    "same_as_independent": true
+  },
+  "plain-missing": {
+    "latest_witnessed_parent": false,
+    "raw": "e03df66985f2480d0268c3dd07a50a39dffed34c119bbe03ed2018bc1a741b63",
+    "report": "70d50347cd49efb126e96699b271d18b609c507ed8857fed6735456e755b15c6",
+    "same_as_independent": true
+  },
+  "plain-restored": {
+    "latest_witnessed_parent": true,
+    "raw": "733f259baf2605f27edb978175fae53bf525dfbb98b86675941b6b149dc3bafb",
+    "report": "61454235cbac2767a1b1de3edd375dd6460334cad6e96e2bc1830819078eab26",
+    "same_as_independent": true
+  }
+}
