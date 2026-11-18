@@ -1,0 +1,401 @@
+{
+  "accepted_base": "d865971fa3da20d0b82fa7bc56ca1b24c080270b",
+  "derivation": "Rows and answers are independently written from the named facts, including closure, complete work sets, effective versus invalidated decisions, live exclusive expiry and the unique unresolved effect. The old eight-question consumer was exercised with the actual inputs as a separate cross-check. Pending approval ID is independently bound at its original pending proposal receipt. Use the actual completed revision and independently checked event-chain hash. No future product query provides expected answers.",
+  "exclusive_expiry": "2026-11-18T14:00:00.000000Z",
+  "fixed_utc": "2026-11-18T13:59:59.000000Z",
+  "fixture": "M0 lifecycle 07 with actual Git identities and closed W1/W3, two active commitments plus a separate genuinely pending activation of C-wait. The M4 physical broker is killed after publication before acknowledgment. The fixed time is 1 s before G-publish expiry.",
+  "followups": {
+    "after_reconciliation": "Independent occurrence and protected object observations bind F-publish. T1 leaves q06. Its reauthorization never appears. W2 becomes eligible for evaluate_close after all its other evidence remains current. Automatic W2 and W-notify can close; W-root then offers principal_accept for the exact derived outcome. C-notify remains active until a valid local controlled human accept. Later genuine branch advance can coexist with the earlier per-intent receipt.",
+    "history": "Historical query at the original completed revision and fixed time must reproduce all ten answers after any later expiry, reconciliation or acceptance. Fresh CLI and log-only rebuilt projection must agree. Reading never calls Git, a model, the broker, or a human.",
+    "same_revision_at_exclusive_expiry": "G-publish becomes expired; G-retired and G-expired retain their recorded/time-evaluated states. Existing T1 remains unresolved; reconcile survives. An unstarted sibling clone attempted at equality must produce no Git mutation. Use a separate actual wall-clock crossing on a fresh unstarted control."
+  },
+  "independent_full_answers": {
+    "q01": [
+      {
+        "commitment": "C-doc",
+        "principal": "principal:local"
+      },
+      {
+        "commitment": "C-notify",
+        "principal": "principal:local"
+      }
+    ],
+    "q02": [
+      {
+        "candidate": null,
+        "generation": 1,
+        "state": "open",
+        "work": "W-doc-root"
+      },
+      {
+        "candidate": null,
+        "generation": 1,
+        "state": "stale",
+        "work": "W-doc-stale"
+      },
+      {
+        "candidate": {
+          "algorithm": "sha1",
+          "digest": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+          "kind": "git.commit"
+        },
+        "generation": 1,
+        "state": "submitted",
+        "work": "W-doc-submitted"
+      },
+      {
+        "candidate": null,
+        "generation": 1,
+        "state": "open",
+        "work": "W-notify"
+      },
+      {
+        "candidate": null,
+        "generation": 1,
+        "state": "open",
+        "work": "W-root"
+      },
+      {
+        "candidate": null,
+        "generation": 1,
+        "state": "open",
+        "work": "W-wait"
+      },
+      {
+        "candidate": {
+          "algorithm": "sha1",
+          "digest": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b",
+          "kind": "git.commit"
+        },
+        "generation": 1,
+        "state": "closed",
+        "work": "W1"
+      },
+      {
+        "candidate": {
+          "algorithm": "sha1",
+          "digest": "f22bff619dc763ecf74c5b41eef09676f70c4645",
+          "kind": "git.commit"
+        },
+        "generation": 2,
+        "state": "submitted",
+        "work": "W2"
+      },
+      {
+        "candidate": {
+          "algorithm": "sha1",
+          "digest": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b",
+          "kind": "git.commit"
+        },
+        "generation": 1,
+        "state": "closed",
+        "work": "W3"
+      }
+    ],
+    "q03": [
+      {
+        "decision": "D-doc",
+        "state": "reconsidering",
+        "support": [
+          "A-doc"
+        ]
+      },
+      {
+        "decision": "D-revised",
+        "state": "effective",
+        "support": [
+          "A2"
+        ]
+      }
+    ],
+    "q04": [
+      {
+        "affected": [
+          "D-doc",
+          "W-doc-stale"
+        ],
+        "assumption": "A-doc"
+      },
+      {
+        "affected": [
+          "D-original",
+          "W2"
+        ],
+        "assumption": "A1"
+      }
+    ],
+    "q05": [
+      {
+        "capability": "git.commit",
+        "commitment": "C-notify",
+        "expires_at": "2026-11-18T13:50:00.000000Z",
+        "grant": "G-expired",
+        "grantee": "executor:beta",
+        "resource": "refs/heads/purser-demo",
+        "state": "expired"
+      },
+      {
+        "capability": "git.commit",
+        "commitment": "C-notify",
+        "expires_at": "2026-11-18T14:00:00.000000Z",
+        "grant": "G-publish",
+        "grantee": "executor:beta",
+        "resource": "refs/heads/purser-demo",
+        "state": "active"
+      },
+      {
+        "capability": "git.commit",
+        "commitment": "C-notify",
+        "expires_at": "2026-11-18T15:00:00.000000Z",
+        "grant": "G-retired",
+        "grantee": "executor:beta",
+        "resource": "refs/heads/purser-demo",
+        "state": "revoked"
+      }
+    ],
+    "q06": [
+      {
+        "attempt": "T1",
+        "effect": "F-publish",
+        "state": "dispatching"
+      }
+    ],
+    "q07": [
+      {
+        "evidence": [
+          "E-delivery"
+        ],
+        "obligation": "O-delivery",
+        "state": "passed",
+        "version": 1,
+        "work": "W3"
+      },
+      {
+        "evidence": [],
+        "obligation": "O-doc",
+        "state": "open",
+        "version": 1,
+        "work": "W-doc-submitted"
+      },
+      {
+        "evidence": [],
+        "obligation": "O-doc-stale",
+        "state": "open",
+        "version": 1,
+        "work": "W-doc-stale"
+      },
+      {
+        "evidence": [
+          "E-prefs"
+        ],
+        "obligation": "O-prefs",
+        "state": "passed",
+        "version": 1,
+        "work": "W1"
+      },
+      {
+        "evidence": [
+          "E-B"
+        ],
+        "obligation": "O-retries",
+        "state": "passed",
+        "version": 1,
+        "work": "W2"
+      }
+    ],
+    "q08": [
+      {
+        "reasons": [
+          {
+            "code": "missing_coverage",
+            "refs": [
+              "W-doc-stale",
+              "W-doc-submitted"
+            ]
+          }
+        ],
+        "work": "W-doc-root"
+      },
+      {
+        "reasons": [
+          {
+            "code": "invalidated_support",
+            "refs": [
+              "A-doc",
+              "D-doc",
+              "Obs-changed-A-doc",
+              "W-doc-stale"
+            ]
+          },
+          {
+            "code": "missing_evidence",
+            "refs": [
+              "O-doc-stale"
+            ]
+          },
+          {
+            "code": "missing_result",
+            "refs": [
+              "W-doc-stale"
+            ]
+          }
+        ],
+        "work": "W-doc-stale"
+      },
+      {
+        "reasons": [
+          {
+            "code": "missing_evidence",
+            "refs": [
+              "O-doc"
+            ]
+          }
+        ],
+        "work": "W-doc-submitted"
+      },
+      {
+        "reasons": [
+          {
+            "code": "missing_coverage",
+            "refs": [
+              "W2"
+            ]
+          }
+        ],
+        "work": "W-notify"
+      },
+      {
+        "reasons": [
+          {
+            "code": "missing_coverage",
+            "refs": [
+              "W-notify"
+            ]
+          }
+        ],
+        "work": "W-root"
+      },
+      {
+        "reasons": [
+          {
+            "code": "awaiting_activation",
+            "refs": [
+              "$approval_activation_C_wait"
+            ]
+          }
+        ],
+        "work": "W-wait"
+      },
+      {
+        "reasons": [],
+        "work": "W1"
+      },
+      {
+        "reasons": [
+          {
+            "code": "effect_unresolved",
+            "refs": [
+              "F-publish"
+            ]
+          }
+        ],
+        "work": "W2"
+      },
+      {
+        "reasons": [],
+        "work": "W3"
+      }
+    ],
+    "q09": [
+      {
+        "commitment": "C-doc",
+        "missing": [
+          {
+            "code": "missing_coverage",
+            "refs": [
+              "W-doc-stale",
+              "W-doc-submitted"
+            ]
+          }
+        ],
+        "root": "W-doc-root"
+      },
+      {
+        "commitment": "C-notify",
+        "missing": [
+          {
+            "code": "missing_coverage",
+            "refs": [
+              "W-notify"
+            ]
+          }
+        ],
+        "root": "W-root"
+      },
+      {
+        "commitment": "C-wait",
+        "missing": [
+          {
+            "code": "awaiting_activation",
+            "refs": [
+              "$approval_activation_C_wait"
+            ]
+          }
+        ],
+        "root": "W-wait"
+      }
+    ],
+    "q10": [
+      {
+        "action": "observe",
+        "subject": "V-doc"
+      },
+      {
+        "action": "principal_approve",
+        "subject": "$approval_activation_C_wait"
+      },
+      {
+        "action": "reconcile",
+        "subject": "F-publish"
+      },
+      {
+        "action": "reconsider",
+        "subject": "D-doc"
+      },
+      {
+        "action": "rework",
+        "subject": "W-doc-stale"
+      }
+    ]
+  },
+  "initial_intent": {
+    "assignment": "AS-B",
+    "capability": "git.commit",
+    "commitment": "C-notify",
+    "generation": 2,
+    "id": "F-publish",
+    "old": "55686bd5152e10a53dfdc2c003974ea405a3a075",
+    "paths": [
+      "notify/retry.py"
+    ],
+    "repository": "R-notify",
+    "resource": "refs/heads/purser-demo",
+    "slot": "publish",
+    "target": "f22bff619dc763ecf74c5b41eef09676f70c4645",
+    "work": "W2"
+  },
+  "object_ids": {
+    "e3": "5828b906ebc2aca8bbaf69c8d50fa8eb1295af7b",
+    "initial_tree": "2afea0fdd3478d29447a40bde8007266c468c72b",
+    "later": "8ecf4c1dbc84182df0a5b744bde6ddc33fef54cc",
+    "lifecycle_a": "011c1dcc6e64b7bc26ab39cd4c8234fc56506328",
+    "lifecycle_b": "f22bff619dc763ecf74c5b41eef09676f70c4645",
+    "prepared_tree": "a0766bda2c15fcf78c6fd1704892c9d6d9af1286",
+    "start": "55686bd5152e10a53dfdc2c003974ea405a3a075"
+  },
+  "typed_integration_fields": {
+    "q05.resource": "Canonical allowed branch. If the agreed wire nests a repository/branch/path descriptor, project its independently checked canonical branch and independently check original repository and named retry-only allowed paths.",
+    "q08.effect_unresolved": "The required reason identifies the blocked logical effect F-publish. If the agreed public reason also names the requirement/attempt, validate those identifiers against the original admitted input, then compare the semantic row.",
+    "q10": "Compare the full applicable action/subject set. Purely presentational subject IDs derived by the agreed wire are resolved from original independent actions. Preserve unrecognized semantic additions or missing actions as discrepancies."
+  }
+}
