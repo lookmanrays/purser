@@ -37,3 +37,9 @@ python3.11 -B -m unittest -q tests.test_model_adapter tests.test_model_adapter_r
 ```
 
 The demonstrated boundary is a replaceable, credential-free local executor with synthetic model responses. The study collector owns the 96 public actions and original 900-second case clock, and passes the remaining absolute deadline to the adapter. A genuine service requires its actual approved identity, runtime, enforced context window, output limit and accepted data policy. Live model causality, isolated evaluation of its source, the real study population and the human v1 decision belong to their M5 evidence.
+
+## Independent local disposition
+
+The architect accepted the local transport on exact source `0d8894dbe1b40fb00628027481781427381823b8` after five fresh native controls. An actual worker running the original client was killed with only its content-addressed result. A replacement worker was killed before settlement. The cold client recovered the authentic proposal and its reported 39 input and eight output tokens in each case, with one POST per original. A complete HTTP 400 retained the diagnostic bytes and 17 input / zero output tokens. A partial 400 and malformed 503 retained their supplied bytes and unknown usage. The controls counted five native synthetic calls across all cold repeats and zero external model calls.
+
+The architect retained the independent originals in `~/.local/state/purser/development/m5/transport-review-0d8894d/recheck.json`, SHA-256 `4d534e6b4e799dee255d4db420f7c2e3711b81e42890831d1c72beddd4b7ebbf`. The worker verified this checksum and candidate identity. This closes the M5-A local component packet. Authorized real-model operation and the M5-G decision remain open.
