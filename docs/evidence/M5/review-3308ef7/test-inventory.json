@@ -1,0 +1,44 @@
+{
+  "discovery": "unittest.defaultTestLoader.discover(\"tests\", top_level_dir=\".\")",
+  "inventory": "SHA-256 of sorted unique test IDs, one ID per line, including final newline",
+  "portions": [
+    {
+      "discovered": 310,
+      "elapsed_seconds": 205.884,
+      "errors": [],
+      "failures": [],
+      "inventory_sha256": "4938ef08efac53ee9d292b48be28c833f2ad912017406de11ae94fdcfed1400b",
+      "portion": "core",
+      "python": "3.11.15",
+      "ran": 281,
+      "revision": "3308ef7b9e256c980e0b5c4186d3be7708b98fe0",
+      "selected": 281,
+      "selected_sha256": "a891c661020e3bf1947a113d00597d6b010c1ebd10d4b8a0b28c0c05dc36c7e1",
+      "skipped": 0
+    },
+    {
+      "discovered": 310,
+      "elapsed_seconds": 262.187,
+      "errors": [],
+      "failures": [],
+      "inventory_sha256": "4938ef08efac53ee9d292b48be28c833f2ad912017406de11ae94fdcfed1400b",
+      "portion": "wasi",
+      "python": "3.11.15",
+      "ran": 29,
+      "revision": "3308ef7b9e256c980e0b5c4186d3be7708b98fe0",
+      "selected": 29,
+      "selected_sha256": "d9ef31e3644d7c2bb37ba280daa133d9081b2478e0dc2aaf3fd06729f454306a",
+      "skipped": 0
+    }
+  ],
+  "python": "3.11.15",
+  "reference_host": "macOS-26.5.2-arm64-arm-64bit",
+  "serial_wasi_test_modules": [
+    "tests.test_model_study",
+    "tests.test_model_isolation",
+    "tests.test_wasi_runtime"
+  ],
+  "source": "3308ef7b9e256c980e0b5c4186d3be7708b98fe0",
+  "tests_passed": 310,
+  "total_skipped": 0
+}
