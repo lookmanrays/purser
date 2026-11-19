@@ -3,10 +3,25 @@ import unittest
 from experiments.e1.suite import schedule as e1_schedule
 from experiments.e2.suite import schedule as e2_schedule
 from experiments.e3.suite import schedule as e3_schedule
-from experiments.model_costs import FIELDS, ModelCaseCost, render_model_costs
+from experiments.model_costs import FIELDS, USAGE, ModelCaseCost, measure_model_turns, render_model_costs
 
 
 class ModelCosts(unittest.TestCase):
+    def test_partial_sends_and_missing_ordinals_conserve_each_observed_field(self):
+        unavailable = dict.fromkeys(USAGE)
+        unsent = {"transport": {"wire_state": "not_sent"}, "usage": unavailable}
+        started = {"transport": {"wire_state": "send_started"}, "usage": unavailable}
+        sent = {"transport": {"wire_state": "sent"}, "usage": dict(zip(USAGE, (12, None, 0)))}
+        no_response = {"transport": {"wire_state": "sent"}, "usage": unavailable}
+        for unresolved in (started, None):
+            with self.subTest(unresolved=unresolved):
+                self.assertEqual(measure_model_turns([unresolved]), ({}, {"model_calls": 0}, None))
+                exact, lower, first = measure_model_turns([unsent, sent, unresolved, no_response])
+                self.assertEqual(exact, {})
+                self.assertEqual(lower, {"model_calls": 2, "input_tokens": 12, "output_tokens": 0, "spend_usd_micros": 0})
+                self.assertIs(first, sent)
+        self.assertEqual(measure_model_turns([no_response]), ({"model_calls": 1}, {}, no_response))
+
     def test_absent_originals_keep_the_entire_frozen_denominator(self):
         schedule = [(name, track, seed, arm)
                     for name, source in [("E1", e1_schedule), ("E2", e2_schedule), ("E3", e3_schedule)]

@@ -1,0 +1,13 @@
+# M5 model-service request measurement
+
+## Preflight
+
+The independent E3 control at `62d812335c1803f46c3cc88900b6f8aa4b229650` kept a loopback port bound without listening. The public journal recorded context and one decision attempt, the adapter sealed a `not_sent` receipt, and the cold raw reader counted one model call. Its original evidence file has SHA-256 `a70b04902f33570c810ffa29f665c5d16030c377a14bf101a4d4fa2d79fc01ba`. The E3 component starts from `38f48ccff834572e9e45df924575d8283176cd01`.
+
+The R2 invariant is that each ordinal contributes the number of complete outgoing requests its original transport can establish. A `not_sent` receipt contributes zero calls, tokens and service spend. A `sent` receipt contributes one call, including a returned HTTP error. Only the verified usage evidence supplies token counts and service charges for a possible send. An interrupted send or an unresolved release contributes a lower bound of zero calls. Known counts from other ordinals survive. The public journal owns its decision step, the reservation owns its authorization, and the accepted model decision requires its own original evidence.
+
+The structural audit follows the three states of `Exchange.post`, the pre-transport refusals, the missing or recovered result paths, and the cold readers of the registered raw cost. Both E3 and the common study reader at `6306e58d` increment every sealed receipt. The common reader can also lose uncertainty for a missing original when another ordinal has known usage. E3 already checks the actual public decisions and the reservation token envelope independently. Scripted records carry their registered zeros. The report renders field-specific exact totals and lower bounds. Both study readers can call one pure projection in `experiments.model_costs`; the study worker owns its call site.
+
+This is the first finding in the measurement cluster. The earlier adapter remediation concerned original byte capture and cold recovery. Here the surviving original already proves the defect in its consumers. The existing adapter and budget evidence suffice, and the packet requires no change to their persisted contracts. Operating feasibility passes on the local Python 3.11 and Git host with disposable loopback services and temporary study databases. The contract, module ownership and cold-read lenses apply.
+
+Exercise a bound unlistened port, a successful request, a returned HTTP error, an interrupted or unresolved transfer, a mixed ordinal sequence and an offline read. Compare raw counts, per-field bounds, public decision attempts, accepted decisions and retained reservation measurements. The study lead owns the joined collector check. All component controls use canned local responses.

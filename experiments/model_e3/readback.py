@@ -2,9 +2,10 @@
 
 from experiments.e1.artifacts import MANIFEST, encoded, sha
 from experiments.e1.report import require
+from experiments.model_costs import measure_model_turns
 
 from .participant import declaration, participant_history, prompt_for
-from .turns import LIMIT, TRACE_KIND, USAGE, check_record, decision_request, failure_terminal
+from .turns import LIMIT, TRACE_KIND, check_record, decision_request, failure_terminal
 
 
 def original_actions(objects, evidence):
@@ -85,7 +86,7 @@ def read_trace(identity, trace, objects, platform, *, service_sha256=None, autho
             complete = False
     require(not entries or plan.intent is not None, "model action before the task was released")
     last_model_ns = None
-    records, decisions, costs = [], [], []
+    originals, decisions = [], []
     for ordinal, entry in enumerate(entries, 1):
         require(type(entry.get("ordinal")) is int and entry["ordinal"] == ordinal
                 and plan.terminal is None and type(entry.get("before_actions")) is int and entry["before_actions"] == plan.position,
@@ -114,19 +115,16 @@ def read_trace(identity, trace, objects, platform, *, service_sha256=None, autho
             require((service_sha256 is None or service_sha256 == sha(encoded(record["service"])))
                     and (authority_sha256 is None or authority_sha256 == record["authority_sha256"]),
                     "service or spending authority differs from registration")
-            records.append(record)
+            originals.append(record)
             last_model_ns = record["returned_monotonic_ns"]
-            costs.append({"model_calls": 1, **record["usage"]})
             if entry.get("recovered_result") and outcome is None:
                 complete = False
                 if pending:
                     plan.position += 1
                 continue
-        elif outcome in ("disabled", "budget_refused", "deadline"):
-            costs.append(dict.fromkeys(("model_calls", *USAGE), 0))
-        else:
+        elif outcome not in ("disabled", "budget_refused", "deadline"):
             # The coordinator may die between reservation, I/O and the caller's sealed return.
-            costs.append({})
+            originals.append(None)
             complete = False
         if outcome is None:
             require(interrupted and ordinal == len(entries), "unfinished model release in a completed case")
@@ -164,6 +162,7 @@ def read_trace(identity, trace, objects, platform, *, service_sha256=None, autho
         expected_exit = "model_limit" if plan.terminal is None and len(entries) == LIMIT else plan.terminal
         require(expected_exit is not None and expected_exit == platform["participant_exit"]["reason"],
                 "participant exit disagrees with the original model choices")
+    records = [r for r in originals if r is not None]
     if records:
         conditions = {(sha(encoded(r["service"])), r["authority_sha256"]) for r in records}
         require(len(conditions) == 1, "model service or authority changed within a case")
@@ -175,19 +174,11 @@ def read_trace(identity, trace, objects, platform, *, service_sha256=None, autho
             require(retained + reserved <= limits["max_" + field], "model release exceeded the remaining token budget")
             actual = record["usage"][field]
             retained_use[field] += reserved if actual is None else actual
-    exact, lower_bounds = {}, {}
-    for field in ("model_calls", *USAGE):
-        values = [cost.get(field) for cost in costs]
-        known = [v for v in values if v is not None]
-        if len(known) == len(values):
-            exact[field] = sum(known)
-        elif known:
-            lower_bounds[field] = sum(known)
+    exact, lower_bounds, first = measure_model_turns(originals)
     exceeded = (exact.get("input_tokens", 0) > limits["max_input_tokens"]
                 or exact.get("output_tokens", 0) > limits["max_output_tokens"])
     require(not exceeded or (entries and entries[-1].get("outcome") == "usage_overrun"),
             "model case exceeded its registered token budget")
-    first = next((r for r in records if r["transport"]["wire_state"] == "sent"), None)
     exposure = {"ordinal": first["turn"]["ordinal"], "request_sha256": first["request_sha256"],
                 "send_interval_ns": [first["started_monotonic_ns"], first["returned_monotonic_ns"]],
                 "http_status": first["transport"]["http_status"]} if first else None
