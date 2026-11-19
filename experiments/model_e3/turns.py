@@ -6,10 +6,10 @@ import time
 from experiments.e1.artifacts import MANIFEST, encoded
 from experiments.e1.run import utc
 from experiments.e3.fixture import TARGET, WORK, read, write
+from experiments.model_costs import USAGE
 
 
 LIMIT = MANIFEST["budgets"]["model"]["max_model_calls"]
-USAGE = ("input_tokens", "output_tokens", "spend_usd_micros")
 TRACE_KIND = "purser.model.e3.turns.v1"
 
 

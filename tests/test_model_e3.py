@@ -7,10 +7,13 @@ import json
 from pathlib import Path
 import select
 import signal
+import socket
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
 from threading import Event, Thread
+import time
+from types import SimpleNamespace
 import unittest
 
 from experiments.e1.artifacts import Artifacts, FIXTURE, MANIFEST, REGISTRATION, ROOT, encoded, sha
@@ -18,7 +21,8 @@ from experiments.e1.recovery import FileArchive
 from experiments.e1.report import Objects, wire_valid
 from experiments.e1.run import Cutoff, Journal, _run_arm
 from experiments.e3.fixture import TARGET
-from experiments.model_budget import ModelBudget, SpendingAuthority
+from experiments.model_budget import ModelBudget, ModelTurn, SpendingAuthority
+from experiments.model_costs import MODEL_FIELDS, USAGE
 from experiments.model_e3 import reconstruct_case, recover_case, run_case
 from purser.adapters.model import LocalEndpoint, LocalModelAdapter
 
@@ -73,13 +77,17 @@ def canned_service():
             if self.server.block_at == len(self.server.received):
                 self.server.reached.set()
                 self.server.release.wait(timeout=25)
-            choice = response_for(request, self.server.variant)
-            reply = {"model": self.server.model, "choices": [{"index": 0, "finish_reason": "stop", "message": {
-                "role": "assistant", "content": encoded(choice).decode()}}]}
-            if self.server.usage:
-                reply["usage"] = {"prompt_tokens": 31, "completion_tokens": 17}
+            if self.server.error_at == len(self.server.received):
+                status, reply = 422, {"error": "fixture refusal", "usage": {"prompt_tokens": 7}}
+            else:
+                status = 200
+                choice = response_for(request, self.server.variant)
+                reply = {"model": self.server.model, "choices": [{"index": 0, "finish_reason": "stop", "message": {
+                    "role": "assistant", "content": encoded(choice).decode()}}]}
+                if self.server.usage:
+                    reply["usage"] = {"prompt_tokens": 31, "completion_tokens": 17}
             body = encoded(reply)
-            self.send_response(200)
+            self.send_response(status)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
@@ -90,6 +98,7 @@ def canned_service():
 
     with HTTPServer(("127.0.0.1", 0), Handler) as server:
         server.variant, server.usage, server.received, server.model = "evidence", True, [], "canned-e3-control"
+        server.error_at = None
         server.block_at, server.reached, server.release = None, Event(), Event()
         thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True)
         thread.start()
@@ -114,7 +123,7 @@ class CaseFixture:
                                                  "fault_driver_sha256", "executor_sha256", "scorer_sha256")},
                     "treatments": dict.fromkeys(MANIFEST["units"]["arm_order"], file_sha), "source_commit": "0" * 40}
 
-    def run(self, label, arm="loop", track="primary", seed=3002, *, disabled=False, on_reply=None):
+    def run(self, label, arm="loop", track="primary", seed=3002, *, disabled=False, on_reply=None, timeout=None):
         folder = self.root / label
         folder.mkdir()
         assets = Artifacts(FileArchive(folder))
@@ -125,6 +134,8 @@ class CaseFixture:
 
         def decide(prompt, *, deadline):
             ordinal = next(ordinals)
+            if timeout is not None:
+                deadline = min(deadline, time.monotonic() + timeout)
             reply = adapter.decide(registration_sha256=reg, unit=unit, ordinal=ordinal,
                                    prompt=prompt, output_limit=512, deadline=deadline)
             if on_reply:
@@ -149,6 +160,46 @@ class ModelE3(unittest.TestCase):
         self.addCleanup(service.__exit__, None, None, None)
         self.fixture = CaseFixture(Path(folder.name).resolve(), server)
         self.server = server
+
+    def test_unlistened_service_charges_one_public_decision_and_zero_model_requests(self):
+        root = self.fixture.root / "unlistened"
+        root.mkdir()
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as unlistened:
+            unlistened.bind(("127.0.0.1", 0))
+            fixture = CaseFixture(root, SimpleNamespace(server_port=unlistened.getsockname()[1], model=self.server.model))
+            raw, facts, assets, registration = fixture.run("original", timeout=2)
+        self.assertEqual([raw["cost"][key] for key in MODEL_FIELDS], [0, 0, 0, 0])
+        self.assertEqual([facts["cost_exact"][key] for key in MODEL_FIELDS], [0, 0, 0, 0])
+        self.assertEqual((raw["terminal"], raw["cost"]["steps"], facts["model_receipts"],
+                          facts["model_decisions"], facts["first_model_exposure"]),
+                         ("provider_unavailable", 2, 1, [], None))
+        objects = Objects(assets.archive)
+        actions = objects.item(raw["artifacts"]["platform"])["e3"]["actions"]
+        self.assertEqual([objects.item(row["request"])["action"] for row in actions], ["context", "decide"])
+        turn = objects.item(raw["artifacts"]["model"])["turns"][0]
+        original = fixture.adapter.read_record(turn["result"]["sha256"])
+        self.assertEqual(original["transport"]["wire_state"], "not_sent")
+        key = ModelTurn(registration, tuple(original["turn"]["unit"]), 1, original["request_sha256"])
+        reservation = fixture.budget.inspect(key)
+        self.assertEqual(reservation["result_sha256"], turn["result"]["sha256"])
+        self.assertEqual((reservation["input_limit"], reservation["output_limit"]), (4096, 512))
+        self.assertEqual([reservation[k] for k in USAGE], [None, None, None])
+        with self.assertRaisesRegex(ValueError, "published model_calls differs"):
+            fixture.read({**raw, "cost": {**raw["cost"], "model_calls": 1}}, FileArchive(root / "original"), registration)
+
+    def test_returned_http_error_counts_its_request_and_disclosed_meter(self):
+        self.server.error_at = 2
+        raw, facts, assets, _ = self.fixture.run("diagnostic")
+        self.assertEqual((len(self.server.received), raw["cost"]["model_calls"], facts["model_receipts"]), (2, 2, 2))
+        self.assertEqual([d["ordinal"] for d in facts["model_decisions"]], [1])
+        self.assertEqual((raw["terminal"], raw["cost"]["steps"], facts["first_model_exposure"]["ordinal"]),
+                         ("provider_unavailable", 4, 1))
+        self.assertEqual([raw["cost"][k] for k in USAGE], [38, None, 0])
+        self.assertEqual(facts["cost_lower_bounds"]["output_tokens"], 17)
+        trace = Objects(assets.archive).item(raw["artifacts"]["model"])
+        error = self.fixture.adapter.read_record(trace["turns"][1]["result"]["sha256"])
+        self.assertEqual((error["transport"]["wire_state"], error["transport"]["http_status"], error["proposal"]),
+                         ("sent", 422, None))
 
     def test_changed_model_choice_changes_native_result_under_identical_timeout(self):
         good, facts, _, _ = self.fixture.run("qualified")

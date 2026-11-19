@@ -1,4 +1,4 @@
-"""Render measured cost and coverage for one registered model study."""
+"""Measure original model requests and render cost coverage for the registered study."""
 
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping
@@ -8,9 +8,47 @@ from experiments.e1.artifacts import MANIFEST
 from experiments.model_units import Unit, validate_unit
 
 
-FIELDS = ("steps", "elapsed_ns", "model_calls", "input_tokens", "output_tokens", "spend_usd_micros")
+USAGE = ("input_tokens", "output_tokens", "spend_usd_micros")
+MODEL_FIELDS = ("model_calls", *USAGE)
+FIELDS = ("steps", "elapsed_ns", *MODEL_FIELDS)
 VALIDITIES = ("complete", "arm_incomplete", "infrastructure_invalid")
 ARMS = MANIFEST["units"]["arm_order"]
+
+
+def measure_model_turns(originals: Iterable[Mapping | None]):
+    """Project ordered, verified transport receipts to exact costs, bounds and the first confirmed send.
+
+    An unresolved turn contributes None. Callers omit turns proved to have stopped
+    before transport. A complete outgoing send counts independently of its reply.
+    """
+    observations = {key: [] for key in MODEL_FIELDS}
+    first_sent = None
+    for record in originals:
+        if record is None:
+            values = {}
+        else:
+            state = record["transport"]["wire_state"]
+            if state == "not_sent":
+                values = dict.fromkeys(MODEL_FIELDS, 0)
+            elif state == "send_started":
+                values = record["usage"]
+            elif state == "sent":
+                values = {**record["usage"], "model_calls": 1}
+                if first_sent is None:
+                    first_sent = record
+            else:
+                raise ValueError("unknown original model transport state")
+        for key, parts in observations.items():
+            parts.append(values.get(key))
+
+    exact, lower_bounds = {}, {}
+    for key, parts in observations.items():
+        known = [part for part in parts if part is not None]
+        if len(known) == len(parts):
+            exact[key] = sum(known)
+        elif known or key == "model_calls":
+            lower_bounds[key] = sum(known)
+    return exact, lower_bounds, first_sent
 
 
 @dataclass(frozen=True)
@@ -96,7 +134,8 @@ def render_model_costs(schedule: Iterable[Unit], cases: Mapping[Unit, ModelCaseC
     lines = ["## Model costs and coverage", "",
              "Each cost shows how many scheduled cases have an exact measurement. A ≥ total includes "
              "the available exact measurements and any observed lower bounds. A question mark means "
-             "the original evidence supplied no measurement for that field. Elapsed time sums the "
+             "the original evidence supplied no measurement for that field. A model call counts a complete "
+             "outgoing request to the enrolled service, including one that returns an HTTP error. Elapsed time sums the "
              "participants’ active time. Spend uses measured charges in US dollars.", "",
              "| Population | Complete / incomplete / invalid / missing | Steps | Elapsed s | Model calls | Input tokens | Output tokens | Spend USD |",
              "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
