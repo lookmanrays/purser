@@ -6,6 +6,8 @@ The orchestrator integrates worker candidates on `lookman/purser-development`. E
 
 M0 through M4 passed their local engineering gates. The CLI can explain current or stale work, verify independent evidence and recover an interrupted Git publication. On the original E3 study, Purser and both comparison loops recovered 20/20 ordinary updates without duplicates. Purser used 130 primary steps against the plain loop’s 120. The real development ledger closed M4 at revision 68. M5 is open for the model adapter, real-model harness and human operating decision. [CLI usage](../README.md) · [M3 decision](evidence/M3/acceptance.md) · [M4 decision and evidence](evidence/M4/acceptance.md)
 
+The M5 project assignment reached revision 74 with an independently enrolled criterion for 195 model cases. The spending guard retained an uncertain charge across process loss and issued a single synthetic service request across two foreground dispatches. The isolated Python runner executed the frozen notification queue, and an edit to one fixture file changed two of its 11 measured outcomes. Actual provider trials and the human v1 decision remain open. The **Purser · M5 model study implementation** chat (`01a1f24c-91a4-7410-aa03-1150716ed460`) owns collection and the E1/E2 participants. Separate workers own model transport, isolated observation and E3 Git recovery. [M5 assignment and study population](evidence/M5/dispatch.md) · [Fixture host evidence](evidence/M5/wasi-host.md)
+
 ## M0 · Design and experimental protocol
 
 Accepted at `4460381e44f3dd42d22848bf6d82fea9a817a833` after independent review. See [M0 acceptance](evidence/M0/acceptance.md). M1-A and M1-B are released against the [M1 preflight](evidence/M1/preflight.md).
