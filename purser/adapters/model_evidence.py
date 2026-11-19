@@ -42,17 +42,18 @@ def _proposal_from_response(obj, model, prompt):
         return 'invalid_proposal', None
 
 
-def interpret(endpoint, prompt, output_limit, status, http_status, raw):
+def interpret(endpoint, prompt, output_limit, status, http_status, raw, *, complete, identity_encoding):
     usage = {'input_tokens': None, 'output_tokens': None,
              'spend_usd_micros': 0 if http_status is not None else None}
-    if status != 'response':
+    if not complete or not identity_encoding:
         return status, None, usage
+    invalid = 'invalid_response' if status == 'response' else status
     try:
         obj = strict_json(raw)
     except (ValueError, TypeError, RecursionError):
-        return 'invalid_response', None, usage
+        return invalid, None, usage
     if not isinstance(obj, dict):
-        return 'invalid_response', None, usage
+        return invalid, None, usage
     report = obj.get('usage')
     if report is not None:
         if not isinstance(report, dict):
@@ -71,6 +72,8 @@ def interpret(endpoint, prompt, output_limit, status, http_status, raw):
             return 'usage_overrun', None, usage
         if invalid_usage:
             return 'invalid_usage', None, usage
+    if status != 'response':
+        return status, None, usage
     outcome, proposal = _proposal_from_response(obj, endpoint.model, prompt)
     return outcome, proposal, usage
 
@@ -94,7 +97,8 @@ def _prompt_from_request(request, model, output_limit):
 
 def _verify(record):
     service = record['service']
-    endpoint = LocalEndpoint(service['port'], service['model'], service['runtime_sha256'], service['context_window'])
+    endpoint = LocalEndpoint(service['port'], service['model'], service['runtime_sha256'], service['context_window'],
+                             service.get('provider'), service.get('provider_version'), service.get('model_revision'))
     if encoded(endpoint.profile()) != encoded(service) or not re.fullmatch('[a-f0-9]{64}', record['authority_sha256']):
         raise ValueError('invalid service or authority identity')
     t = record['turn']
@@ -116,18 +120,28 @@ def _verify(record):
         raise ValueError('invalid transport progress')
     if http is not None and (state != 'sent' or type(http) is not int or not 100 <= http <= 999):
         raise ValueError('invalid HTTP evidence')
+    # The first prototype retained bodies only for complete HTTP 200 JSON. Its real
+    # historical missing fields stay unknown when reading these receipt bytes.
+    complete = transport.get('response_complete', status == 'response')
+    identity_encoding = transport.get('identity_encoding', True if status == 'response' else None)
+    json_content = transport.get('json_content', True if status == 'response' else None)
+    if type(complete) is not bool or any(v is not None and type(v) is not bool for v in (identity_encoding, json_content)):
+        raise ValueError('invalid body capture metadata')
     raw = None
-    if status == 'response':
+    if transport['response_base64'] is not None:
         raw = base64.b64decode(transport['response_base64'], validate=True)
-        if http != 200 or len(raw) > MAX_RESPONSE_BYTES or sha(raw) != transport['response_sha256']:
+        if http is None or len(raw) > MAX_RESPONSE_BYTES or sha(raw) != transport['response_sha256']:
             raise ValueError('invalid original response bytes')
-    elif transport['response_sha256'] is not None or transport['response_base64'] is not None:
-        raise ValueError('unexpected response body')
+    elif transport['response_sha256'] is not None or complete:
+        raise ValueError('missing original response bytes')
+    if status == 'response' and (http != 200 or not complete or not identity_encoding or not json_content):
+        raise ValueError('invalid completed response')
     if status == 'http_status' and (http is None or http == 200):
         raise ValueError('invalid HTTP outcome')
     if status in ('invalid_content_type', 'unsupported_encoding') and http != 200:
         raise ValueError('invalid content outcome')
-    expected = interpret(endpoint, prompt, output_limit, status, http, raw)
+    expected = interpret(endpoint, prompt, output_limit, status, http, raw,
+                         complete=complete, identity_encoding=identity_encoding)
     if encoded(expected) != encoded([record['outcome'], record['proposal'], record['usage']]):
         raise ValueError('observed reply does not support recorded proposal or usage')
     start, end = record['started_monotonic_ns'], record['returned_monotonic_ns']
