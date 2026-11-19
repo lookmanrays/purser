@@ -27,8 +27,9 @@ class Cutoff(Exception):
 
 
 class Journal:
-    def __init__(self, arm, *, progress=None, released=True):
+    def __init__(self, arm, *, progress=None, released=True, mode="scripted"):
         self.arm, self.rows = arm, []
+        self.limits = MANIFEST["budgets"][mode]
         self.progress, self.released = progress, released
         self.candidates, self.platform, self.initial_states = {}, {}, {}
         self.start, self.started = time.monotonic_ns(), utc()
@@ -78,7 +79,7 @@ class Journal:
         return self.run_action(info, run, assets)
 
     def begin_action(self, kind, work, actor, oid, inputs, *, before=None, repair_before=None, metadata=None):
-        limits = MANIFEST["budgets"]["scripted"]
+        limits = self.limits
         number = self.steps + 1
         if number > limits["max_steps"]:
             raise Cutoff("step_limit")
@@ -344,7 +345,7 @@ def _run_arm(driver, journal):
     previous = signal.signal(signal.SIGALRM, expire)
     try:
         journal.release()
-        remaining = MANIFEST["budgets"]["scripted"]["max_elapsed_s"] - journal.elapsed() / 1e9
+        remaining = journal.limits["max_elapsed_s"] - journal.elapsed() / 1e9
         if remaining <= 0:
             return "time_limit"
         signal.setitimer(signal.ITIMER_REAL, remaining)

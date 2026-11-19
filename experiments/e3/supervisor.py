@@ -19,10 +19,11 @@ def intervention(track, rank):
 
 
 class Supervisor:
-    def __init__(self, directory, repository, packet, arm, track, seed, rank, journal, assets):
+    def __init__(self, directory, repository, packet, arm, track, seed, rank, journal, assets, *, mode="scripted"):
         self.directory, self.binding, self.packet = directory, repository.binding, packet
         self.arm, self.track, self.seed, self.rank = arm, track, seed, rank
         self.journal, self.assets = journal, assets
+        self.mode = mode
         self.children = {}
         self.previous = read(directory / "native" / "initial.json")
 
@@ -31,6 +32,8 @@ class Supervisor:
         folder.mkdir()
         cut = intervention(self.track, self.rank) if not self.children else None
         command = {"intent": intent, "attempt": attempt, "action_id": action_id, "arm": self.arm, "cut": cut}
+        if self.mode == "model":
+            command["mode"] = "model"
         write(folder / "command.json", command)
         with (folder / "stderr").open("xb") as errors:
             proc = subprocess.Popen([sys.executable, "-B", "-m", "experiments.e3.writer", str(self.directory), attempt],

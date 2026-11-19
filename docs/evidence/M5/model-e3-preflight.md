@@ -1,0 +1,19 @@
+# E3 model participant preflight
+
+The base is `68f4407ccceebb9483c4e040516aa0c91f5f7215`. Risk is R3. The model receives a real scoped prepared-commit assignment and chooses whether to dispatch, inspect a particular attempt, or publish its disposition with a reason and evidence. Original caller releases, model responses, declarations, writer outcomes, native refs and times must support an offline independent reading. A timeout alone leaves the original physical outcome ambiguous.
+
+## Authorities and operating feasibility
+
+The registered M0 manifest owns the fixture, seed order, interventions, definitions and limits. E3's existing fixture, public tools, supervisor and native witness own the scoped Git and Purser operations. Its reader recovers ground truth outside the participant. The case coordinator owns exclusive first release, case identity, recovery and registration. The M5 adapter and budget own a model turn's original request bytes, provider result and reserved versus actual spend. The model owns its choice, operands and reported reason.
+
+Operating feasibility passes for offline component qualification on the local Darwin host. Python 3.11.15 and Apple Git 2.50.1 match M4's recorded runtime. M5 uses the same disposable local Git repository, writer subprocess, reftable and SQLite admissions. A loopback fixture will supply controlled service responses. Model enrollment and access remain separate from this component. No external provider or paid series is part of this qualification.
+
+## Impact and delivery
+
+Reuse E3's native effect and capture boundaries. Add a model participant and an offline causal trace checker. Apply mode-specific limits in the existing participant clock and the E3 scorer. Preserve the default scripted entry points and reconstruct the historic registration from its pinned checkout. Keep private intervention, canonical repository location, writer status, raw kernel snapshots and hidden scoring sources outside every prompt. Preserve the ordinary loop's explicit observation and both equipped arms' automatic observation. Model turns have a hard limit of eight and public actions a limit of 96. The released model session has 900 seconds including calls. A model decision followed by submit, dispatch or an observation is charged through its actual public work boundary, and compound operations retain distinct calls.
+
+Trust, contracts, durable execution, tool bootstrap, reliability and evidence reconstruction apply. The study collector owns a once-only marker before exposure. Each original response is associated with its action range and direct public operands. Crash recovery reads the original stage and preserves uncertainty. It cannot reissue an ambiguous request or effect. Independent scoring occurs after the original participant clock stops. Model failure and budget exhaustion preserve their actual terminal and partial observations.
+
+## Boundary evidence
+
+Exercise a native landed and an unlanded timeout, clean acknowledgment, and a live-writer stress hold. Change the canned reply on identical initial public input and recover different attributed dispositions and Git effects. Compare explicit and automatic observation disclosure. Rebuild the score and action association cold from the archive; challenge altered responses, declarations or input identity. Check model and scripted time limits, disabled/provider failure, interrupted call recovery, positive defaults and the M4 scripted runner/report. Record the source candidate and exact qualification boundary separately.

@@ -111,7 +111,7 @@ class Public:
         return {**value, 'issued': call['issued']}
 
 
-def clocks(evidence, platform, rows, public, sources):
+def clocks(evidence, platform, rows, public, sources, *, mode='scripted'):
     def read_clock(name, prefix):
         clock = sources.objects.item(evidence[name])
         require(type(clock['at_ns']) is int and clock['at_ns'] >= 0 and isinstance(clock['utc'], str)
@@ -125,9 +125,11 @@ def clocks(evidence, platform, rows, public, sources):
     terminal = terminals[0]['payload'] if len(terminals) == 1 and terminals[0] is rows[-1] else {}
     observed_exit = None
     if receipt and end:
+        reasons = {'done', 'blocked', 'idle', 'step_limit', 'time_limit'}
+        if mode == 'model':
+            reasons.update(('model_limit', 'provider_unavailable'))
         if (same(platform.get('participant_exit'), receipt) and receipt.get('end_monotonic_ns') == end['at_ns']
-                and receipt.get('end_utc') == end['utc'] and receipt.get('reason') in (
-                    'done', 'blocked', 'idle', 'step_limit', 'time_limit')):
+                and receipt.get('end_utc') == end['utc'] and receipt.get('reason') in reasons):
             observed_exit = receipt['reason']
         else:
             sources.problem('participant exit disagrees with the stopped clock')

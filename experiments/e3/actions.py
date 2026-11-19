@@ -11,8 +11,8 @@ from .witness import native
 
 
 class Actions(Journal):
-    def __init__(self, directory, assets, arm, progress):
-        super().__init__(arm, progress=progress, released=False)
+    def __init__(self, directory, assets, arm, progress, *, mode="scripted"):
+        super().__init__(arm, progress=progress, released=False, mode=mode)
         self.directory, self.assets = directory, assets
 
     def release(self):
