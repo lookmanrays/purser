@@ -34,3 +34,11 @@ For an active commitment, `frontier` lists permitted next actions. `context ASSI
 When a requirement changes, `status` lists the premise that changed, the decisions under reconsideration and the work that became stale. Use `why WORK` to follow a dependency to its observation or to see which evidence still supports an unaffected item. Add `--revision N` to inspect the same item before the change. [Decision and dependency operations](docs/contracts/decisions-v1.md)
 
 For a registered private Git repository, `frontier` shows when an approved publication can run. `run --git-binding FILE` takes one step. After an interruption, the next step inspects Git to determine whether the original write landed. A still-running writer leaves the action pending. `status` reports the grant and any unresolved attempt. [Git setup and foreground commands](docs/contracts/git-effects-v1.md#running-a-governed-effect)
+
+## Read the model study
+
+```sh
+python3.11 -m experiments.model_study report
+```
+
+With no argument the report shows all 195 scheduled cases and marks the uncollected results as unknown. To rebuild a collected series, pass its directory after `report` from the registered source checkout. Both commands run offline. The tables give each arm’s measured and scheduled counts, costs and comparison with the plain loop. [Experiments and current coverage](docs/evidence/M5/dispatch.md)
