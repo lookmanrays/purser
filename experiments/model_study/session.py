@@ -102,7 +102,7 @@ def read_session(trace, archive, frozen, identity):
         request = objects.item(turn["request"]) if turn["request"] is not None else None
         if request is not None:
             require(request_identity(frozen["conditions"]["service"], request) == turn["request_sha256"]
-                    and parse(request["messages"][1]["content"]) == prompt, "original model input differs")
+                    and parse(request["messages"][1]["content"].encode()) == prompt, "original model input differs")
         if reservation is not None:
             require(reservation["registration"] == identity["registration_sha256"] and reservation["unit"] == identity["unit"]
                     and reservation["number"] == number and reservation["request_sha256"] == turn["request_sha256"],

@@ -63,8 +63,11 @@ def counted(replies):
 
 
 def cli(*args):
-    return subprocess.run([sys.executable, "-m", "experiments.model_study", *map(str, args)], cwd=ROOT,
-                          capture_output=True, text=True, check=True).stdout
+    result = subprocess.run([sys.executable, "-m", "experiments.model_study", *map(str, args)], cwd=ROOT,
+                            capture_output=True, text=True)
+    if result.returncode:
+        raise AssertionError(result.stderr)
+    return result.stdout
 
 
 def enroll(folder, port, *, observer):
