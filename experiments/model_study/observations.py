@@ -6,8 +6,27 @@ from experiments.e1.measurement import MeasurementUnavailable
 from experiments.e2 import checkpoint, evidence, measure, policy
 
 
+def public_check(category, experiment, repo, oid, snapshot, selector, probe):
+    phase = selector["phase"]
+    if category == "worker":
+        work = selector["work"]
+        if experiment == "E1":
+            return executor.local_check(snapshot, work, selector["skip"], run_probe=probe)
+        return policy.worker_check(snapshot, work, phase, run_probe=probe)
+    if category == "review":
+        work = selector["work"]
+        if experiment == "E1":
+            return arms.self_review(repo, oid, snapshot, work, run_probe=probe)
+        return policy.review(repo, oid, snapshot, work, phase, run_probe=probe)
+    label = selector["criterion"]
+    if experiment == "E1":
+        return observer.inspect(repo, oid, snapshot, label, run_probe=probe)
+    return policy.inspect(repo, oid, snapshot, label, phase, run_probe=probe)
+
+
 class Checks:
-    def __init__(self, candidates, outer, snapshot_from_git, seed, rank, assets):
+    def __init__(self, candidates, outer, snapshot_from_git, seed, rank, assets, log):
+        self.log = log
         self.repo = candidates.archive
         self.outer = outer
         self.snapshot_from_git = snapshot_from_git
@@ -19,29 +38,18 @@ class Checks:
             raise MeasurementUnavailable("isolated candidate observer unavailable")
         return self.snapshot_from_git(self.repo, oid)
 
-    def worker(self, experiment, work, oid, phase, *, skip=False):
+    def public_check(self, category, experiment, oid, selector):
         snapshot = self.snapshot(oid)
-        if experiment == "E1":
-            return executor.local_check(snapshot, work, skip, run_probe=self.outer.probe)
-        return policy.worker_check(snapshot, work, phase, run_probe=self.outer.probe)
-
-    def review(self, experiment, work, oid, phase):
-        snapshot = self.snapshot(oid)
-        if experiment == "E1":
-            return arms.self_review(self.repo, oid, snapshot, work, run_probe=self.outer.probe)
-        return policy.review(self.repo, oid, snapshot, work, phase, run_probe=self.outer.probe)
-
-    def public(self, experiment, label, oid, phase):
-        snapshot = self.snapshot(oid)
-        if experiment == "E1":
-            return observer.inspect(self.repo, oid, snapshot, label, run_probe=self.outer.probe)
-        return policy.inspect(self.repo, oid, snapshot, label, phase, run_probe=self.outer.probe)
+        with self.log.observing(category, oid, selector):
+            return public_check(category, experiment, self.repo, oid, snapshot, selector, self.outer.probe)
 
     def protect(self, oid, labels, version, journal):
         missing = [label for label in labels if (oid, label, version) not in self.reports]
         if missing:
-            reports = self.outer.measure(self.snapshot(oid), self.seed, self.rank, labels=missing,
-                                         **measure.parameters(version))
+            snapshot = self.snapshot(oid)
+            with self.log.observing("protected", oid, {"labels": missing, "version": version}) as group:
+                reports = self.outer.measure(snapshot, self.seed, self.rank, labels=missing,
+                                             **measure.parameters(version))
             if reports.keys() != set(missing):
                 raise MeasurementUnavailable("isolated observer omitted a protected criterion")
             for label, report in reports.items():
@@ -51,7 +59,7 @@ class Checks:
                 ref = self.assets.put(report, "json")
                 journal.event("oracle", {"candidate": oid, "criterion": label, "version": version,
                                          "observed": verdict, "expected": measure.EXPECTED, "verdict": verdict,
-                                         "evidence": ref})
+                                         "evidence": ref, "probe_group": group["first_record"]})
                 self.reports[oid, label, version] = verdict
 
     def checkpoint(self, states, oid, track, journal):

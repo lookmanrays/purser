@@ -171,6 +171,29 @@ def reconstruct_case(raw, archive, records):
                        for r in rows if r["kind"] == "public_state" for p in [r["payload"]]
                        if (p["source_action"], p["subject"]) in {(a,w) for a,w,*_ in actual_states}]
         require(transitions == actual_states or not complete, "public transitions differ from original participant")
+        from .observer_receipts import Observed
+        observed = Observed(meta.get("isolation_receipts", []), objects, repos, complete)
+        phase = policy.LINEAR
+        for row in rows:
+            p = row["payload"]
+            if row["kind"] == "fault" and experiment == "E2":
+                phase = policy.EXPONENTIAL
+            if row["kind"] != "action" or not p.get("return") or "failure" in p["return"]:
+                continue
+            work, oid = p["subject"], p["candidate"]
+            if p["action"] == "check" and p["input"].get("check") in ("public task checks", "post-submit public self-review"):
+                category = "worker" if p["actor"] == "executor" else "review"
+                selector = {"work": work, "phase": phase}
+                if category == "worker":
+                    fault = fault_for(seed, track) if experiment == "E1" else None
+                    selector["skip"] = bool(fault and fault[0] == "skipped_retry_check" and fault[1] == work and
+                                            not any(prior["kind"] == "fault" for prior in rows[:row["seq"]-1]))
+                reproduced = observed.public(category, experiment, repos[oid], p, selector)
+                require(same(reproduced, p["return"]), "public check differs from original observations")
+            elif p["action"] == "observe":
+                selector = {"criterion": p["input"]["criterion"], "phase": phase}
+                reproduced = observed.public("verifier", experiment, repos[oid], p, selector)
+                require(same(reproduced, p["return"]["report"]), "equipped observation differs from original guest")
         grades = {}
         for row in rows:
             if row["kind"] == "oracle":
@@ -178,6 +201,7 @@ def reconstruct_case(raw, archive, records):
                 oid, label, version = measure.key(p)
                 report = objects.item(p["evidence"])
                 grade = measure.grade(report, oid, label, seed, rank, version)
+                observed.validate(p["probe_group"], oid, label, version, report, seed, rank)
                 require(grade == p["verdict"] and oid in repos and (oid, label, version) not in grades,
                         "duplicate or unbound protected observation")
                 if label == "scope/paths":

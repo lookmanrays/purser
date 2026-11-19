@@ -19,6 +19,7 @@ from experiments.e2.trial import participant as retained_participant
 from experiments.model_budget import LIMITS
 
 from .observations import Checks
+from .observer_receipts import ReceiptLog
 from .public import make_arm
 
 
@@ -103,6 +104,8 @@ def run_case(directory, assets, freeze, arm, track, seed, rank, *, experiment, d
     terminal, error = "harness_failure", None
     runner = checks = None
     try:
+        if observer is None:
+            raise MeasurementUnavailable(observer_error or "isolated candidate observer unavailable")
         candidates = Candidates(directory, assets)
         journal.candidates = candidates.entries
         defs = {label: encoded({"criterion": label, "scorer": freeze["scorer_sha256"]}) for label in LABELS}
@@ -110,7 +113,10 @@ def run_case(directory, assets, freeze, arm, track, seed, rank, *, experiment, d
         meta["definition_artifacts"] = [assets.put(v, "bin") for v in defs.values()]
         meta["environment_artifact"] = assets.put(env, "bin")
         adapter = make_arm(directory, arm, experiment, defs, env)
-        checks = Checks(candidates, observer, snapshot_from_git, seed, rank, assets)
+        log = ReceiptLog(directory, assets, journal)
+        if observer is not None:
+            observer = observer(log.record)
+        checks = Checks(candidates, observer, snapshot_from_git, seed, rank, assets, log)
         runner = Participant(experiment, track, seed, candidates, adapter, journal, checks, decide)
         journal.persist()
         terminal = _run_arm(runner, journal)
@@ -137,6 +143,7 @@ def run_case(directory, assets, freeze, arm, track, seed, rank, *, experiment, d
             if error is None:
                 error = f"{type(exc).__name__}: {exc}"
             terminal = "harness_failure"
+    meta["isolation_receipts"] = ReceiptLog.retain(directory)
     return _raw(assets, freeze, experiment, arm, track, seed, journal.checkpoint(), terminal, error)
 
 
@@ -144,6 +151,7 @@ def recover_case(directory, assets, freeze, arm, track, seed, rank, *, experimen
     """Only read the surviving public state and Git objects. Never reissue a turn or run code."""
     saved = progress or {}
     meta = saved.setdefault("platform", {})
+    meta["isolation_receipts"] = ReceiptLog.retain(directory)
     failure = "interrupted original case"
     try:
         _retain(directory, assets, arm, meta)

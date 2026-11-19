@@ -101,7 +101,11 @@ class Participant:
                 decision = self.decide(prompt, deadline=time.monotonic() + max(0, self.j.remaining_seconds()))
             except ModelIncomplete as error:
                 self.public.failed_choice(error.code)
-                return "model_limit" if error.code in ("budget_refused", "model_limit") else "provider_unavailable"
+                if error.code in ("budget_refused", "model_limit", "token_limit"):
+                    return "model_limit"
+                if error.code in ("invalid_proposal", "unfinished_response", "unusable_response"):
+                    return "blocked"
+                return "provider_unavailable"
             original = {"action": decision.action, "arguments": decision.arguments}
             prompt.proposal(encoded(original))
             start["choice"] = dict(original, request_sha256=decision.request_sha256, result_sha256=decision.result_sha256)
@@ -190,8 +194,8 @@ class Participant:
         c = self.candidates
         fault = self.fault if self.fault and not self.injected and self.fault[1] == work else None
         checked = self.call("check", work, "executor", {"check": "public task checks"},
-                            lambda: self.checks.worker(self.experiment, work, oid, self.phase,
-                                                       skip=bool(fault and fault[0] == "skipped_retry_check")), oid)
+                            lambda: self.checks.public_check("worker", self.experiment, oid, {"work": work, "phase": self.phase,
+                                      "skip": bool(fault and fault[0] == "skipped_retry_check")}), oid)
         claim = "done, tests pass" if fault else checked["worker_claim"]
         if fault:
             before = oid
@@ -204,13 +208,13 @@ class Participant:
         submitted = self.call("submit", work, "executor", {"candidate": oid, "claim": claim},
                               lambda: self.arm.submit(work, oid), oid)
         audit = self.call("check", work, "plan_reviewer", {"check": "post-submit public self-review"},
-                          lambda: self.checks.review(self.experiment, work, oid, self.phase), oid)
+                          lambda: self.checks.public_check("review", self.experiment, oid, {"work": work, "phase": self.phase}), oid)
         verified = {}
         if self.j.arm != "loop":
             for label in (LEAVES[work],) if work in LEAVES else PARENT_CHECKS:
                 self.call("plan", work, "planner", {"open_run": label}, lambda: self.arm.opening(work, label), oid)
                 def observe():
-                    result = self.checks.public(self.experiment, label, oid, self.phase)
+                    result = self.checks.public_check("verifier", self.experiment, oid, {"criterion": label, "phase": self.phase})
                     return {"report": result, "receipt": self.arm.observe(work, label, result)}
                 result = self.call("observe", work, "independent_observer", {"criterion": label}, observe, oid)["report"]
                 verdict = observer.verdict(result, label, oid)

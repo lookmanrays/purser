@@ -121,7 +121,13 @@ def field(cases, unit, name):
 
 
 def column(cases, exp, arm, name):
-    return [field(cases, (exp, "primary", seed, arm), name) for seed in MANIFEST["experiments"][exp]["seeds"]]
+    result = []
+    for seed in MANIFEST["experiments"][exp]["seeds"]:
+        unit = exp, "primary", seed, arm
+        case = cases.get(unit)
+        eligible = case and case["facts"].get("eligible") is True
+        result.append(field(cases, unit, name) if eligible or name == "intervention_reached" else None)
+    return result
 
 
 def predicates(cases, comparator="loop"):
@@ -201,7 +207,7 @@ def render(frozen=None, cases=None):
                 p, b = [column(cases, exp, arm, "rework_steps") for arm in ("purser", comparator)]
                 ratio = "?" if None in p + b else "undefined" if sum(b) == 0 else str(sum(p) / sum(b))
                 out += ["", f"Total rework ratio, Purser / {comparator} — {ratio}."]
-        detailed = (*keys, *(E3_EXTRAS if exp == "E3" else ("final_pass", "final_parent_closed")
+        detailed = (*keys, "eligible", *(E3_EXTRAS if exp == "E3" else ("final_pass", "final_parent_closed")
                               if exp == "E1" else ("checkpoint_candidate", "stale_at_delivery")), *COST)
         out += ["", "### Original case measurements", "",
                 "| Track | Seed | Arm | Validity / terminal | " + " | ".join(detailed) + " |",
@@ -220,7 +226,9 @@ def render(frozen=None, cases=None):
             for other in ("loop", "loop_equal_verifier"):
                 delta = []
                 for name in (*keys, *COST):
-                    a, b = [field(cases, (exp, track, seed, x), name) for x in (arm, other)]
+                    pair = [(exp, track, seed, x) for x in (arm, other)]
+                    a, b = [field(cases, u, name) if name in COST or track != "primary"
+                            or cases.get(u, {}).get("facts", {}).get("eligible") is True else None for u in pair]
                     delta.append(show(a - b if a is not None and b is not None else None))
                 cells.append(" / ".join(delta))
             out.append(f"| {track} / {seed} | " + " | ".join(cells) + " |")

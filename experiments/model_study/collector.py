@@ -46,7 +46,7 @@ def acquire_observer(freeze, runtime_directory, stack):
     # The deployment publishes the observer qualification digest in the registration.
     if freeze["conditions"]["observer"].get("status") != "qualified":
         raise ValueError("registered observer is unavailable")
-    return Observer(runtime), Snapshot.from_git
+    return lambda checkpoint: Observer(runtime, checkpoint=checkpoint), Snapshot.from_git
 
 
 def collect(directory, *, units=None, runtime_directory=None):
