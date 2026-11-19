@@ -5,6 +5,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from itertools import count
 import json
 from pathlib import Path
+import select
 import signal
 import subprocess
 import sys
@@ -113,7 +114,7 @@ class CaseFixture:
                                                  "fault_driver_sha256", "executor_sha256", "scorer_sha256")},
                     "treatments": dict.fromkeys(MANIFEST["units"]["arm_order"], file_sha), "source_commit": "0" * 40}
 
-    def run(self, label, arm="loop", track="primary", seed=3002, *, disabled=False):
+    def run(self, label, arm="loop", track="primary", seed=3002, *, disabled=False, on_reply=None):
         folder = self.root / label
         folder.mkdir()
         assets = Artifacts(FileArchive(folder))
@@ -123,8 +124,12 @@ class CaseFixture:
         ordinals = count(1)
 
         def decide(prompt, *, deadline):
-            return adapter.decide(registration_sha256=reg, unit=unit, ordinal=next(ordinals),
-                                  prompt=prompt, output_limit=512, deadline=deadline)
+            ordinal = next(ordinals)
+            reply = adapter.decide(registration_sha256=reg, unit=unit, ordinal=ordinal,
+                                   prompt=prompt, output_limit=512, deadline=deadline)
+            if on_reply:
+                on_reply(ordinal, reply)
+            return reply
 
         raw = run_case(folder, assets, self.pin, arm, track, seed, seed - 3000, decide=decide,
                        read_record=adapter.read_artifact, registration_sha256=reg)
@@ -164,6 +169,46 @@ class ModelE3(unittest.TestCase):
         self.assertEqual((facts["stuck_requires_manual"], facts["manual_repair"]), (True, False))
         self.assertEqual(len(self.server.received), 2)
 
+    def test_recovered_original_response_keeps_usage_without_publishing_its_proposal(self):
+        folder = self.fixture.root / "post-response"
+        folder.mkdir()
+        script = """
+from pathlib import Path
+from types import SimpleNamespace
+import sys
+from tests.test_model_e3 import CaseFixture
+fixture = CaseFixture(Path(sys.argv[1]), SimpleNamespace(server_port=int(sys.argv[2]), model='canned-e3-control'))
+def cut(number, decision):
+    if number == 2:
+        print(decision.result_sha256, flush=True)
+        sys.stdin.buffer.read(1)
+fixture.run('cut', on_reply=cut)
+"""
+        proc = subprocess.Popen([sys.executable, "-B", "-c", script, str(folder), str(self.server.server_port)],
+                                cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            self.assertTrue(select.select([proc.stdout], [], [], 20)[0], "no original sealed response")
+            digest = proc.stdout.readline().decode().strip()
+            self.assertRegex(digest, "^[0-9a-f]{64}$")
+        finally:
+            proc.kill()
+            proc.communicate(timeout=10)
+        record = LocalModelAdapter(None, None, folder / "sealed").read_artifact(digest)
+        stage = folder / "cut"
+        assets = Artifacts(FileArchive(stage))
+        reg = sha(encoded({"qualification": "cut", "unit": ["E3", "primary", 3002, "loop"]}))
+        raw = recover_case(stage, assets, self.fixture.pin, "loop", "primary", 3002, 2,
+                           registration_sha256=reg, recovered_records={2: record})
+        facts = self.fixture.read(raw, assets.archive, reg)
+        self.assertEqual((raw["cost"]["model_calls"], raw["cost"]["input_tokens"], raw["cost"]["output_tokens"],
+                          raw["cost"]["spend_usd_micros"]), (2, 62, 34, 0))
+        self.assertEqual((len(self.server.received), raw["cost"]["steps"]), (2, 4))
+        self.assertEqual(facts["cost_lower_bounds"]["elapsed_ns"], raw["cost"]["elapsed_ns"])
+        self.assertEqual([d["action"] for d in facts["model_decisions"]], ["dispatch"])
+        self.assertEqual(facts["decisions"], [])
+        self.assertEqual(facts["original_truth"], "unlanded")
+        self.assertIsNone(raw["score"])
+
     def test_public_disclosure_comes_from_its_actual_released_arm(self):
         for arm in ("loop", "purser", "loop_equal_verifier"):
             with self.subTest(arm=arm):
@@ -185,6 +230,11 @@ class ModelE3(unittest.TestCase):
     def test_stress_clean_and_guard_refusal_are_observed(self):
         _, pending, _, _ = self.fixture.run("unresolved", "purser", "inconclusive-observation", 3001)
         self.assertEqual((pending["stress_held_pending"], pending["effect_count"]), (True, 0))
+        self.server.variant = "decline"
+        raw, unexposed, _, _ = self.fixture.run("before-stress", "loop", "inconclusive-observation", 3001)
+        self.assertEqual(raw["validity"], "arm_incomplete")
+        self.assertIsNot(unexposed["eligible"], True)
+        self.server.variant = "evidence"
         clean, done, _, _ = self.fixture.run("clean", "loop", "clean", 3001)
         self.assertEqual((clean["cost"]["steps"], done["effect_count"], done["resolved_by_budget"]), (4, 1, True))
         self.server.variant = "early_retry"
@@ -221,6 +271,8 @@ class ModelE3(unittest.TestCase):
             self.fixture.read(raw, assets.archive, "a" * 64)
         with self.assertRaisesRegex(ValueError, "score differs"):
             self.fixture.read({**raw, "score": {**raw["score"], "original_truth": "landed"}}, assets.archive, reg)
+        with self.assertRaisesRegex(ValueError, "validity differs"):
+            self.fixture.read({**raw, "validity": "infrastructure_invalid", "score": None}, assets.archive, reg)
         objects = Objects(assets.archive)
         trace = objects.item(raw["artifacts"]["model"])
         trace["turns"][1]["result"] = trace["turns"][0]["result"]
@@ -260,6 +312,10 @@ fixture.run('cut')
         self.assertEqual(facts["cost_lower_bounds"]["model_calls"], 1)
         self.assertIsNone(raw["cost"]["input_tokens"])
         self.assertEqual(facts["cost_lower_bounds"]["input_tokens"], 31)
+        self.assertEqual((raw["cost"]["steps"], facts["cost_lower_bounds"]["steps"]), (4, 4))
+        public = Objects(assets.archive).item(raw["artifacts"]["platform"])["e3"]["actions"]
+        self.assertIsNone(public[-1]["response"])
+        self.assertEqual(Objects(assets.archive).item(public[-1]["request"])["input"], {"request": "choose", "turn": 2})
         self.assertEqual(facts["original_truth"], "unlanded")
         self.assertEqual(raw, recover_case(stage, assets, self.fixture.pin, "loop", "primary", 3002, 2,
                                            registration_sha256=reg))
