@@ -9,17 +9,20 @@ from experiments.e1.report import parse, require
 
 
 class ReceiptLog:
-    def __init__(self, directory, assets, journal):
+    def __init__(self, directory, assets, journal, identity):
         self.path = directory / "isolation"
         self.path.mkdir()
         self.assets, self.journal = assets, journal
         self.number, self.group = 0, None
+        self.identity = identity
+        self.refs = []
 
     @contextmanager
     def observing(self, category, oid, selector):
         if self.group is not None:
             raise ValueError("overlapping isolated observation groups")
-        self.group = {"first_record": self.number + 1, "use": category, "candidate": oid,
+        self.refs = []
+        self.group = {**self.identity, "first_record": self.number + 1, "use": category, "candidate": oid,
                       "selector": selector, "preceding_actions": self.journal.steps}
         try:
             yield self.group
@@ -32,6 +35,11 @@ class ReceiptLog:
         self.number += 1
         entry = {"group": self.group, "receipt": self.assets.put(event, "json")}
         write_atomic(self.path / f"{self.number:05}.json", encoded(entry))
+        self.refs.append(entry["receipt"])
+        if self.group["use"] != "protected":
+            action = next(r["payload"] for r in reversed(self.journal.rows) if r["kind"] == "action")
+            action.setdefault("isolation_receipts", []).append(entry["receipt"])
+            self.journal.persist()
 
     @staticmethod
     def retain(directory):
@@ -43,14 +51,16 @@ class ReceiptLog:
 
 
 class Observed:
-    def __init__(self, entries, objects, repos, complete):
+    def __init__(self, entries, objects, repos, complete, identity):
         from experiments.model_isolation import Snapshot
         self.groups, self.snapshots, self.protected = {}, {}, {}
-        self.by_action = {}
+        self.by_action, self.refs = {}, {}
         starts = {}
         for index, row in enumerate(entries, 1):
             group, receipt = row["group"], objects.item(row["receipt"])
+            require(all(group.get(k) == v for k,v in identity.items()), "observer callback belongs to another case")
             n, oid = group["first_record"], group["candidate"]
+            self.refs.setdefault(n, []).append(row["receipt"])
             require(0 < n <= index and receipt["candidate"] == oid and oid in repos, "wrong isolated candidate")
             if n not in self.groups:
                 require(n == index, "unbound original isolation group")
@@ -90,6 +100,8 @@ class Observed:
         from .observations import public_check
         oid = action["candidate"]
         n = self.by_action.get(action["attempt"])
+        require(action.get("isolation_receipts", []) == self.refs.get(n, []),
+                "isolated invocation differs from original public action receipts")
         if n is not None:
             group = self.groups[n][0]
             require(group["use"] == category and group["candidate"] == oid and group["selector"] == selector,

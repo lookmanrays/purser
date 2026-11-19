@@ -69,7 +69,7 @@ def inspect(directory):
                 lower.update(facts["cost_lower_bounds"])
             else:
                 require(raw["artifacts"]["model"] == trace_ref, "model trace differs from original session")
-                facts = readback.reconstruct_case(raw, archive, records)
+                facts = readback.reconstruct_case(raw, archive, records, registration_sha256=identity["registration_sha256"])
                 for k, partial in (("elapsed_ns", "elapsed_lower_ns"), ("steps", "observed_steps")):
                     exact[k] = facts[k]
                     lower[k] = facts[partial]

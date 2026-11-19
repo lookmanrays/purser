@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from experiments.e1 import capture
-from experiments.e1.artifacts import MANIFEST, Candidates, encoded, git
+from experiments.e1.artifacts import MANIFEST, Candidates, encoded, git, sha
 from experiments.e1.measurement import MeasurementUnavailable
 from experiments.e1.outcomes import LABELS
 from experiments.e1.recovery import input_identity
@@ -113,7 +113,8 @@ def run_case(directory, assets, freeze, arm, track, seed, rank, *, experiment, d
         meta["definition_artifacts"] = [assets.put(v, "bin") for v in defs.values()]
         meta["environment_artifact"] = assets.put(env, "bin")
         adapter = make_arm(directory, arm, experiment, defs, env)
-        log = ReceiptLog(directory, assets, journal)
+        log = ReceiptLog(directory, assets, journal, {"registration_sha256": sha(encoded(freeze)),
+                         "unit": [experiment, track, seed, arm]})
         if observer is not None:
             observer = observer(log.record)
         checks = Checks(candidates, observer, snapshot_from_git, seed, rank, assets, log)

@@ -130,7 +130,7 @@ def collect_one(directory, unit, freeze, wire, endpoint, budget, observer, snaps
     records, exact, lower = transport.read_session(trace, archive, freeze, identity)
     if experiment != "E3":
         raw["artifacts"]["model"] = trace_ref
-        facts = readback.reconstruct_case(raw, archive, records)
+        facts = readback.reconstruct_case(raw, archive, records, registration_sha256=identity["registration_sha256"])
         raw["score"] = coding_score(raw, facts)
         if raw["validity"] == "complete" and track == "primary" and raw["score"] is None:
             raw["validity"] = "arm_incomplete"

@@ -116,7 +116,7 @@ def model_application(actions, records, objects, repos, source):
     return chosen
 
 
-def reconstruct_case(raw, archive, records):
+def reconstruct_case(raw, archive, records, *, registration_sha256):
     objects = Objects(archive)
     meta, rows, candidates = (objects.item(raw["artifacts"][k]) for k in ("platform", "journal", "candidates"))
     arm, experiment, track, seed = (raw[k] for k in ("arm", "experiment", "track", "seed"))
@@ -172,7 +172,8 @@ def reconstruct_case(raw, archive, records):
                        if (p["source_action"], p["subject"]) in {(a,w) for a,w,*_ in actual_states}]
         require(transitions == actual_states or not complete, "public transitions differ from original participant")
         from .observer_receipts import Observed
-        observed = Observed(meta.get("isolation_receipts", []), objects, repos, complete)
+        observed = Observed(meta.get("isolation_receipts", []), objects, repos, complete,
+                            {"registration_sha256": registration_sha256, "unit": [experiment, track, seed, arm]})
         phase = policy.LINEAR
         for row in rows:
             p = row["payload"]
@@ -201,6 +202,9 @@ def reconstruct_case(raw, archive, records):
                 oid, label, version = measure.key(p)
                 report = objects.item(p["evidence"])
                 grade = measure.grade(report, oid, label, seed, rank, version)
+                probe_refs = objects.item(p["probe_receipts"])
+                if label != "scope/paths" or probe_refs:
+                    require(probe_refs == observed.refs.get(p["probe_group"]), "protected checkpoint receipts differ")
                 observed.validate(p["probe_group"], oid, label, version, report, seed, rank)
                 require(grade == p["verdict"] and oid in repos and (oid, label, version) not in grades,
                         "duplicate or unbound protected observation")

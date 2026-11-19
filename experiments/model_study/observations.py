@@ -59,7 +59,8 @@ class Checks:
                 ref = self.assets.put(report, "json")
                 journal.event("oracle", {"candidate": oid, "criterion": label, "version": version,
                                          "observed": verdict, "expected": measure.EXPECTED, "verdict": verdict,
-                                         "evidence": ref, "probe_group": group["first_record"]})
+                                         "evidence": ref, "probe_group": group["first_record"],
+                                         "probe_receipts": self.assets.put(self.log.refs, "json")})
                 self.reports[oid, label, version] = verdict
 
     def checkpoint(self, states, oid, track, journal):
