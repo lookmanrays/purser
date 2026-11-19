@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "proposal_id": "p-check-links",
+  "commitment": "C-user-guide",
+  "base_revision": 0,
+  "ops": [
+    {
+      "op": "commitment.create",
+      "id": "C-user-guide",
+      "root": "W-links",
+      "statement": "Check the links in the user guide."
+    }
+  ],
+  "justification": []
+}

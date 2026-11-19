@@ -1,46 +1,60 @@
 # Purser
 
-Purser is a local research kernel for coding work that survives a change of agent or a process restart. It tracks commitments, scoped authority, observations and the evidence needed to close work.
+Purser is an experimental local runtime for developers building coding agents. It keeps a task’s history outside the agent’s conversation. When a session ends, the next agent or human reviewer can see which change was submitted, which checks passed, and what still needs doing.
 
-From a local checkout you can track a piece of work, inspect what evidence would close it, and recover an interrupted update to a dedicated local Git branch. M0–M4 have passed their local checks. The M5 study software is available, with 0 of 195 genuine model trials collected. Connecting a real coding agent through MCP is planned for M6. [Current roadmap and evidence](docs/delivery.md#current-implementation)
+Purser runs on one trusted machine. It records work, decisions and permissions in SQLite and stores supporting evidence beside the database. Today you can use the foreground CLI or connect a local executor in Python. Interactive coding-agent integration is in development.
 
-The original architecture and implementation plan describe the intended system. The delivery record tracks what has been built. Decision D-30 makes remote delivery of approvals optional. [Architecture v0.5](docs/architecture-v0.5.md) · [Original implementation plan](docs/implementation-plan-v0.5.md) · [Approval decision](docs/decisions/0030-principal-approval.md) · [Contributor setup and tests](CONTRIBUTING.md)
+## Try a handoff
 
-## Try the local CLI
+A scripted agent has changed a notification sender’s configuration to allow three delivery attempts. Its session ends before anyone verifies that the sender actually stops after the third failure. Try picking up where it left off.
 
-Run these commands from the repository root in a POSIX shell with Python 3.11 or newer. The local CLI uses Python’s standard library. The example creates a private temporary directory for its SQLite ledger.
+You need Git, a POSIX shell and Python 3.11 or newer. After cloning, the example runs locally using only Python’s standard library.
+
+```sh
+git clone https://github.com/lookmanrays/purser.git
+cd purser
+db=$(python3.11 -m examples.handoff)
+python3.11 -m purser --db "$db" why W-retry-limit
+```
+
+The example creates a temporary workspace. `db` holds its database path. The `why` response shows the work is `submitted`. Its `reasons` list names the outstanding check.
+
+```json
+{"code": "missing_evidence", "refs": ["O-three-attempts"]}
+```
+
+```sh
+python3.11 -m purser --db "$db" frontier
+python3.11 -m purser --db "$db" context AS-retry-limit
+```
+
+`frontier` gives the next action, `observe`, for `O-three-attempts`. `context` shows the submitted configuration’s digest and the check the next session needs to verify. Each command reads the same history in a fresh process. [Runnable example](examples/handoff.py)
+
+## Use Purser in a project
+
+To start a workspace, propose a **commitment**, the outcome you want Purser to track. This example proposes checking the links in a user guide. For work you want to keep, choose a persistent directory for the database. [Example proposal](examples/check-links.json)
 
 ```sh
 workspace=$(mktemp -d)
-python3.11 -m purser --db "$workspace/purser.db" init
-python3.11 -m purser --db "$workspace/purser.db" propose - <<'JSON'
-{
-  "v": 1,
-  "proposal_id": "p-create",
-  "commitment": "C-retries",
-  "base_revision": 0,
-  "ops": [
-    {"op": "commitment.create", "id": "C-retries", "root": "W-root", "statement": "Add bounded notification retries."}
-  ],
-  "justification": []
-}
-JSON
-python3.11 -m purser --db "$workspace/purser.db" why C-retries
-python3.11 -m purser --db "$workspace/purser.db" replay
+python3.11 -m purser --db "$workspace/work.db" init
+python3.11 -m purser --db "$workspace/work.db" propose examples/check-links.json
+python3.11 -m purser --db "$workspace/work.db" why C-user-guide
 ```
 
-The creation receipt records revision 2. `why` shows the commitment in the proposed state. Sending the identical proposal again returns its existing receipt. The wire contract describes activation by the local principal, historical reads and JSON exit codes. [Wire contract](docs/contracts/kernel-v1.md)
+The receipt records the proposal. The task starts in `proposed` state and awaits the owner’s approval to begin. [Proposal format and activation](docs/contracts/kernel-v1.md)
 
-For an active commitment, `frontier` lists permitted next actions. `context ASSIGNMENT` reconstructs the work, candidate, required evidence and scope for that assignment. `why WORK` explains the evidence or acceptance the work still needs. Each command can read a complete historical revision. `run` takes one local driver turn and reports whether it dispatched work or went idle. A trusted launcher can attach a scripted executor to its assigned identity. The owner CLI can evaluate eligible child closure directly. [Work and evidence operations](docs/contracts/work-v1.md)
+- **Connect an executor.** The Python driver passes the current assignment to your callback and records the candidate it returns. Purser checks independent evidence before closing a work item. The owner accepts the overall result. [Driver](purser/driver.py) · [Work and evidence](docs/contracts/work-v1.md)
+- **Handle changed requirements.** When a recorded assumption changes, Purser can reopen affected work and preserve completed work that still holds. [Dependency tracking](docs/contracts/decisions-v1.md)
+- **Publish an approved change.** Purser can advance a permitted branch in a dedicated local Git repository. If the process stops during publication, the next driver turn checks whether the update landed before retrying. [Local Git setup and recovery](docs/contracts/git-effects-v1.md#running-a-governed-effect)
 
-When a requirement changes, `status` lists the premise that changed, the decisions under reconsideration and the work that became stale. Use `why WORK` to follow a dependency to its observation or to see which evidence still supports an unaffected item. Add `--revision N` to inspect the same item before the change. [Decision and dependency operations](docs/contracts/decisions-v1.md)
+## Contributing
 
-For a registered private Git repository, `frontier` shows when an approved publication can run. `run --git-binding FILE` takes one step. After an interruption, the next step inspects Git to determine whether the original write landed. A still-running writer leaves the action pending. `status` reports the grant and any unresolved attempt. [Git setup and foreground commands](docs/contracts/git-effects-v1.md#running-a-governed-effect)
-
-## Read the model study
+From the checkout, run the CLI and storage tests with Python’s standard library.
 
 ```sh
-python3.11 -m experiments.model_study report
+python3.11 -m unittest -q tests.test_cli tests.test_store
 ```
 
-With no argument the report shows all 195 scheduled cases and marks the uncollected results as unknown. To rebuild a collected series, pass its directory after `report` from the registered source checkout. Both commands run offline. The tables give each arm’s measured and scheduled counts, costs and comparison with the plain loop. [Experiments and current coverage](docs/evidence/M5/dispatch.md)
+The contributor guide covers the source layout, full test suite and how to reproduce the published experiments. [Contributing](CONTRIBUTING.md) · [Architecture](docs/architecture-v0.5.md) · [Roadmap](docs/delivery.md#current-implementation)
+
+Purser is licensed under the [Apache License 2.0](LICENSE).
