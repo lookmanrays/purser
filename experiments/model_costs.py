@@ -5,9 +5,9 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 
 from experiments.e1.artifacts import MANIFEST
+from experiments.model_units import Unit, validate_unit
 
 
-Unit = tuple[str, str, int, str]
 FIELDS = ("steps", "elapsed_ns", "model_calls", "input_tokens", "output_tokens", "spend_usd_micros")
 VALIDITIES = ("complete", "arm_incomplete", "infrastructure_invalid")
 ARMS = MANIFEST["units"]["arm_order"]
@@ -88,15 +88,8 @@ def render_model_costs(schedule: Iterable[Unit], cases: Mapping[Unit, ModelCaseC
     by_track = defaultdict(lambda: defaultdict(list))
     by_arm = defaultdict(list)
     for unit in units:
-        experiment, track, seed, arm = unit
-        study = MANIFEST["experiments"].get(experiment)
-        if study is None or arm not in ARMS or type(seed) is not int:
-            raise ValueError("unknown model cost unit")
-        stress = study.get("stress")
-        if not ((track == "primary" and seed in study["seeds"])
-                or (track == "clean" and seed == study["clean_seed"])
-                or (stress and track == stress["id"] and seed == stress["seed"])):
-            raise ValueError("unregistered experiment track or seed")
+        validate_unit(unit)
+        experiment, track, _, arm = unit
         by_track[experiment, track][arm].append(unit)
         by_arm[arm].append(unit)
 
