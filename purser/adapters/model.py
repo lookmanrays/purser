@@ -131,6 +131,16 @@ class LocalModelAdapter:
         self.budget.settle(turn, result_sha256=digest, **record['usage'])
         return record, digest
 
+    def recover_released(self, turn: ModelTurn, *, deadline):
+        """Read or restore the original receipt for an existing reservation. Never reserve or send."""
+        if self.budget is None:
+            return None
+        prior = self.budget.inspect(turn)
+        if prior is None:
+            return None
+        record, _ = self._recover(turn, prior['result_sha256'], deadline)
+        return record
+
     def _exchange(self, turn, prompt, request, output_limit, deadline):
         started_utc = datetime.now(timezone.utc).isoformat()
         started_ns = time.monotonic_ns()

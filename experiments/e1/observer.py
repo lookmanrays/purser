@@ -4,11 +4,11 @@ from .artifacts import FIXTURE, changes
 from .measurement import probe, same
 
 
-def inspect(repo, oid, root, label):
+def inspect(repo, oid, root, label, *, run_probe=probe):
     channel, ids = "local", ["left"]
     test = {"channel": channel, "ids": ids, "disabled": [], "attempts": 1, "base": 3, "times": [0, 2, 3, 6]}
     if label == "legacy/compat":
-        actual = probe(root, legacy=True)
+        actual = run_probe(root, legacy=True)
         answer = {"tests": 28, "errors": [], "failures": [], "skipped": []}
     elif label == "scope/paths":
         delta = changes(repo, oid)
@@ -23,7 +23,7 @@ def inspect(repo, oid, root, label):
             ids = ["left", "right"]
         if label == "W1/preferences":
             test["disabled"], ids = [channel], []
-        actual = probe(root, cases=[test])
+        actual = run_probe(root, cases=[test])
         expected = [[[i, channel, t * 1_000_000] for i in ids] if t in range(0, test["attempts"] * 3, 3)
                     else [] for t in test["times"]]
         answer = [{"enqueued": test["attempts"] * len(ids), "samples": expected, "pending": 0}]

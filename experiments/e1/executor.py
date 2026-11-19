@@ -24,8 +24,8 @@ def implement(worktree, work):
     (worktree / file).write_text(start.rsplit("    return ", 1)[0] + "    return " + RETURNS[work] + "\n")
 
 
-def local_check(root, work, skip=False):
-    legacy = probe(root, legacy=True)
+def local_check(root, work, skip=False, *, run_probe=probe):
+    legacy = run_probe(root, legacy=True)
     ok = legacy.get("tests") == 28 and not any(legacy.get(k) for k in ("failures", "errors", "skipped"))
     if skip or work not in LEAVES:
         return {"pass": ok, "legacy": legacy, "worker_claim": "done, tests pass" if ok else "check failed"}
@@ -36,7 +36,7 @@ def local_check(root, work, skip=False):
         case["attempts"] = 2
     if work == "W3":
         case["ids"] = ["one", "one"]
-    actual = probe(root, cases=[case])
+    actual = run_probe(root, cases=[case])
     expected = {"W1": 0, "W2": 2, "W3": 1}[work]
     ok = ok and isinstance(actual, list) and same(actual[0].get("enqueued"), expected)
     return {"pass": ok, "legacy": legacy, "extended": actual,

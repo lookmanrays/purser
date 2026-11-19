@@ -97,9 +97,8 @@ def _prompt_from_request(request, model, output_limit):
 
 def _verify(record):
     service = record['service']
-    endpoint = LocalEndpoint(service['port'], service['model'], service['runtime_sha256'], service['context_window'],
-                             service.get('provider'), service.get('provider_version'), service.get('model_revision'))
-    if encoded(endpoint.profile()) != encoded(service) or not re.fullmatch('[a-f0-9]{64}', record['authority_sha256']):
+    endpoint = LocalEndpoint.from_profile(service)
+    if not re.fullmatch('[a-f0-9]{64}', record['authority_sha256']):
         raise ValueError('invalid service or authority identity')
     t = record['turn']
     identity = ModelTurn(t['registration_sha256'], tuple(t['unit']), t['ordinal'], record['request_sha256'])
