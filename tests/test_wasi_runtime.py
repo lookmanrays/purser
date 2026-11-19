@@ -70,14 +70,33 @@ except MemoryError: print('allocation refused')
 """
         memory = self.runtime.run(entry, {})
         self.assertEqual((memory.state, memory.stdout), ('completed', b'1024\nallocation refused\n'))
-        fuel = self.runtime.run('print(sum(i*i for i in range(1000000)))', {}, fuel=160_000_000)
-        self.assertEqual((fuel.state, fuel.fuel_used), ('fuel_limit', 160_000_000))
+        fuel = self.runtime.run("print('entered', flush=True)\nprint(sum(i*i for i in range(1000000)))",
+                                {}, fuel=160_000_000)
+        self.assertEqual((fuel.state, fuel.fuel_used, fuel.stdout, fuel.exit_code),
+                         ('fuel_limit', 160_000_000, b'entered\n', None))
         failed = self.runtime.run('raise SystemExit(7)', {})
         self.assertEqual((failed.state, failed.exit_code), ('guest_exit', 7))
         output = self.runtime.run("import sys; print('abc', flush=True); print('q' * 600, file=sys.stderr)", {},
                                   output_limit=160)
         self.assertEqual(output.state, 'output_limit')
         self.assertEqual(len(output.stderr) + len(output.stdout), 160)
+
+    def test_startup_fuel_and_subsequent_success(self):
+        entry = "print('ready', flush=True)"
+        for limit in (1, 30_000):
+            with self.subTest(fuel=limit):
+                result = self.runtime.run(entry, {}, fuel=limit)
+                self.assertEqual((result.state, result.fuel_used, result.exit_code, result.stdout, result.stderr),
+                                 ('fuel_limit', limit, None, b'', b''))
+        fresh = self.runtime.run(entry, {})
+        self.assertEqual((fresh.state, fresh.exit_code, fresh.stdout), ('completed', 0, b'ready\n'))
+
+    def test_unresolved_host_import_is_a_configuration_failure(self):
+        # Change only the temporary interpreter copy for this host configuration control.
+        with WasiRuntime(ARCHIVES) as unlinked:
+            (unlinked.directory / 'guest/python.wasm').write_text('(module (import "fixture" "missing" (func)))')
+            with self.assertRaisesRegex(RuntimeUnavailable, 'isolated host process exited'):
+                unlinked.run('pass', {})
 
     def test_wall_limit_retains_original_partial_output_and_next_process_runs(self):
         result = self.runtime.run("import time; print('entered', flush=True); time.sleep(25)", {}, timeout=6)
