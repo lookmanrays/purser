@@ -4,7 +4,7 @@ from experiments.e1.artifacts import MANIFEST, encoded, sha
 from experiments.e1.report import require
 
 from .participant import declaration, participant_history, prompt_for
-from .turns import LIMIT, TRACE_KIND, USAGE, check_record, failure_terminal
+from .turns import LIMIT, TRACE_KIND, USAGE, check_record, decision_request, failure_terminal
 
 
 def original_actions(objects, evidence):
@@ -91,6 +91,12 @@ def read_trace(identity, trace, objects, platform, *, service_sha256=None, autho
                 and plan.terminal is None and type(entry.get("before_actions")) is int and entry["before_actions"] == plan.position,
                 "model prompt prefix differs from the public action sequence")
         before = plan.position
+        request = objects.item(entry["decision_request"])
+        require(encoded(request) == encoded(decision_request(plan.arm, entry)), "original E3 decision request differs")
+        pending = before < len(public) and encoded(public[before]) == encoded(request)
+        if pending:
+            require(interrupted and ordinal == len(entries) and before + 1 == len(public),
+                    "unfinished public decision in the middle of a participant session")
         require(type(entry["issued_ns"]) is int and public[before - 1]["finished_monotonic_ns"] <= entry["issued_ns"],
                 "model turn overlapped an undelivered public action")
         last_model_ns = entry["issued_ns"]
@@ -113,6 +119,8 @@ def read_trace(identity, trace, objects, platform, *, service_sha256=None, autho
             costs.append({"model_calls": 1, **record["usage"]})
             if entry.get("recovered_result") and outcome is None:
                 complete = False
+                if pending:
+                    plan.position += 1
                 continue
         elif outcome in ("disabled", "budget_refused", "deadline"):
             costs.append(dict.fromkeys(("model_calls", *USAGE), 0))
@@ -123,12 +131,18 @@ def read_trace(identity, trace, objects, platform, *, service_sha256=None, autho
         if outcome is None:
             require(interrupted and ordinal == len(entries), "unfinished model release in a completed case")
             complete = False
+            if pending:
+                plan.position += 1
             break
         returned = entry["returned_ns"]
         require(type(returned) is int and entry["issued_ns"] <= returned
-                and (before == len(public) or returned <= public[before]["issued_monotonic_ns"]),
+                and (before == len(public) or pending or returned <= public[before]["issued_monotonic_ns"]),
                 "public effect predates its model response")
         last_model_ns = returned
+        if pending:
+            complete = False
+            plan.position += 1
+            break
         try:
             if outcome == "decision":
                 require(record is not None, "public choice lacks original model evidence")

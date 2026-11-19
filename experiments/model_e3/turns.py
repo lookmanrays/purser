@@ -5,7 +5,7 @@ import time
 
 from experiments.e1.artifacts import MANIFEST, encoded
 from experiments.e1.run import utc
-from experiments.e3.fixture import read, write
+from experiments.e3.fixture import TARGET, WORK, read, write
 
 
 LIMIT = MANIFEST["budgets"]["model"]["max_model_calls"]
@@ -19,6 +19,14 @@ def failure_terminal(code):
     if code in ("invalid_proposal", "unfinished_response", "unusable_response"):
         return "blocked"
     return "provider_unavailable"
+
+
+def decision_request(arm, entry):
+    number = entry["before_actions"] + 1
+    return {"action_id": f"action-{number}", "attempt": number, "action": "decide", "subject": WORK,
+            "actor": "executor", "arm": arm, "candidate": TARGET,
+            "input": {"request": "choose", "turn": entry["ordinal"]},
+            "issued_monotonic_ns": entry["issued_ns"], "issued_utc": entry["issued_utc"]}
 
 
 def manifest(unit, registration_sha256, population):
@@ -64,6 +72,7 @@ class Turns:
         path = self.folder / f"turn-{self.ordinal:02d}.json"
         entry = {"ordinal": self.ordinal, "before_actions": journal.steps,
                  "issued_ns": time.monotonic_ns(), "issued_utc": utc()}
+        entry["decision_request"] = self.assets.put(decision_request(journal.arm, entry), "json")
         write(path, entry)
         deadline = journal.start / 1e9 + journal.limits["max_elapsed_s"]
 

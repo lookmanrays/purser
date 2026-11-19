@@ -92,11 +92,41 @@ def reconstruct_case(raw, archive, *, registration_sha256, population="qualifica
     return result
 
 
+def _interrupted_request(raw, trace, assets, objects, platform):
+    if raw["terminal"] not in ("harness_failure", "time_limit", "step_limit") or not trace["turns"]:
+        return
+    last = trace["turns"][-1]
+    actions = platform["e3"]["actions"]
+    if len(actions) != last["before_actions"]:
+        return
+    ref = last["decision_request"]
+    source = objects.item(ref)
+    require(source == turns.decision_request(raw["arm"], last), "missing original interrupted decision release")
+    earlier = raw["artifacts"]["journal"]
+    rows = objects.item(earlier)
+    require(raw["cost"]["steps"] == last["before_actions"] and rows[-1]["kind"] == "terminal",
+            "interrupted model decision conflicts with original native requests")
+    terminal = rows[-1]
+    issued = source["issued_monotonic_ns"] - platform["start_monotonic_ns"]
+    require(0 <= issued <= terminal["offset_ns"], "interrupted decision outside the measured participant interval")
+    next_row = {"seq": terminal["seq"], "offset_ns": issued, "kind": "action", "payload": {**source, "request": ref}}
+    require(len(rows) == 1 or rows[-2]["offset_ns"] <= issued, "interrupted decision predates prior public work")
+    terminal = {**terminal, "seq": terminal["seq"] + 1,
+                "payload": {**terminal["payload"], "last_observation": next_row["seq"]}}
+    raw["artifacts"]["journal"] = assets.put([*rows[:-1], next_row, terminal], "json")
+    actions.append({"request": ref, "response": None})
+    platform["referenced_files"].append(earlier)
+    platform["interrupted_decision"] = {"original_journal": earlier, "request": ref}
+    platform["public_history_complete"] = False
+    raw["cost"]["steps"] += 1
+
+
 def _finish(directory, assets, raw, trace, identity, *, recovered=False):
     raw["mode"] = "model"
     raw["artifacts"]["model"] = assets.put(trace, "json")
     objects = Objects(assets.archive)
     platform = objects.item(raw["artifacts"]["platform"])
+    _interrupted_request(raw, trace, assets, objects, platform)
     refs = [*platform.get("referenced_files", []), raw["artifacts"]["model"], *trial.files_in(trace)]
     platform["referenced_files"] = sorted({r["path"]: r for r in refs}.values(), key=lambda r: r["path"])
     input_platform = raw["artifacts"]["platform"] = assets.put(platform, "json")
@@ -166,9 +196,17 @@ def recover_case(directory, assets, freeze, arm, track, seed, rank, *, registrat
                           seed=seed, rank=rank)
     trace = turns.retain(directory, assets, identity, recovered=recovered_records)
     if saved.get("end_monotonic_ns") is None and saved.get("start_monotonic_ns") is not None:
+        from purser.adapters.model import verify_model_record
+
+        objects = Objects(assets.archive)
         for entry in trace["turns"]:
             at = entry.get("returned_ns", entry["issued_ns"])
             wall = entry.get("returned_utc", entry["issued_utc"])
+            ref = entry.get("recovered_result")
+            if ref:
+                original = verify_model_record(objects.blob(ref), expected_sha256=ref["sha256"])
+                if original["returned_monotonic_ns"] > at:
+                    at, wall = original["returned_monotonic_ns"], original["returned_utc"]
             if at > (saved.get("last_monotonic_ns") or 0):
                 saved.update(last_monotonic_ns=at, last_utc=wall)
     raw = trial.failure(assets, freeze, arm, track, seed, rank, reason="interrupted E3 model case", progress=saved)
