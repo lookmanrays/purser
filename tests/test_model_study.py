@@ -152,6 +152,54 @@ runpy.run_module('experiments.model_study', run_name='__main__')
             self.assertEqual(result["facts"]["model_receipts"], 1)
 
     @unittest.skipUnless(WASI, "requires the enrolled disposable macOS WASI fixture")
+    def test_same_first_request_accepts_different_source_in_separate_replicates(self):
+        unit = ("E1", "clean", 1001, "loop")
+        target = "/".join(map(str, unit))
+        withheld = choice("stop", reason="leave integration open")
+        replies = [edit("W1", "True", "submit"), withheld,
+                   edit("W1", "channel not in disabled", "submit"), withheld]
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with counted(replies) as (port, calls):
+                first = enroll(root, port, observer="qualified")
+                second = root / "replicate-2"
+                cli("freeze", second, "--conditions", root / "conditions.json", "--population", "canned_control",
+                    "--budget", root / "budget.sqlite", "--replicate", "2", "--reason", "vary only the first reply")
+                for series in (first, second):
+                    cli("collect", series, "--unit", target, "--wasi-archives", WASI)
+                self.assertEqual(len(calls), 4)
+                self.assertEqual(calls[0], calls[2])
+            results = [inspect(series)[1][unit] for series in (first, second)]
+            self.assertNotEqual(results[0]["facts"]["final_candidate"], results[1]["facts"]["final_candidate"])
+            for case in results:
+                self.assertEqual(case["cost"].validity, "arm_incomplete", case["errors"])
+                self.assertEqual(case["cost"].exact["model_calls"], 2)
+                self.assertFalse(case["facts"]["final_parent_closed"])
+
+    @unittest.skipUnless(WASI, "requires the enrolled disposable macOS WASI fixture")
+    def test_closed_affected_stress_keeps_transient_sibling_reopening(self):
+        unit = ("E2", "closed-affected", 2001, "loop_equal_verifier")
+        replies = [edit("W1", "channel not in disabled"), edit("W3", "tuple(dict.fromkeys(event_ids))"),
+                   edit("W2", "tuple(k * base for k in range(attempts))"), choice("reopen", work="W1"),
+                   choice("close", work="W1"),
+                   edit("W2", "(0,) + tuple(base * 2 ** (k - 1) for k in range(1, attempts))", action="revise_retry"),
+                   choice("close", work="W-notify")]
+        with tempfile.TemporaryDirectory() as temp:
+            with counted(replies) as (port, calls):
+                series = enroll(Path(temp), port, observer="qualified")
+                cli("collect", series, "--unit", "/".join(map(str, unit)), "--wasi-archives", WASI)
+                self.assertEqual(len(calls), 7)
+                turn = json.loads(calls[1]["messages"][1]["content"])
+                self.assertIn("independent_verifier", json.loads(turn["observation"])["last_public_actions"][-2]["actor"])
+            case = inspect(series)[1][unit]
+            self.assertEqual(case["cost"].validity, "complete", case["errors"])
+            facts = case["facts"]
+            self.assertTrue(facts["intervention_reached"] and facts["affected_invalid_closure"])
+            self.assertFalse(facts["stale_at_delivery"] or facts["unaffected_both_retained"])
+            self.assertEqual(facts["unaffected_reopened"], 1)
+            self.assertTrue(facts["final_parent_closed"] and facts["final_pass"])
+
+    @unittest.skipUnless(WASI, "requires the enrolled disposable macOS WASI fixture")
     def test_e1_wrong_source_false_parent_and_e2_real_premise(self):
         controls = [
             edit("W1", "True"), choice("close", work="W-notify"),

@@ -68,24 +68,29 @@ def accepted_submission(history, checkpoint, oid):
     return (False if history.public_complete and history.actions_complete else None), None
 
 
+def original_retry_policy(arm, source):
+    """Read the operative A1 decision from the W2 plan row or kernel projection."""
+    if arm != "purser":
+        return source["criterion"] == LEAVES["W2"] and source["retry_choice"] == policy.LINEAR and source["premise"] is None
+    view = WorkView(source)
+    decisions = view.graph.decisions("W2")
+    return (view.records.get(policy.ASSUMPTION, {}).get("fields", {}).get("state") == "held" and len(decisions) == 1
+            and decisions[0]["id"] == policy.ORIGINAL and decisions[0]["choice"] == policy.LINEAR
+            and decisions[0]["support"] == [policy.ASSUMPTION])
+
+
 def old_assignment(history, checkpoint, submission_attempt=None):
     """Read the operative W2 law from the original head and from its accepted submission."""
     def selected(ck):
         if history.arm != "purser":
             try:
-                row = history.source.context(ck, "W2")
-                return (row["criterion"] == LEAVES["W2"] and row["retry_choice"] == policy.LINEAR
-                        and row["premise"] is None)
+                return original_retry_policy(history.arm, history.source.context(ck, "W2"))
             except READ_ERRORS:
                 return None
         index = history.source.position(ck)
         if index is None:
             return None
-        original = history.source.publications[index]
-        decisions = WorkView(original.snapshot["projection"]).graph.decisions("W2")
-        return (original.records.get(policy.ASSUMPTION, {}).get("state") == "held" and len(decisions) == 1
-                and decisions[0]["id"] == policy.ORIGINAL and decisions[0]["choice"] == policy.LINEAR
-                and decisions[0]["support"] == [policy.ASSUMPTION])
+        return original_retry_policy(history.arm, history.source.publications[index].snapshot["projection"])
     values = [selected(checkpoint)]
     if submission_attempt is not None:
         publication = next((p.get("submission_publication") for p in evidence.published_submissions(history)

@@ -1,7 +1,6 @@
 """Publish one work-scoped action and observe the plan or kernel at its boundary."""
 
 import time
-from contextlib import contextmanager
 from copy import deepcopy
 
 from experiments.e1 import capture
@@ -137,10 +136,3 @@ class PublicRun:
         event["finished_monotonic_ns"] = time.monotonic_ns()
         capture.states(rows, event["after"], self.previous, self.j.event, action=event)
         self.j.persist()
-
-    def retained(self):
-        if isinstance(self.arm, Treatment):
-            from experiments.e2.trial import participant
-            return participant(self.arm.store.path.parent, self.assets, "purser")[2]
-        rows = self.arm.file.read_bytes()
-        return {"plan": self.arm.read(), "plan_versions": plan_versions.retain(self.arm.file.parent, self.assets, rows)}

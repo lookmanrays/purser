@@ -8,7 +8,7 @@ import time
 
 from experiments.e1.artifacts import MANIFEST, Artifacts, encoded, sha
 from experiments.e1.recovery import FileArchive, sync_directory, write_atomic
-from experiments.e1.report import parse, require
+from experiments.e1.report import Objects, parse, require
 from experiments.e1.run import utc
 from experiments.e1.measurement import MeasurementUnavailable
 from experiments.e2.outcomes import FIELDS as E2_FIELDS
@@ -147,6 +147,10 @@ def collect_one(directory, unit, freeze, wire, endpoint, budget, observer, snaps
     if experiment != "E3":
         raw["artifacts"]["model"] = trace_ref
         try:
+            objects = Objects(archive)
+            platform = objects.item(raw["artifacts"]["platform"])
+            platform["referenced_files"] = readback.referenced_files(raw["artifacts"], platform, objects)
+            raw["artifacts"]["platform"] = assets.put(platform, "json")
             facts = readback.reconstruct_case(raw, archive, records, registration_sha256=identity["registration_sha256"])
         except (OSError, ValueError, KeyError, TypeError, MeasurementUnavailable) as error:
             # Keep the sealed observation and all surviving objects for offline audit.

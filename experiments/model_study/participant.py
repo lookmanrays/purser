@@ -11,7 +11,7 @@ from experiments.e1.executor import LEAVES, ORDER, PARENT, PARENT_CHECKS, PATHS,
 from experiments.e1.outcomes import LABELS, is_closed
 from experiments.e1.purser_arm import Treatment
 from experiments.e1.run import Cutoff
-from experiments.e2 import policy
+from experiments.e2 import checkpoint, policy
 from experiments.model_budget import LIMITS
 
 from .public import PublicRun, WorkRefused
@@ -251,10 +251,12 @@ class Participant:
                 or self.state("W2")[1] != oid or not all(is_closed(self.state(w)[0]) for w in ("W1", "W3"))
                 or is_closed(self.state("W2")[0]) != (self.track == "closed-affected")):
             return False
-        rows, checkpoint = self.public.point()
+        rows, point = self.public.point()
         states = {w: capture.position(row) for w, row in rows.items()}
-        with self.j.private_measurement(oid, checkpoint):
-            qualified = self.checks.checkpoint(states, oid, self.track, self.j)
+        with self.j.private_measurement(oid, point):
+            source = self.arm.store.snapshot(revision=point["revision"])["projection"] if self.j.arm == "purser" else rows["W2"]
+            qualified = (checkpoint.original_retry_policy(self.j.arm, source)
+                         and self.checks.checkpoint(states, oid, self.track, self.j))
         if not qualified:
             return False
         self.public.deliver(policy.notice(self.seed), oid)

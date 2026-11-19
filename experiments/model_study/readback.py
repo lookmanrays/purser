@@ -11,20 +11,41 @@ from experiments.e1.measurement import same
 from experiments.e1.report import GitPacks, Objects, require
 from experiments.e2 import checkpoint, evidence, measure, plan_versions, policy
 from experiments.e2.outcomes import all_pass, criteria
+from experiments.e3.trial import files_in
 from experiments.model_budget import LIMITS
+from purser.driver import context_pack
+from purser.kernel.wire import KernelError
+from purser.kernel.workview import WorkView
 
 from .trial import active_ns
 
 
+def referenced_files(artifacts, platform, objects):
+    """Follow the original content-addressed inputs without trusting the declared file list."""
+    roots = [artifacts[k] for k in ("journal", "candidates", "model")]
+    roots.append({k: v for k, v in platform.items() if k != "referenced_files"})
+    pending = list(files_in(roots))
+    found = {}
+    while pending:
+        ref = pending.pop()
+        path = ref["path"]
+        if path in found:
+            require(found[path] == ref, "conflicting identity for a retained case object")
+            continue
+        objects.blob(ref)
+        found[path] = ref
+        if path.endswith(".json"):
+            pending.extend(files_in(objects.item(ref)))
+    return [found[path] for path in sorted(found)]
+
+
 def public_points(arm, objects, trace, points):
-    if not points:
-        return {}
     if arm == "purser":
         history = accounting.kernel_history(trace, {p["revision"] for p in points})
         def read(point):
-            digest, rows, _ = history[point["revision"]]
+            digest, rows, snapshot = history[point["revision"]]
             require(digest == point["head_hash"], "public kernel head differs from replay")
-            return rows
+            return rows, snapshot["projection"]
     else:
         known, previous = {}, None
         for n, ref in enumerate(trace["plan_versions"], 1):
@@ -35,13 +56,15 @@ def public_points(arm, objects, trace, points):
             known[previous] = rows
         require(previous and known[previous] == trace["plan"], "terminal plan differs from durable publications")
         def read(point):
-            return known[point["plan_sha256"]]
-    result = {}
+            rows = known[point["plan_sha256"]]
+            return rows, rows["W2"]
+    result, sources = {}, {}
     for point in points:
-        rows = read(point)
+        rows, source = read(point)
         require(same(rows, objects.item(point["view"])), "public view differs from its durable head")
-        result[encoded(point)] = accounting.public_rows(rows, arm)
-    return result
+        key = encoded(point)
+        result[key], sources[key] = accounting.public_rows(rows, arm), source
+    return result, sources
 
 
 def validate_overlay(repo, before, after, fault, seed):
@@ -151,6 +174,8 @@ def model_application(actions, records, objects, repos, source, experiment, comp
 def reconstruct_case(raw, archive, records, *, registration_sha256):
     objects = Objects(archive)
     meta, rows, candidates = (objects.item(raw["artifacts"][k]) for k in ("platform", "journal", "candidates"))
+    require(meta["referenced_files"] == referenced_files(raw["artifacts"], meta, objects),
+            "coding case file manifest differs from the original artifact graph")
     arm, experiment, track, seed = (raw[k] for k in ("arm", "experiment", "track", "seed"))
     from experiments.e1.artifacts import MANIFEST
     rank = MANIFEST["experiments"][experiment]["seeds"].index(seed) + 1
@@ -167,7 +192,9 @@ def reconstruct_case(raw, archive, records, *, registration_sha256):
         require(all(r["kind"] in ("oracle", "terminal") for r in segment), "protected pause contains public work")
     measured_time = active_ns(meta["start_monotonic_ns"], meta["end_monotonic_ns"], periods)
     exact = meta["clock_basis"] in ("before_release", "exact")
-    complete = exact and raw["terminal"] != "harness_failure"
+    cutoff = raw["terminal"] in ("time_limit", "step_limit")
+    complete = (exact and raw["terminal"] != "harness_failure" and
+                not (cutoff and any("after" not in a or "return" not in a or "failure" in a["return"] for a in actions)))
     facts = {"terminal": raw["terminal"], "steps": len(actions) if exact else None,
              "observed_steps": len(actions), "elapsed_ns": measured_time if exact else None,
              "elapsed_lower_ns": measured_time, "error": meta.get("failure")}
@@ -181,13 +208,28 @@ def reconstruct_case(raw, archive, records, *, registration_sha256):
         timeline = [r for r in rows if r["kind"] in ("action", "fault") and "before" in r["payload"]]
         for r in timeline:
             points.extend(r["payload"][k] for k in ("before", "after") if k in r["payload"])
-        positions = public_points(arm, objects, objects.item(meta["treatment_trace"]), points)
+        trace = objects.item(meta["treatment_trace"])
+        positions, sources = public_points(arm, objects, trace, points)
         previous = positions[encoded(meta["initial_public"])]
         actual_states = []
         for row in timeline:
             p = row["payload"]
             before = positions[encoded(p["before"])]
             require(previous == before or not complete, "unobserved change of public participant state")
+            if (row["kind"] == "action" and p["action"] == "context" and "work" in p["input"]
+                    and "return" in p and "failure" not in p["return"]):
+                point, work = p["before"], p["subject"]
+                if arm == "purser":
+                    projection = sources[encoded(point)]
+                    assignment = WorkView(projection).fields(work)["assignment"]
+                    try:
+                        context = context_pack({**point, "projection": projection}, assignment)
+                    except KernelError as error:
+                        context = {"disposition": "refused", "code": str(error)}
+                else:
+                    context = {k: v for k, v in objects.item(point["view"])[work].items()
+                               if k not in ("_publication", plan_versions.KEY)}
+                require(context == p["return"], "assignment context differs from the active plan or kernel revision")
             after = positions.get(encoded(p.get("after")))
             if after is None:
                 require(not complete, "public work never yielded a measured endpoint")
@@ -250,6 +292,15 @@ def reconstruct_case(raw, archive, records, *, registration_sha256):
         notice = notices[0] if notices else None
         final = meta["exit_git"]
         oid = final["head"] if not final["status"] else None
+        if complete:
+            last_edit = START
+            for row in rows:
+                payload = row["payload"]
+                if row["kind"] == "action" and payload["action"] == "edit":
+                    last_edit = payload.get("return", {}).get("candidate", last_edit)
+                if row["kind"] == "fault" and experiment == "E1":
+                    last_edit = payload["candidate"]
+            require(last_edit == oid, "final Git head differs from original participant edits")
         states = positions[encoded(meta["final_public"])]
         facts.update(final_candidate=oid, final_parent_closed=is_closed_at(states, PARENT, oid))
         phase = measure.NEW if experiment == "E2" and track != "clean" else measure.OLD
@@ -282,12 +333,24 @@ def reconstruct_case(raw, archive, records, *, registration_sha256):
                 required = checkpoint.required_cases(before, old)
                 blobs = {c: evidence.file_ids(repos[c], c) for c in required}
                 old_grades = {(c, label): grades.get((c, label, 1)) for c, labels in required.items() for label in labels}
-                submitted = any(r["seq"] < notice["seq"] and r["payload"]["action"] == "submit"
+                submissions = [r["payload"] for r in rows if r["kind"] == "action" and
+                                r["seq"] < notice["seq"] and r["payload"]["action"] == "submit"
                                 and r["payload"]["subject"] == "W2" and r["payload"]["candidate"] == old
                                 and (r["payload"].get("return", {}).get("state") == "submitted" or
-                                     r["payload"].get("return", {}).get("disposition") == "admitted")
-                                for r in rows if r["kind"] == "action")
-                require(checkpoint.eligible(before, old, track, old_grades, blobs, submitted) is True,
+                                     r["payload"].get("return", {}).get("disposition") == "admitted")]
+                require(submissions and all(checkpoint.original_retry_policy(arm, sources[encoded(point)])
+                                            for point in (submissions[-1]["after"], p["before"])),
+                        "W2 submission or fault checkpoint lacked its operative A1 decision")
+                after_source = sources[encoded(p["after"])]
+                if arm == "purser":
+                    observed = next((r["fields"] for r in after_source["records"] if r["id"] == policy.OBSERVATION), {})
+                    require(p["return"]["disposition"] == "admitted" and observed.get("assumption") == policy.ASSUMPTION
+                            and observed["finding"] == "contradicts" and
+                            objects.blob(trace["kernel_artifacts"][observed["artifact_sha256"]]) == encoded(p["released"]),
+                            "public notice was not admitted with its original evidence")
+                else:
+                    require(after_source["premise"] == p["released"], "changed premise was never written to the plan")
+                require(checkpoint.eligible(before, old, track, old_grades, blobs, True) is True,
                         "E2 intervention lacks a qualifying public and behavioral checkpoint")
                 require(any(x["checkpoint"] == p["before"] and x["candidate"] == old for x in periods),
                         "E2 premise lacks its original qualification interval")
