@@ -27,6 +27,37 @@ def _archive(data):
     return {"bytes": len(data), "sha256": sha(data), "base64": base64.b64encode(data).decode("ascii")}
 
 
+def _read_frame(frame, limit):
+    if type(frame) is not dict or frame.keys() != {"bytes", "sha256", "base64"}:
+        raise MeasurementUnavailable("missing bounded stream")
+    size = frame["bytes"]
+    if (type(size) is not int or not 0 <= size <= limit or type(frame["base64"]) is not str
+            or len(frame["base64"]) != 4 * ((size + 2) // 3)):
+        raise MeasurementUnavailable("invalid bounded stream length")
+    raw = base64.b64decode(frame["base64"], validate=True)
+    if frame != _archive(raw):
+        raise MeasurementUnavailable("bounded stream bytes or digest differ")
+    return raw
+
+
+def _identity(snapshot, legacy):
+    if not isinstance(snapshot, Snapshot):
+        raise MeasurementUnavailable("expected an immutable fixture snapshot")
+    return {"protocol": "purser.m5.fixture-observation.v1",
+            "candidate": snapshot.oid, "tree": snapshot.tree, "manifest_sha256": snapshot.manifest_sha256,
+            "mode": "legacy" if legacy else "queue", "host_archive_sha256": HOST[1],
+            "guest_archive_sha256": GUEST[1], "memory_bytes": MEMORY, "fuel_limit": MAX_FUEL,
+            "output_limit": MAX_OUTPUT, "wall_limit_seconds": MAX_SECONDS}
+
+
+def _completed(record):
+    if record["guest_state"] != "completed" or type(record["exit_code"]) is not int or record["exit_code"] != 0:
+        raise MeasurementUnavailable("isolated guest terminated: " + str(record["guest_state"]))
+    if (type(record["fuel_used"]) is not int or not 0 <= record["fuel_used"] <= MAX_FUEL
+            or type(record["elapsed_ns"]) is not int or not 0 < record["elapsed_ns"] <= MAX_SECONDS * 10**9):
+        raise MeasurementUnavailable("completed guest lacks valid resource measurements")
+
+
 def _queue_input(cases):
     def strings(value):
         return type(value) is list and all(type(item) is str for item in value)
@@ -82,34 +113,49 @@ class Observer:
         if self.checkpoint is not None:
             self.checkpoint(event)
 
+    def _prepare(self, snapshot, cases, legacy):
+        context = {}
+        if legacy:
+            if cases is not None:
+                raise MeasurementUnavailable("public compatibility takes its inputs from the registered tests")
+            _legacy_surface(snapshot)
+            if self._originals is None:
+                self._originals = trusted_fixture()
+            if self._legacy_plan is None:
+                self._legacy_plan = _public_suite(self._originals, None)
+            request = self._legacy_plan
+            entry = LEGACY_ENTRY.read_bytes()
+            context["public_suite_sha256"] = sha(PUBLIC_SUITE.read_bytes())
+        else:
+            request = _queue_input(cases)
+            entry = QUEUE_ENTRY.read_bytes()
+        data = encoded(request)
+        if len(data) > MAX_INPUT:
+            raise MeasurementUnavailable("concrete observation inputs exceed the registered byte limit")
+        context.update(entry_sha256=sha(entry), stdin=_archive(data))
+        return context, entry, request, data
+
+    def _decode(self, raw, request, legacy):
+        reply = parse(raw)
+        encoded(reply)  # Refuse non-finite values and unpaired surrogates at the boundary.
+        if legacy:
+            measured = _public_suite(self._originals, {"plan": request, "measured": reply})
+            if not valid_legacy(measured):
+                raise MeasurementUnavailable("incomplete external public test result")
+            return measured
+        if type(reply) is not dict or reply.keys() != {"measured"}:
+            raise MeasurementUnavailable("invalid queue observation envelope")
+        measured, cases = reply["measured"], request["cases"]
+        if (type(measured) is not list or len(measured) != len(cases)
+                or not all(valid_sample(row, case) for row, case in zip(measured, cases, strict=True))):
+            raise MeasurementUnavailable("missing or invalid observed queue values")
+        return measured
+
     def probe(self, snapshot, *, cases=None, legacy=False):
-        if not isinstance(snapshot, Snapshot):
-            raise MeasurementUnavailable("expected an immutable fixture snapshot")
-        receipt = {"protocol": "purser.m5.fixture-observation.v1", "invocation": uuid.uuid4().hex,
-                   "candidate": snapshot.oid, "tree": snapshot.tree, "manifest_sha256": snapshot.manifest_sha256,
-                   "mode": "legacy" if legacy else "queue", "host_archive_sha256": HOST[1],
-                   "guest_archive_sha256": GUEST[1], "memory_bytes": MEMORY, "fuel_limit": MAX_FUEL,
-                   "output_limit": MAX_OUTPUT, "wall_limit_seconds": MAX_SECONDS}
+        receipt = {**_identity(snapshot, legacy), "invocation": uuid.uuid4().hex}
         try:
-            if legacy:
-                if cases is not None:
-                    raise MeasurementUnavailable("public compatibility takes its inputs from the registered tests")
-                _legacy_surface(snapshot)
-                if self._originals is None:
-                    self._originals = trusted_fixture()
-                if self._legacy_plan is None:
-                    self._legacy_plan = _public_suite(self._originals, None)
-                request = self._legacy_plan
-                entry_path = LEGACY_ENTRY
-                receipt["public_suite_sha256"] = sha(PUBLIC_SUITE.read_bytes())
-            else:
-                request = _queue_input(cases)
-                entry_path = QUEUE_ENTRY
-            entry = entry_path.read_bytes()
-            data = encoded(request)
-            if len(data) > MAX_INPUT:
-                raise MeasurementUnavailable("concrete observation inputs exceed the registered byte limit")
-            receipt.update(entry_sha256=sha(entry), stdin=_archive(data))
+            context, entry, request, data = self._prepare(snapshot, cases, legacy)
+            receipt.update(context)
             self._record({**receipt, "phase": "started"})
             result = self.runtime.run(entry.decode("utf-8"), snapshot.files, data)
             out, err = result.stdout, result.stderr
@@ -118,26 +164,17 @@ class Observer:
                            stderr=_archive(err[:max(0, MAX_OUTPUT - len(out))]))
             if len(out) + len(err) > MAX_OUTPUT:
                 raise MeasurementUnavailable("guest response exceeded the registered byte limit")
-            if result.state != "completed" or result.exit_code != 0:
-                raise MeasurementUnavailable("isolated guest terminated: " + result.state)
-            reply = parse(out)
-            encoded(reply)  # Refuse non-finite values and unpaired surrogates at the boundary.
-            if legacy:
-                measured = _public_suite(self._originals, {"plan": request, "measured": reply})
-                if not valid_legacy(measured):
-                    raise MeasurementUnavailable("incomplete external public test result")
-            else:
-                if type(reply) is not dict or reply.keys() != {"measured"}:
-                    raise MeasurementUnavailable("invalid queue observation envelope")
-                measured = reply["measured"]
-                if (type(measured) is not list or len(measured) != len(cases)
-                        or not all(valid_sample(row, case) for row, case in zip(measured, cases, strict=True))):
-                    raise MeasurementUnavailable("missing or invalid observed queue values")
+            _completed(receipt)
+            measured = self._decode(out, request, legacy)
         except (RuntimeUnavailable, MeasurementUnavailable, OSError, ValueError, RecursionError,
                 subprocess.SubprocessError) as error:
             reason = str(error) if isinstance(error, (MeasurementUnavailable, RuntimeUnavailable)) else type(error).__name__
             self._record({**receipt, "phase": "unavailable", "reason": reason})
             raise MeasurementUnavailable(reason) from error
+        except BaseException as error:
+            # A study deadline or user cancellation can interrupt the foreground process.
+            self._record({**receipt, "phase": "interrupted", "reason": type(error).__name__})
+            raise
         self._record({**receipt, "phase": "measured", "measured_sha256": sha(encoded(measured))})
         return measured
 
@@ -169,3 +206,35 @@ class Observer:
                                                      offsets=offsets, version=version)
             reports[label] = report
         return reports
+
+
+def read_observation(snapshot, started, terminal, *, cases=None, legacy=False):
+    """Recover the original measurement from two case-bound records, without a guest."""
+    if type(started) is not dict or type(terminal) is not dict:
+        raise MeasurementUnavailable("missing original observation checkpoint")
+    if started.get("phase") != "started" or terminal.get("phase") != "measured":
+        raise MeasurementUnavailable("original invocation has no completed measurement")
+    invocation = started.get("invocation")
+    if type(invocation) is not str or re.fullmatch(r"[0-9a-f]{32}", invocation) is None:
+        raise MeasurementUnavailable("invalid invocation identity")
+    controller = Observer(None)
+    try:
+        identity = _identity(snapshot, legacy)
+        context, _, request, _ = controller._prepare(snapshot, cases, legacy)
+        basis = {**identity, **context, "invocation": invocation}
+        if started.keys() != basis.keys() | {"phase"} or terminal.keys() != basis.keys() | {
+            "phase", "guest_state", "exit_code", "fuel_used", "elapsed_ns", "stdout", "stderr", "measured_sha256",
+        }:
+            raise MeasurementUnavailable("original checkpoint fields differ")
+        for item in (started, terminal):
+            if encoded({key: item[key] for key in basis}) != encoded(basis):
+                raise MeasurementUnavailable("invocation, snapshot, runtime or concrete input differs")
+        _completed(terminal)
+        out = _read_frame(terminal["stdout"], MAX_OUTPUT)
+        _read_frame(terminal["stderr"], MAX_OUTPUT - len(out))
+        measured = controller._decode(out, request, legacy)
+        if terminal["measured_sha256"] != sha(encoded(measured)):
+            raise MeasurementUnavailable("original measured digest disagrees with bounded response")
+        return measured
+    except (OSError, ValueError, TypeError, RecursionError, subprocess.SubprocessError) as error:
+        raise MeasurementUnavailable("cannot read the original fixture observation") from error
