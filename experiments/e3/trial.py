@@ -179,9 +179,14 @@ def failure(assets, freeze, arm, track, seed, rank, *, reason, progress=None):
 
 
 def run_participant(directory, assets, freeze, arm, track, seed, rank, *, progress=None):
+    return _run_participant(directory, assets, freeze, arm, track, seed, rank, progress=progress,
+                            mode="scripted", participant_factory=Participant)
+
+
+def _run_participant(directory, assets, freeze, arm, track, seed, rank, *, progress, mode, participant_factory):
     identity(arm, track, seed, rank)
     directory = directory.resolve()
-    journal = Actions(directory, assets, arm, progress)
+    journal = Actions(directory, assets, arm, progress, mode=mode)
     facts = journal.platform
     facts.update(os=platform.platform(), python=sys.version, sqlite=sqlite3.sqlite_version,
                  git=git(directory, "--version").decode().strip(), setup={"start_ns": time.monotonic_ns(), "start_utc": utc()})
@@ -196,12 +201,13 @@ def run_participant(directory, assets, freeze, arm, track, seed, rank, *, progre
 
         packet, repository = provision(directory, assets, arm, seed, checkpoint)
         native(directory, repository.binding, packet["receipt_ref"], "initial")
-        supervisor = Supervisor(directory, repository, packet, arm, track, seed, rank, journal, assets)
-        participant = Participant(Tools(directory, arm, repository, journal, supervisor))
+        supervisor = Supervisor(directory, repository, packet, arm, track, seed, rank, journal, assets, mode=mode)
+        tools = Tools(directory, arm, repository, journal, supervisor)
+        participant = participant_factory(tools)
         facts["setup"].update(end_ns=time.monotonic_ns(), end_utc=utc())
         reason = _run_arm(participant, journal)
         if (reason in ("done", "blocked", "idle")
-                and journal.end - journal.start > MANIFEST["budgets"]["scripted"]["max_elapsed_s"] * 10**9):
+                and journal.end - journal.start > journal.limits["max_elapsed_s"] * 10**9):
             reason = "time_limit"
         result = {"reason": reason, "end_monotonic_ns": journal.end, "end_utc": journal.ended}
         write(directory / "participant-exit.json", result)
@@ -241,13 +247,16 @@ def run_participant(directory, assets, freeze, arm, track, seed, rank, *, progre
     rows.append({"seq": len(rows) + 1, "offset_ns": elapsed, "kind": "terminal",
                  "payload": {"end_reason": reason, "last_observation": last, "missing": [], "human_action": None,
                              "end_monotonic_ns": journal.end, "end_utc": journal.ended}})
-    validity = validity_for(reason)
+    if mode == "model" and reason in ("model_limit", "provider_unavailable"):
+        validity = "arm_incomplete" if reason == "model_limit" else "infrastructure_invalid"
+    else:
+        validity = validity_for(reason)
     if track == E3["stress"]["id"] and reason == "blocked":
         last_state = next((r["payload"] for r in reversed(rows) if r["kind"] == "public_state"), {})
         if last_state.get("original_report") == "unknown" and last_state.get("to") == "pending":
             validity = "complete"
     return {"schema_version": 1, "suite": MANIFEST["id"], "experiment": "E3", "track": track,
-            "seed": seed, "arm": arm, "mode": "scripted", "replicate": freeze.get("replicate", 1),
+            "seed": seed, "arm": arm, "mode": mode, "replicate": freeze.get("replicate", 1),
             "inputs": input_identity(freeze, arm), "terminal": reason, "validity": validity, "score": None,
             "artifacts": {"journal": assets.put(rows, "json"), "candidates": assets.put(saved["candidates"], "json"),
                           "platform": assets.put(facts, "json"), "model": None},

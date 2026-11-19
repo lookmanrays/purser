@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import sys
 
-from purser.effects.git import GitRepository
+from purser.effects.git import GitError, GitRepository
 from purser.kernel.wire import digest
 
 from .fixture import read
@@ -73,4 +73,14 @@ def run(directory, attempt):
 
 
 if __name__ == "__main__":
-    run(Path(sys.argv[1]), sys.argv[2])
+    directory, attempt = Path(sys.argv[1]), sys.argv[2]
+    try:
+        run(directory, attempt)
+    except GitError as error:
+        folder = directory / "writers" / attempt
+        if (read(folder / "command.json").get("mode") != "model"
+                or error.code not in ("receipt_already_exists", "repository_busy")):
+            raise
+        reply = {"status": "refused", "reason": error.code}
+        note(folder, "guard_refusal", public=reply)
+        print(json.dumps(reply), flush=True)

@@ -21,7 +21,7 @@ def raw_score(raw, facts):
 
 
 def grade(*, track, truth, original, decisions, delivered, releases, publications, whole, public_complete,
-          terminal, steps, elapsed, manual, resolvable, uncertainty):
+          terminal, steps, elapsed, manual, resolvable, uncertainty, limits=LIMITS):
     """Keep truth, disposition, timely grounds and total effects independent of one another."""
     known = [d for d in decisions if d['original_report'] in ('landed', 'unlanded')]
     first = next(iter(known), None)
@@ -56,7 +56,7 @@ def grade(*, track, truth, original, decisions, delivered, releases, publication
     endpoint = any(p['old'] == START and p['new'] == TARGET for p in publications) and terminal == 'done' and complete
     resolved = None
     if whole and terminal and steps is not None and elapsed is not None and public_complete:
-        resolved = bool(endpoint and steps <= LIMITS['max_steps'] and elapsed <= LIMITS['max_elapsed_s'] * 10**9)
+        resolved = bool(endpoint and steps <= limits['max_steps'] and elapsed <= limits['max_elapsed_s'] * 10**9)
     stuck = None
     if track == E3['stress']['id']:
         stuck = False
@@ -144,7 +144,8 @@ def reconstruct(raw, objects, packs):
     rows = journal or []
     candidate = sources.read('registered Git objects', lambda: verify_trees(objects.item(refs['candidates']), packs, objects))
     public = Public(raw['arm'], e3, rows, sources)
-    clock = clocks(e3, platform, rows, public, sources)
+    mode = raw.get('mode', 'scripted')
+    clock = clocks(e3, platform, rows, public, sources, mode=mode)
     physical = Physical(raw, e3, rows, public, clock, sources)
     truth = physical.original(clock['end'])
     original = physical.by_order[0].attempt if physical.by_order else None
@@ -158,8 +159,10 @@ def reconstruct(raw, objects, packs):
             delivered[call['action_id']] = {'attempt': call['input'].get('attempt'), 'value': value, 'finished': call['finished'],
                                             'pending_reason': ((call['return'] or {}).get('report') or {}).get('reason')
                                             if ((call['return'] or {}).get('report') or {}).get('state') == 'pending' else None}
-    for i, writer in enumerate(physical.by_order):
-        prior = physical.by_order[i-1] if i else None
+    attempts = (sorted(physical.writers.values(), key=lambda w: w.at('launched'))
+                if mode == 'model' else physical.by_order)
+    for i, writer in enumerate(attempts):
+        prior = attempts[i-1] if i else None
         call = public.actions.get(writer.action)
         issued = call['issued'] if call else writer.at('launched')
         admission = sources.read('current authority ' + writer.attempt, lambda: physical.permission(writer))
@@ -178,7 +181,14 @@ def reconstruct(raw, objects, packs):
     facts = grade(track=raw['track'], truth=truth, original=original, decisions=decisions, delivered=delivered,
                   releases=releases, publications=physical.publications, whole=physical.external_complete,
                   public_complete=public_complete and bool(candidate), terminal=clock['terminal'], steps=steps,
-                  elapsed=clock['elapsed_ns'], manual=clock['manual_repair'], resolvable=resolvable, uncertainty=uncertainty)
+                  elapsed=clock['elapsed_ns'], manual=clock['manual_repair'], resolvable=resolvable, uncertainty=uncertainty,
+                  limits=MANIFEST['budgets'][mode])
+    if mode == 'model':
+        facts['uncertainty_remaining'] = uncertainty
+        # A final declaration can also leave an objectively unlanded ordinary task without a live path to completion.
+        if (raw['track'] != E3['stress']['id'] and clock['terminal'] == 'done' and public_complete
+                and resolvable is True and facts['effect_count'] == 0 and facts['resolved_by_budget'] is False):
+            facts['stuck_requires_manual'] = True
     qualified = sources.read('actual registered exposure', lambda: cohort(raw, physical, public, clock, rows, truth, candidate))
     if qualified is not True:
         sources.problem('registered starting input, permission or actual fault exposure unestablished')
