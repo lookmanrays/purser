@@ -4,6 +4,7 @@ import tempfile
 import time
 from pathlib import Path
 
+from experiments.e1.accounting import validity_for
 from experiments.e1.report import GitPacks, Objects, require
 from experiments.e1.recovery import input_identity
 from experiments.e1.run import utc
@@ -15,6 +16,19 @@ from experiments.model_units import validate_unit
 from . import turns
 from .participant import Participant
 from .readback import read_trace
+
+
+def _validity(reason, track, facts):
+    if reason == "provider_unavailable":
+        return "infrastructure_invalid"
+    if reason == "model_limit":
+        return "arm_incomplete"
+    if (track == "inconclusive-observation" and reason == "blocked" and facts["eligible"] is True
+            and facts["decisions"]):
+        last = facts["decisions"][-1]
+        if last["original_report"] == "unknown" and last["choice"] == "pending":
+            return "complete"
+    return validity_for(reason)
 
 
 def _facts(raw, objects, identity, *, service_sha256=None, authority_sha256=None):
@@ -49,10 +63,24 @@ def reconstruct_case(raw, archive, *, registration_sha256, population="qualifica
     objects = Objects(archive)
     result = _facts(raw, objects, identity, service_sha256=service_sha256, authority_sha256=authority_sha256)
     inventory(raw, objects)
+    platform = objects.item(raw["artifacts"]["platform"])
     trace_ref = raw["artifacts"]["model"]
-    catalog = {r["path"]: r for r in objects.item(raw["artifacts"]["platform"])["referenced_files"]}
+    catalog = {r["path"]: r for r in platform["referenced_files"]}
     for ref in [trace_ref, *trial.files_in(objects.item(trace_ref))]:
         require(catalog.get(ref["path"]) == ref, "E3 model source absent from the platform's retained file manifest")
+    reason = raw["terminal"]
+    if reason == "harness_failure":
+        require(bool(platform.get("failure")) and raw["validity"] == "infrastructure_invalid",
+                "E3 infrastructure failure lacks the original failure observation")
+    else:
+        require(result["terminal"] == reason == platform["budget_reason"],
+                "published E3 terminal differs from the original participant exit")
+        validity = _validity(reason, raw["track"], result)
+        require(raw["validity"] == validity, "published E3 validity differs from the measured terminal")
+        if validity == "complete":
+            require(result["eligible"] is True and result["public_complete"] and result["external_complete"]
+                    and result["model_trace_complete"] and not result["diagnostics"],
+                    "complete E3 case lacks the registered exposure, original history or native endpoint")
     require(raw["score"] == scoring.raw_score(raw, result), "published E3 score differs from its sources")
     for key in ("model_calls", *turns.USAGE):
         exact = result["cost_exact"].get(key)
@@ -78,6 +106,7 @@ def _finish(directory, assets, raw, trace, identity, *, recovered=False):
     write(clock, timing)
     try:
         facts = _facts(raw, objects, identity)
+        raw["validity"] = _validity(raw["terminal"], raw["track"], facts)
         raw["score"] = scoring.raw_score(raw, facts)
         exact, lower = facts["cost_exact"], facts["cost_lower_bounds"]
         raw["cost"].update({field: exact.get(field) for field in turns.USAGE},

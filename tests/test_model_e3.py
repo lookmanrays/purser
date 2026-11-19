@@ -185,6 +185,11 @@ class ModelE3(unittest.TestCase):
     def test_stress_clean_and_guard_refusal_are_observed(self):
         _, pending, _, _ = self.fixture.run("unresolved", "purser", "inconclusive-observation", 3001)
         self.assertEqual((pending["stress_held_pending"], pending["effect_count"]), (True, 0))
+        self.server.variant = "decline"
+        raw, unexposed, _, _ = self.fixture.run("before-stress", "loop", "inconclusive-observation", 3001)
+        self.assertEqual(raw["validity"], "arm_incomplete")
+        self.assertIsNot(unexposed["eligible"], True)
+        self.server.variant = "evidence"
         clean, done, _, _ = self.fixture.run("clean", "loop", "clean", 3001)
         self.assertEqual((clean["cost"]["steps"], done["effect_count"], done["resolved_by_budget"]), (4, 1, True))
         self.server.variant = "early_retry"
@@ -221,6 +226,8 @@ class ModelE3(unittest.TestCase):
             self.fixture.read(raw, assets.archive, "a" * 64)
         with self.assertRaisesRegex(ValueError, "score differs"):
             self.fixture.read({**raw, "score": {**raw["score"], "original_truth": "landed"}}, assets.archive, reg)
+        with self.assertRaisesRegex(ValueError, "validity differs"):
+            self.fixture.read({**raw, "validity": "infrastructure_invalid", "score": None}, assets.archive, reg)
         objects = Objects(assets.archive)
         trace = objects.item(raw["artifacts"]["model"])
         trace["turns"][1]["result"] = trace["turns"][0]["result"]
