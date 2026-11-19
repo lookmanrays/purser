@@ -9,7 +9,7 @@ from experiments.e1.artifacts import REGISTRATION, START, changes, encoded, git,
 from experiments.e1.executor import LEAVES, PARENT, PATHS, fault_for
 from experiments.e1.measurement import same
 from experiments.e1.report import GitPacks, Objects, require
-from experiments.e2 import checkpoint, evidence, measure, plan_versions, policy
+from experiments.e2 import measure, plan_versions, policy
 from experiments.e2.outcomes import all_pass, criteria
 from experiments.e3.trial import files_in
 from experiments.model_budget import LIMITS
@@ -201,25 +201,33 @@ def reconstruct_case(raw, archive, records, *, registration_sha256):
     with TemporaryDirectory(prefix="purser-model-readback-") as temp:
         packs = GitPacks(Path(temp))
         repos = {oid: packs.restore(oid, entry, objects) for oid, entry in candidates.items()}
-        if not meta.get("initial_public") or not meta.get("treatment_trace"):
+        if not meta.get("initial_public") or experiment == "E1" and not meta.get("treatment_trace"):
             require(not complete, "completed case lacks original participant")
             return facts
-        points = [meta["initial_public"], meta["final_public"]]
+        points = [meta[k] for k in ("initial_public", "final_public") if meta.get(k)]
         timeline = [r for r in rows if r["kind"] in ("action", "fault") and "before" in r["payload"]]
         for r in timeline:
             points.extend(r["payload"][k] for k in ("before", "after") if k in r["payload"])
-        trace = objects.item(meta["treatment_trace"])
-        positions, sources = public_points(arm, objects, trace, points)
-        previous = positions[encoded(meta["initial_public"])]
+        if experiment == "E2":
+            from . import e2_readback
+            history = e2_readback.history_for(arm, seed, rows, meta, objects)
+            positions, sources = e2_readback.public_points(history, points, complete)
+        else:
+            positions, sources = public_points(arm, objects, objects.item(meta["treatment_trace"]), points)
+        previous = positions.get(encoded(meta["initial_public"]))
         actual_states = []
         for row in timeline:
             p = row["payload"]
-            before = positions[encoded(p["before"])]
+            before = positions.get(encoded(p["before"]))
+            if before is None and not complete:
+                continue
             require(previous == before or not complete, "unobserved change of public participant state")
             if (row["kind"] == "action" and p["action"] == "context" and "work" in p["input"]
                     and "return" in p and "failure" not in p["return"]):
                 point, work = p["before"], p["subject"]
-                if arm == "purser":
+                if arm == "purser" and encoded(point) not in sources and not complete:
+                    context = None
+                elif arm == "purser":
                     projection = sources[encoded(point)]
                     assignment = WorkView(projection).fields(work)["assignment"]
                     try:
@@ -229,7 +237,7 @@ def reconstruct_case(raw, archive, records, *, registration_sha256):
                 else:
                     context = {k: v for k, v in objects.item(point["view"])[work].items()
                                if k not in ("_publication", plan_versions.KEY)}
-                require(context == p["return"], "assignment context differs from the active plan or kernel revision")
+                require(context is None or context == p["return"], "assignment context differs from the active plan or kernel revision")
             after = positions.get(encoded(p.get("after")))
             if after is None:
                 require(not complete, "public work never yielded a measured endpoint")
@@ -290,8 +298,8 @@ def reconstruct_case(raw, archive, records, *, registration_sha256):
         notices = [r for r in rows if r["kind"] == "fault"]
         require(len(notices) <= (0 if track == "clean" else 1), "unexpected intervention count")
         notice = notices[0] if notices else None
-        final = meta["exit_git"]
-        oid = final["head"] if not final["status"] else None
+        final = meta.get("exit_git")
+        oid = final["head"] if final and not final["status"] and final["head"] in repos else None
         if complete:
             last_edit = START
             for row in rows:
@@ -301,11 +309,10 @@ def reconstruct_case(raw, archive, records, *, registration_sha256):
                 if row["kind"] == "fault" and experiment == "E1":
                     last_edit = payload["candidate"]
             require(last_edit == oid, "final Git head differs from original participant edits")
-        states = positions[encoded(meta["final_public"])]
-        facts.update(final_candidate=oid, final_parent_closed=is_closed_at(states, PARENT, oid))
-        phase = measure.NEW if experiment == "E2" and track != "clean" else measure.OLD
-        facts["final_pass"] = all_pass(criteria(oid, grades, phase))
+        states = positions.get(encoded(meta.get("final_public")))
+        facts.update(final_candidate=oid, final_parent_closed=is_closed_at(states, PARENT, oid) if states and oid else None)
         if experiment == "E1":
+            facts["final_pass"] = all_pass(criteria(oid, grades, measure.OLD))
             if notice:
                 p = notice["payload"]
                 variant = fault_for(seed, track)
@@ -320,55 +327,8 @@ def reconstruct_case(raw, archive, records, *, registration_sha256):
             observation = outcomes.assess(rows, history_complete=complete, candidates=candidates)
             facts.update(observation.facts, eligible=bool(observation.fault_measured) if track == "primary" else complete)
         else:
-            facts.update(intervention_reached=bool(notice) if complete or notice else None,
-                         unaffected_both_retained=None, unaffected_reopened=None, rework_steps=None,
-                         affected_invalid_closure=None, stale_at_delivery=None)
-            if notice:
-                p = notice["payload"]
-                before = positions[encoded(p["before"])]
-                after = positions[encoded(p["after"])]
-                old = p["candidate"]
-                require(p["released"] == policy.notice(seed) and p["trigger"] == p["before"],
-                        "changed premise differs from registered public notice")
-                required = checkpoint.required_cases(before, old)
-                blobs = {c: evidence.file_ids(repos[c], c) for c in required}
-                old_grades = {(c, label): grades.get((c, label, 1)) for c, labels in required.items() for label in labels}
-                submissions = [r["payload"] for r in rows if r["kind"] == "action" and
-                                r["seq"] < notice["seq"] and r["payload"]["action"] == "submit"
-                                and r["payload"]["subject"] == "W2" and r["payload"]["candidate"] == old
-                                and (r["payload"].get("return", {}).get("state") == "submitted" or
-                                     r["payload"].get("return", {}).get("disposition") == "admitted")]
-                require(submissions and all(checkpoint.original_retry_policy(arm, sources[encoded(point)])
-                                            for point in (submissions[-1]["after"], p["before"])),
-                        "W2 submission or fault checkpoint lacked its operative A1 decision")
-                after_source = sources[encoded(p["after"])]
-                if arm == "purser":
-                    observed = next((r["fields"] for r in after_source["records"] if r["id"] == policy.OBSERVATION), {})
-                    require(p["return"]["disposition"] == "admitted" and observed.get("assumption") == policy.ASSUMPTION
-                            and observed["finding"] == "contradicts" and
-                            objects.blob(trace["kernel_artifacts"][observed["artifact_sha256"]]) == encoded(p["released"]),
-                            "public notice was not admitted with its original evidence")
-                else:
-                    require(after_source["premise"] == p["released"], "changed premise was never written to the plan")
-                require(checkpoint.eligible(before, old, track, old_grades, blobs, True) is True,
-                        "E2 intervention lacks a qualifying public and behavioral checkpoint")
-                require(any(x["checkpoint"] == p["before"] and x["candidate"] == old for x in periods),
-                        "E2 premise lacks its original qualification interval")
-                following = [r["payload"] for r in rows[notice["seq"]:] if r["kind"] == "action"]
-                affected = [(w, point[w][1]) for point in [after, *(positions[encoded(a["after"])] for a in following if a.get("after"))]
-                            for w in ("W2", PARENT) if outcomes.is_closed(point[w][0])]
-                bad = [all_pass(criteria(c, grades, 2)) if w == PARENT else
-                       (grades[c, LEAVES["W2"], 2] == "pass" if (c, LEAVES["W2"], 2) in grades else None)
-                       for w, c in affected]
-                reopened = {w for a,w,prev,now,_ in actual_states if (a == p["attempt"] or
-                            type(a) is int and any(x["attempt"] == a for x in following))
-                            and w in ("W1", "W3") and outcomes.is_closed(prev) and not outcomes.is_closed(now)}
-                facts.update(checkpoint_candidate=old, stale_at_delivery=not outcomes.is_closed(after["W2"][0]),
-                             unaffected_both_retained=False if reopened else True if complete else None,
-                             unaffected_reopened=len(reopened) if complete else None,
-                             affected_invalid_closure=True if False in bad else False if complete and None not in bad else None,
-                             rework_steps=len(following) if complete else None)
-            facts["eligible"] = bool(notice) if track != "clean" else complete
+            facts.update(e2_readback.assess(history, track, grades, repos, periods, oid,
+                                            endpoint_known=complete, action_sequence_complete=complete))
     return facts
 
 

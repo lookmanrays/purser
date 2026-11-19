@@ -11,7 +11,7 @@ from experiments.e1.recovery import FileArchive, sync_directory, write_atomic
 from experiments.e1.report import Objects, parse, require
 from experiments.e1.run import utc
 from experiments.e1.measurement import MeasurementUnavailable
-from experiments.e2.outcomes import FIELDS as E2_FIELDS
+from experiments.e2.outcomes import FIELDS as E2_FIELDS, raw_score as e2_score
 
 from .registration import load_registration, schedule
 
@@ -36,12 +36,13 @@ def e3_args(freeze, identity):
 def coding_score(raw, facts):
     if raw["track"] != "primary" or raw["validity"] == "infrastructure_invalid" or facts.get("eligible") is not True:
         return None
-    keys = E1_FIELDS if raw["experiment"] == "E1" else E2_FIELDS
-    return {k: facts[k] for k in keys} if all(facts.get(k) is not None for k in keys) else None
+    if raw["experiment"] == "E2":
+        return e2_score(facts)
+    return {k: facts[k] for k in E1_FIELDS} if all(facts.get(k) is not None for k in E1_FIELDS) else None
 
 
 def coding_validity(terminal, track, facts):
-    if terminal in ("harness_failure", "provider_unavailable"):
+    if terminal in ("harness_failure", "provider_unavailable") or facts.get("qualification_dispute"):
         return "infrastructure_invalid"
     if terminal != "done" or track != "clean" and facts.get("eligible") is not True:
         return "arm_incomplete"
