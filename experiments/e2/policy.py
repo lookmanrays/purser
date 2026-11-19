@@ -145,7 +145,7 @@ def edit(root, work, phase):
                              + "    return (0,) + tuple(base * 2 ** (k - 1) for k in range(1, attempts))\n")
 
 
-def public_retry(root, phase, *, composed=False):
+def public_retry(root, phase, *, composed=False, run_probe=probe):
     # Fixed public examples are deliberately separate from the seeded protected scorer.
     times = [0, 3, 6, 9, 12, 13]
     last = 9 if phase == LINEAR else 12
@@ -155,32 +155,32 @@ def public_retry(root, phase, *, composed=False):
     expected = [{"enqueued": 4 * len(emitted), "pending": 0,
                  "samples": [[[item, "local", t * 1_000_000] for item in emitted] if t in (0, 3, 6, last) else []
                              for t in times]}]
-    return case, probe(root, cases=[case]), expected
+    return case, run_probe(root, cases=[case]), expected
 
 
-def worker_check(root, work, phase):
-    result = local_check(root, work)
+def worker_check(root, work, phase, *, run_probe=probe):
+    result = local_check(root, work, run_probe=run_probe)
     if work == "W2":
-        _, actual, expected = public_retry(root, phase)
+        _, actual, expected = public_retry(root, phase, run_probe=run_probe)
         result.update(schedule_check=actual, **{"pass": result["pass"] and same(actual, expected)})
         result["worker_claim"] = "done, tests pass" if result["pass"] else "retry check failed"
     return result
 
 
-def review(repo, oid, root, work, phase):
-    result = self_review(repo, oid, root, work)
+def review(repo, oid, root, work, phase, *, run_probe=probe):
+    result = self_review(repo, oid, root, work, run_probe=run_probe)
     if work in ("W2", "W-notify"):
         label = "W2/retry" if work == "W2" else "queue/composition"
-        _, actual, expected = public_retry(root, phase, composed=work == "W-notify")
+        _, actual, expected = public_retry(root, phase, composed=work == "W-notify", run_probe=run_probe)
         result["retry_check"] = actual
         if not same(actual, expected) and label not in result["missing"]:
             result["missing"].append(label)
     return result
 
 
-def inspect(repo, oid, root, label, phase):
+def inspect(repo, oid, root, label, phase, *, run_probe=probe):
     if label not in ("W2/retry", "queue/composition"):
-        return observer.inspect(repo, oid, root, label)
-    case, actual, expected = public_retry(root, phase, composed=label == "queue/composition")
+        return observer.inspect(repo, oid, root, label, run_probe=run_probe)
+    case, actual, expected = public_retry(root, phase, composed=label == "queue/composition", run_probe=run_probe)
     return {"criterion": label, "version": 1, "candidate": oid, "schedule": phase,
             "input": case, "observed": actual, "expected": expected}

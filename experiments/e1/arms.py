@@ -9,20 +9,20 @@ from .outcomes import is_closed
 from .recovery import write_atomic
 
 
-def self_review(repo, oid, root, work):
+def self_review(repo, oid, root, work, *, run_probe=probe):
     delta = changes(repo, oid)
     if work in LEAVES:
-        check = local_check(root, work)
+        check = local_check(root, work, run_probe=run_probe)
         touched = any(e["path"] == PATHS[work] and e["status"] == "M" for e in delta)
         missing = [] if check["pass"] and touched else [LEAVES[work]]
         return {"missing": missing, "check": check, "changes": delta}
     allowed = set(FIXTURE["public_paths"])
     outside = [e["path"] for e in delta if e["path"] not in allowed
                or (e["old_mode"], e["new_mode"]) != ("100644", "100644")]
-    legacy = local_check(root, PARENT)
+    legacy = local_check(root, PARENT, run_probe=run_probe)
     case = {"channel": "inbox", "ids": ["n", "n"], "disabled": [], "attempts": 2,
             "base": 1, "times": [0, 1]}
-    actual = probe(root, cases=[case])
+    actual = run_probe(root, cases=[case])
     expected = [{"enqueued": 2, "samples": [[["n", "inbox", 0]], [["n", "inbox", 1_000_000]]], "pending": 0}]
     missing = [label for label, ok in zip(PARENT_CHECKS, (not outside, legacy["pass"], same(actual, expected)))
                if not ok]
