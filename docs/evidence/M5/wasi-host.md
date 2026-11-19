@@ -24,3 +24,16 @@ For the test command below, set `PURSER_WASI_ARCHIVES` to that archive directory
 ```sh
 python -B -m unittest tests.test_model_costs tests.test_model_budget tests.test_wasi_runtime -q
 ```
+
+## Independent observer comparison
+
+The architect exercised observer commit `1459ee60dd4cfe1da5270fd5062b905f9e01719e` against the original native scorer using only trusted fixture edits, E2 seed 2017 and rank 17. All 24 criterion verdicts and their underlying case reports matched byte for byte. The four candidates exercised the following outcomes.
+
+| Candidate and criterion | Failed checks | Original compatibility tests passed |
+| --- | --- | ---: |
+| Linear implementation under the original requirement | None | 28 |
+| Same implementation after the exponential retry requirement | Retry and queue composition | 28 |
+| Revised implementation under the new requirement | None | 28 |
+| Revised implementation plus an outside-scope note | File scope | 28 |
+
+Each of the eight guest invocations retained its concrete input, response, elapsed time and fuel consumption. A separate reader regraded the original case reports. The integration commit is `a2157b82370c0d286e09ae8f9aaac264af84bbd4`. The retained local result is `~/.local/state/purser/development/m5/observer-review-1459ee60d.json`, SHA-256 `690439c0bc2ae60abeda0940334c1b649339d536960878d3ae4b169d77a73923`.
