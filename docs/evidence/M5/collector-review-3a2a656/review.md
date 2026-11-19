@@ -6,3 +6,11 @@ The architect tested the model study CLI at `3a2a656f9bebcf13429e9e4ecf69e6e91d0
 2. **P2 · A registered endpoint with full provenance could not start.** A valid synthetic service profile included its provider, provider version and model revision. Its frozen configuration and spending authority agreed. The normal collector constructed a reduced profile and rejected it during activation. The public transport already supports these fields. The collection and offline paths must preserve the same enrolled identity.
 
 The raw control SHA-256 is `01eec61e7bcc9c57749ec489b95d78807a6f4cee8b0b16fa709be0f1f54d1967`. The study implementation owner received the findings. Both need fresh verification through the whole CLI on the repaired source.
+
+## Recheck on the joined source
+
+Both findings closed on `9d5798257b9d10cd33fc231edaadcdcf5bceaf9b`. The architect froze a fresh private E3 case on a clean checkout with the original synthetic service name, provider, provider version and model revision. The service received one POST and answered with the same proposal, 41 input tokens and 12 output tokens. The collector exited after preserving the response and before settlement. Two subsequent invocations of the normal collection command used that one original. The offline report reproduced one released request, both token counts and zero service charge after the server shut down. A second report was byte-identical. Copying that unit's artifacts under another arm caused an identity refusal. [Observed recheck](recheck-9d57982.json)
+
+The interrupted participant received its task and requested a decision. The reader found two public steps, zero applied model decisions and an incomplete trial. It left the exact effect count unknown because the participant never supplied its exit witness. The architect separately inspected the disposable canonical Git repository. The notification branch still pointed to its registered starting commit and there was no publication receipt.
+
+This recheck covers the two findings above. The separate observer's refused-connection control on `62d8123` found a case in which no request could leave the host. That wire-state measurement has its own correction and qualification.
