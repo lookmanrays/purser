@@ -246,9 +246,67 @@ runpy.run_module('experiments.model_study', run_name='__main__')
             self.assertEqual(case["cost"].validity, "complete", case["errors"])
             facts = case["facts"]
             self.assertTrue(facts["intervention_reached"] and facts["affected_invalid_closure"])
-            self.assertFalse(facts["stale_at_delivery"] or facts["unaffected_both_retained"])
+            self.assertTrue(facts["stale_at_delivery"])
+            self.assertFalse(facts["unaffected_both_retained"] or facts["new_bad_closure"])
             self.assertEqual(facts["unaffected_reopened"], 1)
+            self.assertEqual(facts["reopened_subjects"], ["W1"])
             self.assertTrue(facts["final_parent_closed"] and facts["final_pass"])
+
+    @unittest.skipUnless(WASI, "requires the enrolled disposable macOS WASI fixture")
+    def test_e2_two_reopenings_of_one_sibling_have_distinct_publications(self):
+        from experiments.e1.report import Objects
+        from experiments.model_study import e2_readback
+        from experiments.model_study.report import Archive
+        unit = ("E2", "primary", 2001, "loop")
+        replies = [edit("W1", "channel not in disabled"), edit("W3", "tuple(dict.fromkeys(event_ids))"),
+                   edit("W2", "tuple(k * base for k in range(attempts))", "submit"),
+                   choice("reopen", work="W3"), choice("close", work="W3"), choice("reopen", work="W3"),
+                   choice("close", work="W3"), choice("stop", reason="leave parent open")]
+        with tempfile.TemporaryDirectory() as temp, counted(replies) as (port, calls):
+            series = enroll(Path(temp), port, observer="qualified")
+            cli("collect", series, "--unit", "/".join(map(str, unit)), "--wasi-archives", WASI)
+            self.assertEqual(len(calls), 8)
+            case = inspect(series)[1][unit]
+            self.assertEqual(case["cost"].validity, "arm_incomplete", case["errors"])
+            facts = case["facts"]
+            self.assertTrue(facts["eligible"])
+            self.assertEqual(facts["unaffected_reopened"], 2)
+            self.assertEqual(facts["reopened_subjects"], ["W3"])
+            self.assertFalse(facts["unaffected_both_retained"] or facts["stale_at_delivery"])
+            observed = {r["publication"] for r in facts["reopen_observations"]}
+            self.assertEqual(len(observed), 2)
+            report = cli("report", series)
+            for publication in observed:
+                self.assertIn(publication, report)
+            # Inspect the same physical publications with only checkpoint grades and no witnessed endpoint.
+            # This exercises the scorer's partial-evidence input without changing the original case.
+            from experiments.e1.report import GitPacks
+            case_dir = case_path(series, unit)
+            raw = json.loads((case_dir / "raw.json").read_bytes())
+            objects = Objects(Archive(case_dir))
+            platform, journal, candidates = (objects.item(raw["artifacts"][k]) for k in ("platform", "journal", "candidates"))
+            history = e2_readback.history_for(unit[3], unit[2], journal, platform, objects)
+            checkpoint_grades = {(r["payload"]["candidate"], r["payload"]["criterion"], r["payload"]["version"]): r["payload"]["verdict"]
+                                 for r in journal if r["kind"] == "oracle" and r["payload"]["version"] == 1}
+            with tempfile.TemporaryDirectory() as work:
+                packs = GitPacks(Path(work))
+                repos = {oid: packs.restore(oid, entry, objects) for oid, entry in candidates.items()}
+                partial = e2_readback.assess(history, unit[1], checkpoint_grades, repos, platform["private_intervals"], None,
+                                             endpoint_known=False, action_sequence_complete=False)
+                remaining = {key: value for key, value in checkpoint_grades.items() if key[1] != "W1/preferences"}
+                uncertain = e2_readback.assess(history, unit[1], remaining, repos, platform["private_intervals"], None,
+                                               endpoint_known=True, action_sequence_complete=True)
+            self.assertTrue(uncertain["publicly_delivered"])
+            self.assertIsNone(uncertain["intervention_reached"])
+            self.assertIsNone(uncertain["eligible"])
+            self.assertNotIn("qualification_dispute", uncertain)
+            self.assertEqual(uncertain["observed_reopened"], 2)
+            self.assertEqual(partial["observed_reopened"], 2)
+            self.assertIsNone(partial["unaffected_reopened"])
+            self.assertFalse(partial["unaffected_both_retained"])
+            self.assertIsNone(partial["new_bad_closure"])
+            self.assertIsNone(partial["rework_steps"])
+            self.assertEqual(partial["rework_observed"], facts["rework_steps"])
 
     @unittest.skipUnless(WASI, "requires the enrolled disposable macOS WASI fixture")
     def test_e1_wrong_source_false_parent_and_e2_real_premise(self):
