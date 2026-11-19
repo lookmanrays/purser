@@ -1,14 +1,17 @@
 """Controller attribution, exact frozen legacy tests, and ordinary WASI observations."""
 
 import base64
+import copy
 import json
 import os
 import platform
+import signal
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from experiments.e1 import scorer
 from experiments.e1.artifacts import Artifacts, Candidates, FIXTURE, START, changes, encoded, read_artifact, sha
@@ -17,7 +20,7 @@ from experiments.e1.measurement import MeasurementUnavailable
 from experiments.e1.recovery import FileArchive
 from experiments.e2.measure import exponential_offsets
 from experiments.e3.fixture import E3, TARGET
-from experiments.model_isolation import Observer, Snapshot
+from experiments.model_isolation import Observer, Snapshot, read_observation
 from experiments.wasi_runtime import GuestResult, WasiRuntime
 
 
@@ -90,6 +93,41 @@ class FrozenImage(Fixture):
 
 
 class ControllerFrames(Fixture):
+    def test_offline_reader_requires_the_original_pair_and_external_case_identity(self):
+        image = self.original()
+        case = scorer.inputs(1001, 1)[0][1]
+        runtime = Mock()
+        values = [scorer.expected(case)]
+        runtime.run.return_value = GuestResult("completed", encoded({"measured": values}), b"diagnostic", 51, 72, 0)
+        records = []
+        observer = Observer(runtime, checkpoint=records.append)
+        for _ in range(2):
+            observer.probe(image, cases=[case])
+        first, last, _, other = records
+        with patch.object(WasiRuntime, "run", side_effect=AssertionError("offline executed a guest")):
+            self.assertEqual(read_observation(image, first, last, cases=[case]), values)
+            for left, right in ((None, last), (first, None), (last, first), (first, other),
+                                (first, dict(last, phase="unavailable")), (first, dict(last, phase="interrupted"))):
+                with self.subTest(left=bool(left), right=bool(right)), self.assertRaises(MeasurementUnavailable):
+                    read_observation(image, left, right, cases=[case])
+            with self.assertRaises(MeasurementUnavailable):
+                read_observation(image, first, last, cases=[dict(case, channel="different")])
+
+            for key in ("candidate", "tree", "manifest_sha256", "protocol", "host_archive_sha256", "guest_archive_sha256",
+                        "entry_sha256", "memory_bytes", "fuel_limit", "output_limit", "wall_limit_seconds"):
+                with self.subTest(field=key), self.assertRaises(MeasurementUnavailable):
+                    read_observation(image, {**first, key: None}, {**last, key: None}, cases=[case])
+            for updates in ({"guest_state": "fuel_limit"}, {"exit_code": False}, {"fuel_used": -1}, {"elapsed_ns": 0},
+                            {"measured_sha256": "0" * 64}, {"stdout": dict(last["stdout"], bytes=1)},
+                            {"stderr": dict(last["stderr"], sha256="0" * 64)},
+                            {"stdout": dict(last["stdout"], base64="!" * len(last["stdout"]["base64"]))}):
+                with self.subTest(field=next(iter(updates))), self.assertRaises(MeasurementUnavailable):
+                    read_observation(image, first, {**last, **updates}, cases=[case])
+            different = encoded({"measured": [dict(values[0], pending=9)]})
+            frame = {"bytes": len(different), "sha256": sha(different), "base64": base64.b64encode(different).decode()}
+            with self.assertRaisesRegex(MeasurementUnavailable, "measured digest"):
+                read_observation(image, first, dict(last, stdout=frame), cases=[case])
+
     def test_wrong_envelopes_output_shape_and_termination_never_supply_a_grade(self):
         image = self.original()
         case = scorer.inputs(1001, 1)[0][1]
@@ -159,6 +197,7 @@ class ActualGuest(Fixture):
             implement(candidates.work, work)
         self.assertEqual(candidates.commit(E3["prepared_candidate"]["commit_message"]), TARGET)
         references = []
+        independent = []
         def checkpoint(event):
             references.append(candidates.artifacts.put(event, "json"))
         observer = Observer(self.runtime, checkpoint=checkpoint)
@@ -174,7 +213,22 @@ class ActualGuest(Fixture):
                 with candidates.export(oid) as root:
                     native = scorer.measure(candidates.archive, oid, Path(root), seed, 1, **options)
                 self.assertEqual(observed, native)
+                selected = options.get("labels", scorer.LABELS)
+                cases = [case for label, case in scorer.inputs(seed, 1, offsets=options.get("offsets", scorer.linear_offsets))
+                         if label in selected]
+                independent.append((snap, {"cases": cases}, [row["observed"] for label, report in native.items()
+                                    if label not in ("scope/paths", "legacy/compat") for row in report["cases"]]))
+                if "legacy/compat" in selected:
+                    independent.append((snap, {"legacy": True}, native["legacy/compat"]["cases"][0]["observed"]))
         events = [json.loads(read_artifact(candidates.artifacts.archive, ref)) for ref in references]
+        with patch.object(WasiRuntime, "run", side_effect=AssertionError("offline executed a guest")):
+            for (snap, args, expected), first, last in zip(independent, events[::2], events[1::2], strict=True):
+                self.assertEqual(read_observation(snap, first, last, **args), expected)
+                if args.get("legacy"):
+                    copied = copy.deepcopy(first)
+                    copied["public_suite_sha256"] = "0" * 64
+                    with self.assertRaises(MeasurementUnavailable):
+                        read_observation(snap, copied, {**last, "public_suite_sha256": "0" * 64}, **args)
         complete = [e for e in events if e["phase"] == "measured"]
         self.assertEqual(len(complete), 5)
         self.assertTrue(all(e["guest_state"] == "completed" and e["elapsed_ns"] > 0 for e in complete))
@@ -216,3 +270,35 @@ class ActualGuest(Fixture):
         with self.assertRaisesRegex(MeasurementUnavailable, "open the verified runtime"):
             observer.probe(candidate, cases=[case])
         self.assertEqual(observer.last_checkpoint["phase"], "unavailable")
+
+    def test_study_deadline_reaps_original_guest_and_marks_partial_invocation(self):
+        class StudyDeadline(Exception):
+            pass
+        def expire(_signal, _frame):
+            raise StudyDeadline()
+        module = self.candidates.work / "notify/preferences.py"
+        module.write_bytes(b"import time\ndef allowed(channel, disabled):\n    time.sleep(25)\n    return True\n")
+        snap = Snapshot.from_worktree(self.candidates.work)
+        case = scorer.inputs(1001, 1)[0][1]
+        launched, events = [], []
+        native = subprocess.Popen
+        def launch(*args, **kwargs):
+            process = native(*args, **kwargs)
+            launched.append((process, Path(kwargs["cwd"])))
+            signal.setitimer(signal.ITIMER_REAL, 2)
+            return process
+        previous = signal.signal(signal.SIGALRM, expire)
+        try:
+            with patch.object(subprocess, "Popen", side_effect=launch), self.assertRaises(StudyDeadline):
+                Observer(self.runtime, checkpoint=events.append).probe(snap, cases=[case])
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, previous)
+        self.assertEqual(len(launched), 1)
+        process, workspace = launched[0]
+        self.assertIsNotNone(process.poll())
+        self.assertFalse(workspace.exists())
+        self.assertEqual([event["phase"] for event in events], ["started", "interrupted"])
+        self.assertEqual(events[0]["invocation"], events[1]["invocation"])
+        with self.assertRaises(MeasurementUnavailable):
+            read_observation(snap, *events, cases=[case])
