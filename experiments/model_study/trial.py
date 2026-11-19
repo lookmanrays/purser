@@ -73,7 +73,7 @@ def _raw(assets, freeze, experiment, arm, track, seed, saved, terminal, error):
     rows.append({"kind": "terminal", "seq": len(rows) + 1, "offset_ns": elapsed,
                  "payload": {"end_reason": terminal, "missing": error, "human_action": None,
                              "end_monotonic_ns": end, "end_utc": meta["end_utc"], "cost_basis": basis}})
-    validity = ("infrastructure_invalid" if terminal == "harness_failure" else
+    validity = ("infrastructure_invalid" if terminal in ("harness_failure", "provider_unavailable") else
                 "complete" if terminal == "done" else "arm_incomplete")
     refs = {"journal": assets.put(rows, "json"), "candidates": assets.put(saved.get("candidates", {}), "json"),
             "platform": assets.put(meta, "json"), "model": None}

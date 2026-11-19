@@ -4,10 +4,13 @@ import fcntl
 import os
 from contextlib import ExitStack
 from pathlib import Path
+import time
 
 from experiments.e1.artifacts import MANIFEST, Artifacts, encoded, sha
 from experiments.e1.recovery import FileArchive, sync_directory, write_atomic
-from experiments.e1.report import Objects, parse, require
+from experiments.e1.report import parse, require
+from experiments.e1.run import utc
+from experiments.e1.measurement import MeasurementUnavailable
 from experiments.e2.outcomes import FIELDS as E2_FIELDS
 
 from .registration import load_registration, schedule
@@ -37,6 +40,14 @@ def coding_score(raw, facts):
     return {k: facts[k] for k in keys} if all(facts.get(k) is not None for k in keys) else None
 
 
+def coding_validity(terminal, track, facts):
+    if terminal in ("harness_failure", "provider_unavailable"):
+        return "infrastructure_invalid"
+    if terminal != "done" or track != "clean" and facts.get("eligible") is not True:
+        return "arm_incomplete"
+    return "complete"
+
+
 def acquire_observer(freeze, runtime_directory, stack):
     if runtime_directory is None:
         return None, None
@@ -62,6 +73,10 @@ def collect(directory, *, units=None, runtime_directory=None):
     fd = os.open(directory, os.O_RDONLY)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX)
+        started = [u for u in all_units if case_path(directory, u).is_dir()]
+        new = [u for u in selected if u not in started]
+        if started and new:
+            require(all_units.index(new[0]) > all_units.index(started[-1]), "new case precedes a previously released slot")
         with ExitStack() as stack:
             observe = snapshot = None
             if any(u[0] != "E3" for u in selected) and runtime_directory is not None:
@@ -91,9 +106,10 @@ def collect_one(directory, unit, freeze, wire, endpoint, budget, observer, snaps
     sync_directory(case.parent)
     marker = case / "started.json"
     if marker.exists():
-        require(parse(marker.read_bytes()) == identity, "case marker belongs to another registration")
+        require(parse(marker.read_bytes())["identity"] == identity, "case marker belongs to another registration")
     else:
-        write_atomic(marker, encoded(identity))
+        write_atomic(marker, encoded({"identity": identity, "started_utc": utc(),
+                                     "monotonic_ns": time.monotonic_ns(), "recovered_directory": previous}))
     if (case / "raw.json").is_file():
         return
     archive = FileArchive(case)
@@ -130,10 +146,15 @@ def collect_one(directory, unit, freeze, wire, endpoint, budget, observer, snaps
     records, exact, lower = transport.read_session(trace, archive, freeze, identity)
     if experiment != "E3":
         raw["artifacts"]["model"] = trace_ref
-        facts = readback.reconstruct_case(raw, archive, records, registration_sha256=identity["registration_sha256"])
-        raw["score"] = coding_score(raw, facts)
-        if raw["validity"] == "complete" and track == "primary" and raw["score"] is None:
-            raw["validity"] = "arm_incomplete"
+        try:
+            facts = readback.reconstruct_case(raw, archive, records, registration_sha256=identity["registration_sha256"])
+        except (OSError, ValueError, KeyError, TypeError, MeasurementUnavailable) as error:
+            # Keep the sealed observation and all surviving objects for offline audit.
+            write_atomic(case / "dispute.json", encoded({"error": f"{type(error).__name__}: {error}"}))
+            raw.update(validity="infrastructure_invalid", score=None)
+        else:
+            raw["score"] = coding_score(raw, facts)
+            raw["validity"] = coding_validity(raw["terminal"], track, facts)
         raw["cost"].update(exact, model_calls=exact["model_calls"] if exact["model_calls"] is not None else lower["model_calls"])
     # The raw row is the last publication. Re-entry after publication cannot re-expose the case.
     write_atomic(case / "raw.json", encoded(raw))

@@ -1,17 +1,16 @@
 """Cold, provider-free comparison over the prospective population and original case artifacts."""
 
-from collections import Counter
 from pathlib import Path
 
 from experiments.e1.artifacts import MANIFEST, REGISTRATION, sha
-from experiments.e1.measurement import same
+from experiments.e1.measurement import MeasurementUnavailable, same
 from experiments.e1.report import Objects, parse, require, wire_valid
 from experiments.e1.recovery import FileArchive, input_identity
 from experiments.e2.outcomes import conjunction
 
 from experiments.model_costs import FIELDS as COST, ModelCaseCost, render_model_costs
 
-from .collector import E1_FIELDS, E2_FIELDS, case_identity, case_path, coding_score, e3_args
+from .collector import E1_FIELDS, E2_FIELDS, case_identity, case_path, coding_score, coding_validity, e3_args
 from .registration import ARMS, load_registration, schedule
 
 OUTCOMES = {"E1": E1_FIELDS, "E2": E2_FIELDS,
@@ -39,6 +38,7 @@ def inspect(directory):
     for path in (directory / "cases").glob("*/*/*/*"):
         require(path in known, "unexpected case outside the frozen population")
     schema = parse((REGISTRATION / "raw.schema.json").read_bytes())
+    previous_marker = None
     for unit in units:
         path = case_path(directory, unit)
         if not path.exists():
@@ -48,7 +48,11 @@ def inspect(directory):
         objects = Objects(archive)
         exact, lower, facts, raw = {}, {}, {}, {}
         try:
-            require(parse((path / "started.json").read_bytes()) == identity, "invalid original start marker")
+            marker = parse((path / "started.json").read_bytes())
+            require(marker["identity"] == identity and type(marker["monotonic_ns"]) is int, "invalid original start marker")
+            require(previous_marker is None or marker["started_utc"] >= previous_marker,
+                    "case starts disagree with the registered arm rotation")
+            previous_marker = marker["started_utc"]
             trace_ref = parse((path / "session.json").read_bytes())
             records, exact, lower = read_session(objects.item(trace_ref), archive, frozen, identity)
             raw = parse((path / "raw.json").read_bytes())
@@ -73,6 +77,8 @@ def inspect(directory):
                 for k, partial in (("elapsed_ns", "elapsed_lower_ns"), ("steps", "observed_steps")):
                     exact[k] = facts[k]
                     lower[k] = facts[partial]
+                require(raw["validity"] == coding_validity(raw["terminal"], track, facts),
+                        "published classification differs from participant exit and actual exposure")
                 require(same(raw["score"], coding_score(raw, facts)), "published score differs from original evidence")
             for k, value in exact.items():
                 if value is not None:
@@ -81,11 +87,13 @@ def inspect(directory):
             problem = platform.get("failure") or facts.get("error")
             trace = objects.item(trace_ref)
             errors = [t.get("outcome", "interrupted model request") for t in trace["turns"] if t.get("outcome") != "decision"]
+            if (path / "dispute.json").exists():
+                errors.append(parse((path / "dispute.json").read_bytes())["error"])
             if problem:
                 errors.append(str(problem))
             cases[unit] = {"facts": facts, "terminal": raw["terminal"], "errors": errors,
                            "cost": ModelCaseCost(raw["validity"], exact, lower)}
-        except (OSError, ValueError, KeyError, TypeError, IndexError, ImportError) as error:
+        except (OSError, ValueError, KeyError, TypeError, IndexError, ImportError, MeasurementUnavailable) as error:
             cases[unit] = {"facts": {}, "terminal": "unavailable original evidence",
                            "errors": [f"{type(error).__name__}: {error}"],
                            "cost": ModelCaseCost("infrastructure_invalid", exact, lower)}

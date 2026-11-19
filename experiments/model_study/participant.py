@@ -73,7 +73,9 @@ def workspace_view(experiment, rows, repo, oid, notice, history, turn):
                     and p["input"].get("tool") != "public plan and working Git tree"):
                 previous.append({"id": p["action_id"], "action": p["action"], "actor": p["actor"],
                                  "work": p["subject"], "candidate": p["candidate"], "result": p["return"]})
-    return {"work": work, "candidate": oid, "git_changes": changes(repo, oid),
+    initial = {e["payload"]["subject"]: e["payload"]["return"] for e in history if e["kind"] == "action"
+               and e["payload"]["input"].get("release") == "initial assignment" and "return" in e["payload"]}
+    return {"work": work, "assignment_contexts": initial if not turn else {}, "candidate": oid, "git_changes": changes(repo, oid),
             "policy_files": {p: git(repo, "show", f"{oid}:{p}").decode() for p in PATHS.values()},
             "notice": notice, "last_public_actions": previous,
             "tasks": policy.TASK_TITLES if experiment == "E2" else TASKS,
@@ -100,6 +102,9 @@ class Participant:
                               self.notice, self.j.rows, self.public.turn)
 
     def execute(self):
+        for work in WORK:
+            self.call("context", work, "executor", {"release": "initial assignment", "work": work},
+                      lambda: self.arm.context(work))
         while self.public.turn < LIMITS["max_model_calls"]:
             view = self.call("context", PARENT, "executor", {"tool": "public plan and working Git tree"}, self.view)
             paths = [p for w, p in PATHS.items() if w != "W2" or {"W1", "W3"} <= self.worked]
@@ -149,7 +154,7 @@ class Participant:
             if action == "revise_retry":
                 self.call("plan", work, "planner", {"adopt": self.notice["id"]}, lambda: self.arm.revise(self.notice))
                 self.adopted = True
-            prior_state, prior_oid = self.state(work)
+            _, prior_oid = self.state(work)
             if prior_oid is not None or (action == "revise_retry" and isinstance(self.arm, Treatment)):
                 self.assign(work)
             def write():
@@ -163,9 +168,8 @@ class Participant:
             edited = self.call("edit", work, "executor", {**args, "repair": bool(prior_oid) or action == "remove"},
                                write, oid)
             self.worked.add(work)
-            submitted = self.submit(work, edited["candidate"])
-            # The incoming E2 notice interrupts the old assignment before any requested close.
-            if self.check_premise(work, submitted):
+            submitted, changed = self.submit(work, edited["candidate"])
+            if changed:
                 return None
             if args["disposition"] == "request_close":
                 return self.close(work, submitted)
@@ -189,8 +193,8 @@ class Participant:
             if self.state(work)[1] != oid:
                 if self.state(work)[1] is not None:
                     self.assign(work)
-                oid = self.submit(work, oid)
-                if self.check_premise(work, oid):
+                oid, changed = self.submit(work, oid)
+                if changed:
                     return None
             return self.close(work, oid)
         else:
@@ -214,6 +218,8 @@ class Participant:
                         "trigger": "first submission of " + work, "released": claim})
         self.call("submit", work, "executor", {"candidate": oid, "claim": claim},
                               lambda: self.arm.submit(work, oid), oid)
+        if self.check_premise(work, oid):
+            return oid, True
         self.call("check", work, "plan_reviewer", {"check": "post-submit public self-review"},
                           lambda: self.checks.public_check("review", self.experiment, oid, {"work": work, "phase": self.phase}), oid)
         if self.j.arm != "loop":
@@ -228,7 +234,7 @@ class Participant:
                     reply = self.arm.verify(work, label, dict(result, verdict=verdict))
                     return dict(reply, diagnosis=[] if verdict == "pass" else [label])
                 self.call("decide", work, "independent_verifier", {"criterion": label, "verdict": verdict}, verify, oid)
-        return oid
+        return oid, False
 
     def close(self, work, oid):
         def declare():

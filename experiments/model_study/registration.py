@@ -145,6 +145,8 @@ def registration(directory, conditions, *, population, budget_path=None, replica
 def load_registration(directory, *, collecting=False):
     wire = (directory / "freeze.json").read_bytes()
     frozen = parse(wire)
+    if encoded(frozen) != wire:
+        raise ValueError("registration bytes are not canonical")
     expected = source_pin(frozen["source_commit"])
     if any(frozen.get(k) != value for k, value in expected.items()):
         raise ValueError("source, scorer or frozen input differs from registration")
@@ -154,8 +156,10 @@ def load_registration(directory, *, collecting=False):
         raise ValueError("model registration differs from frozen protocol")
     check_replicate(frozen["replicate"], frozen["replication_reason"])
     validate_conditions(frozen["conditions"], frozen["population"])
+    if source_pin()["source_files"] != expected["source_files"]:
+        raise ValueError("use the registered source checkout for collection and offline reconstruction")
     if collecting:
-        if source_pin()["source_files"] != expected["source_files"] or frozen["host"] != host():
+        if frozen["host"] != host():
             raise ValueError("actual study source or host differs from prospective registration")
         if frozen["population"] == "model":
             path = (directory / "freeze.json").resolve().relative_to(ROOT).as_posix()
