@@ -28,6 +28,18 @@ The architect extracted both series to a new directory. The two cold reports mat
 
 All 310 discovered tests passed on this source with Python 3.11.15 on the arm64 Mac. No test was skipped. The kernel, CLI, Git, collector and cost portion ran 281 tests. The 29 tests in the study, isolation and WASI runtime suites used the qualified guest archives. Both portions discovered the same full inventory. Reproduce the whole inventory from this checkout with `PURSER_WASI_ARCHIVES` set to the qualified archive directory and `python3.11 -m unittest discover -s tests -t .`. [Machine-readable inventory](test-inventory.json) · [Guest archive versions and host qualification](../wasi-host.md)
 
+## One collection across all 195 cases
+
+The ordinary `collect` command ran the entire schedule under a single private `canned_control` registration at `142c9735f52d470686fbe82dfb0a3c83afa1295b`. Its study source matched the independently reviewed `3308ef7`. The observer derived the expected order and request counts before examining the run. All 195 cases started in order. The local responder received 441 requests, matching all 441 budget entries. Participants took 1,441 public steps. Collection took 523.627 seconds on the enrolled Mac. The responder supplied fixed usage values, and the service charge was US$0. [Independent full-schedule audit](full-schedule-audit.json)
+
+| Experiment | Observed result | Requests |
+| --- | --- | ---: |
+| E1 · 63 cases | The control read W1 and stopped. All 63 coding rows retained their incomplete result. | 126 |
+| E2 · 66 cases | The same control stopped before the changed premise. Both E1 and E2 scientific thresholds remained unknown. | 132 |
+| E3 · 66 cases | Native Git recorded one update in each of 60 ordinary and three clean cases. Thirty ordinary updates landed on their first attempt and thirty on their authorized retry. Three stress cases kept the write pending. No branch recorded a duplicate. | 183 |
+
+Re-entering collection once with the responder running and again after shutting it down preserved all 585 start, session and raw-row digests. It released zero further requests. The architect unpacked the [portable control archive](full-schedule-control.tar.xz) into a new directory, verified all 10,496 content digests, reopened all 66 native Git repositories and regenerated the whole report byte for byte. The report identifies zero genuine model observations. To reproduce it from the source checkout, unpack the archive and run `python3.11 -m experiments.model_study report /path/to/unpacked/series`. Its report SHA-256 is `97d87e14632cd44c138e4fc59fadbe41c5589c6bb03faa4e91d8d98031f46d0c`.
+
 ## Product size
 
 The product under `purser/` contains 4,062 physical Python lines in 30 files, counting blank lines and comments. The five M5 model-adapter files add 707 lines. Under the adopted M0 definition the kernel, CLI and foreground integration still account for 2,958 lines. The external Git adapter accounts for the remaining 397. The frozen manifest, previously accepted kernel and Git driver have the same bytes as the M4 delivery. [M4 counting record](../../M4/foreground-verification.md)
