@@ -179,33 +179,38 @@ class Observer:
         return measured
 
     def measure(self, snapshot, seed, rank, *, labels=None, offsets=scorer.linear_offsets, version=1):
-        if snapshot.oid is None:
-            raise MeasurementUnavailable("protected measurement requires the archived Git commit")
-        selected = set(scorer.LABELS if labels is None else labels)
-        if not selected.issubset(scorer.LABELS):
-            raise ValueError("unknown protected criterion")
-        checks = {label: [] for label in scorer.LABELS if label in selected}
-        cases = [(label, case) for label, case in scorer.inputs(seed, rank, offsets=offsets) if label in selected]
-        if cases:
-            observations = self.probe(snapshot, cases=[case for _, case in cases])
-            for (label, case), observed in zip(cases, observations, strict=True):
-                checks[label].append({"input": case, "expected": scorer.expected(case, offsets=offsets),
-                                      "observed": observed})
-        if "scope/paths" in checks:
-            delta = snapshot.changes
-            outside = [row for row in delta if row["path"] not in FIXTURE["public_paths"]
-                       or (row["old_mode"], row["new_mode"]) != ("100644", "100644")]
-            checks["scope/paths"].append({"all_changes": delta, "observed": outside, "expected": []})
-        if "legacy/compat" in checks:
-            checks["legacy/compat"].append({"expected": {"tests": 28, "errors": [], "failures": [], "skipped": []},
-                                            "observed": self.probe(snapshot, legacy=True)})
-        reports = {}
-        for label, rows in checks.items():
-            report = {"candidate": snapshot.oid, "criterion": label, "version": version, "cases": rows}
-            report["verdict"] = scorer.verify_report(report, snapshot.oid, label, seed, rank,
-                                                     offsets=offsets, version=version)
-            reports[label] = report
-        return reports
+        return protected_reports(snapshot, seed, rank, probe=self.probe, labels=labels, offsets=offsets, version=version)
+
+
+def protected_reports(snapshot, seed, rank, *, probe, labels=None, offsets=scorer.linear_offsets, version=1):
+    """Build the registered reports from the snapshot and a source of measured samples."""
+    if snapshot.oid is None:
+        raise MeasurementUnavailable("protected measurement requires the archived Git commit")
+    selected = set(scorer.LABELS if labels is None else labels)
+    if not selected.issubset(scorer.LABELS):
+        raise ValueError("unknown protected criterion")
+    checks = {label: [] for label in scorer.LABELS if label in selected}
+    cases = [(label, case) for label, case in scorer.inputs(seed, rank, offsets=offsets) if label in selected]
+    if cases:
+        observations = probe(snapshot, cases=[case for _, case in cases])
+        for (label, case), observed in zip(cases, observations, strict=True):
+            checks[label].append({"input": case, "expected": scorer.expected(case, offsets=offsets),
+                                  "observed": observed})
+    if "scope/paths" in checks:
+        delta = snapshot.changes
+        outside = [row for row in delta if row["path"] not in FIXTURE["public_paths"]
+                   or (row["old_mode"], row["new_mode"]) != ("100644", "100644")]
+        checks["scope/paths"].append({"all_changes": delta, "observed": outside, "expected": []})
+    if "legacy/compat" in checks:
+        checks["legacy/compat"].append({"expected": {"tests": 28, "errors": [], "failures": [], "skipped": []},
+                                        "observed": probe(snapshot, legacy=True)})
+    reports = {}
+    for label, rows in checks.items():
+        report = {"candidate": snapshot.oid, "criterion": label, "version": version, "cases": rows}
+        report["verdict"] = scorer.verify_report(report, snapshot.oid, label, seed, rank,
+                                                 offsets=offsets, version=version)
+        reports[label] = report
+    return reports
 
 
 def read_observation(snapshot, started, terminal, *, cases=None, legacy=False):

@@ -8,7 +8,7 @@ from experiments.e1 import accounting, capture, outcomes
 from experiments.e1.artifacts import REGISTRATION, START, changes, encoded, git, sha
 from experiments.e1.executor import LEAVES, PARENT, PATHS, fault_for
 from experiments.e1.measurement import same
-from experiments.e1.report import GitPacks, Objects, require
+from experiments.e1.report import GitPacks, MissingObject, Objects, require
 from experiments.e2 import measure, plan_versions, policy
 from experiments.e2.outcomes import all_pass, criteria
 from experiments.e3.trial import files_in
@@ -20,7 +20,7 @@ from purser.kernel.workview import WorkView
 from .trial import active_ns
 
 
-def referenced_files(artifacts, platform, objects):
+def referenced_files(artifacts, platform, objects, *, missing=None):
     """Follow the original content-addressed inputs without trusting the declared file list."""
     roots = [artifacts[k] for k in ("journal", "candidates", "model")]
     roots.append({k: v for k, v in platform.items() if k != "referenced_files"})
@@ -32,10 +32,16 @@ def referenced_files(artifacts, platform, objects):
         if path in found:
             require(found[path] == ref, "conflicting identity for a retained case object")
             continue
-        objects.blob(ref)
         found[path] = ref
-        if path.endswith(".json"):
-            pending.extend(files_in(objects.item(ref)))
+        try:
+            if path.endswith(".json"):
+                pending.extend(files_in(objects.item(ref)))
+            else:
+                objects.blob(ref)
+        except MissingObject:
+            if missing is None:
+                raise
+            missing.add(path)
     return [found[path] for path in sorted(found)]
 
 
@@ -171,11 +177,14 @@ def model_application(actions, records, objects, repos, source, experiment, comp
     return chosen
 
 
-def reconstruct_case(raw, archive, records, *, registration_sha256):
+def reconstruct_case(raw, archive, records, *, registration_sha256, evidence_issues=None):
     objects = Objects(archive)
     meta, rows, candidates = (objects.item(raw["artifacts"][k]) for k in ("platform", "journal", "candidates"))
-    require(meta["referenced_files"] == referenced_files(raw["artifacts"], meta, objects),
-            "coding case file manifest differs from the original artifact graph")
+    missing = set()
+    inventory = referenced_files(raw["artifacts"], meta, objects, missing=missing if evidence_issues is not None else None)
+    require(meta["referenced_files"] == inventory, "coding case file manifest differs from the original artifact graph")
+    if evidence_issues is not None:
+        evidence_issues.extend("unavailable original object " + path for path in sorted(missing))
     arm, experiment, track, seed = (raw[k] for k in ("arm", "experiment", "track", "seed"))
     from experiments.e1.artifacts import MANIFEST
     rank = MANIFEST["experiments"][experiment]["seeds"].index(seed) + 1
@@ -255,7 +264,7 @@ def reconstruct_case(raw, archive, records, *, registration_sha256):
         require(transitions == actual_states or not complete, "public transitions differ from original participant")
         from .observer_receipts import Observed
         observed = Observed(meta.get("isolation_receipts", []), objects, repos, complete,
-                            {"registration_sha256": registration_sha256, "unit": [experiment, track, seed, arm]})
+                            {"registration_sha256": registration_sha256, "unit": [experiment, track, seed, arm]}, missing=missing)
         phase = policy.LINEAR
         for row in rows:
             p = row["payload"]
@@ -277,23 +286,7 @@ def reconstruct_case(raw, archive, records, *, registration_sha256):
                 selector = {"criterion": p["input"]["criterion"], "phase": phase}
                 reproduced = observed.public("verifier", experiment, repos[oid], p, selector)
                 require(same(reproduced, p["return"]["report"]), "equipped observation differs from original guest")
-        grades = {}
-        for row in rows:
-            if row["kind"] == "oracle":
-                p = row["payload"]
-                oid, label, version = measure.key(p)
-                report = objects.item(p["evidence"])
-                grade = measure.grade(report, oid, label, seed, rank, version)
-                probe_refs = objects.item(p["probe_receipts"])
-                if label != "scope/paths" or probe_refs:
-                    require(probe_refs == observed.refs.get(p["probe_group"]), "protected checkpoint receipts differ")
-                observed.validate(p["probe_group"], oid, label, version, report, seed, rank)
-                require(grade == p["verdict"] and oid in repos and (oid, label, version) not in grades,
-                        "duplicate or unbound protected observation")
-                if label == "scope/paths":
-                    require(same(report["cases"][0]["all_changes"], changes(repos[oid], oid)),
-                            "protected scope differs from Git tree")
-                grades[oid, label, version] = grade
+        grades = observed.grades(rows, seed, rank, evidence_issues=evidence_issues)
         model_application(actions, records, objects, repos, rows, experiment, complete)
         notices = [r for r in rows if r["kind"] == "fault"]
         require(len(notices) <= (0 if track == "clean" else 1), "unexpected intervention count")
@@ -324,7 +317,8 @@ def reconstruct_case(raw, archive, records, *, registration_sha256):
                 require(submits and submits[0]["seq"] == notice["seq"] + 1 and
                         submits[0]["payload"]["input"] == {"candidate": p["candidate"], "claim": "done, tests pass"},
                         "E1 fault was not the first applicable submitted result")
-            observation = outcomes.assess(rows, history_complete=complete, candidates=candidates)
+            verified_rows = [r for r in rows if r["kind"] != "oracle" or measure.key(r["payload"]) in grades]
+            observation = outcomes.assess(verified_rows, history_complete=complete, candidates=candidates)
             facts.update(observation.facts, eligible=bool(observation.fault_measured) if track == "primary" else complete)
         else:
             facts.update(e2_readback.assess(history, track, grades, repos, periods, oid,
