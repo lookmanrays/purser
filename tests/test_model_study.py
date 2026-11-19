@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -307,6 +308,29 @@ runpy.run_module('experiments.model_study', run_name='__main__')
             self.assertIsNone(partial["new_bad_closure"])
             self.assertIsNone(partial["rework_steps"])
             self.assertEqual(partial["rework_observed"], facts["rework_steps"])
+            # Keep the enrolled input intact. First remove its last protected report,
+            # then also remove the actual bounded output for that batch.
+            damaged = Path(temp) / "damaged"
+            shutil.copytree(series, damaged, copy_function=os.link)
+            damaged_case = case_path(damaged, unit)
+            last = next(r["payload"] for r in reversed(journal) if r["kind"] == "oracle"
+                        and r["payload"]["version"] == 2 and r["payload"]["criterion"] == "queue/composition")
+            (damaged_case / last["evidence"]["path"]).unlink()
+            missing_report = inspect(damaged)[1][unit]
+            self.assertEqual(missing_report["cost"].validity, "infrastructure_invalid")
+            self.assertEqual(missing_report["facts"]["final_criteria"], facts["final_criteria"])
+            self.assertIn(last["evidence"]["sha256"], cli("report", damaged))
+            output = objects.item(last["probe_receipts"])[-1]
+            (damaged_case / output["path"]).unlink()
+            without_output = inspect(damaged)[1]
+            from experiments.model_study.report import field
+            self.assertIs(field(without_output, unit, "intervention_reached"), True)
+            self.assertEqual(field(without_output, unit, "unaffected_reopened"), 2)
+            self.assertIsNone(field(without_output, unit, "final_pass"))
+            self.assertIsNone(without_output[unit]["facts"]["final_criteria"]["queue/composition"])
+            self.assertEqual(field(without_output, unit, "model_calls"), 8)
+            self.assertEqual(len(calls), 8)
+
 
     @unittest.skipUnless(WASI, "requires the enrolled disposable macOS WASI fixture")
     def test_e1_wrong_source_false_parent_and_e2_real_premise(self):

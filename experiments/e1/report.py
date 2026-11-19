@@ -131,6 +131,10 @@ class Case:
         return oid in self.evidence.correct_candidates and self.evidence.facts["false_parent_closure"] is False
 
 
+class MissingObject(ValueError):
+    """A valid content address whose original bytes are absent from this archive."""
+
+
 class Objects:
     def __init__(self, archive):
         self.archive = archive
@@ -146,8 +150,10 @@ class Objects:
             if key not in self.content:
                 self.content[key] = read_artifact(self.archive, ref)
             return self.content[key]
-        except (KeyError, FileNotFoundError, zipfile.BadZipFile) as exc:
-            raise ValueError("unavailable object " + ref["path"]) from exc
+        except (KeyError, FileNotFoundError) as exc:
+            raise MissingObject("unavailable object " + ref["path"]) from exc
+        except zipfile.BadZipFile as exc:
+            raise ValueError("unreadable object " + ref["path"]) from exc
 
     def references(self, value):
         if type(value) is dict:

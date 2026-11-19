@@ -121,18 +121,21 @@ def inspect(directory):
                                                    if e.get("result") or e.get("recovered_result"))})
             else:
                 require(not errors and raw["artifacts"]["model"] == trace_ref, "model trace differs from original session")
-                facts = readback.reconstruct_case(raw, archive, records, registration_sha256=identity["registration_sha256"])
+                facts = readback.reconstruct_case(raw, archive, records, registration_sha256=identity["registration_sha256"],
+                                                  evidence_issues=errors)
                 for k, partial in (("elapsed_ns", "elapsed_lower_ns"), ("steps", "observed_steps")):
                     exact[k] = facts[k]
                     lower[k] = facts[partial]
-                require(raw["validity"] == coding_validity(raw["terminal"], track, facts),
-                        "published classification differs from participant exit and actual exposure")
-                require(same(raw["score"], coding_score(raw, facts)), "published score differs from original evidence")
+                if raw["validity"] != coding_validity(raw["terminal"], track, facts):
+                    errors.append("published classification differs from independently established exit and exposure")
+                if not same(raw["score"], coding_score(raw, facts)):
+                    errors.append("published score differs from independently established measurements")
                 for k in COST:
                     expected = exact.get(k)
                     if expected is None and k in ("steps", "elapsed_ns", "model_calls"):
                         expected = lower.get(k)
-                    require(same(expected, raw["cost"][k]), "published cost differs from original " + k)
+                    if not same(expected, raw["cost"][k]):
+                        errors.append("published cost differs from independently established " + k)
             platform = objects.item(raw["artifacts"]["platform"])
             problem = platform.get("failure") or facts.get("error")
             validity = "infrastructure_invalid" if errors else raw["validity"]
@@ -180,7 +183,7 @@ def field(cases, unit, name):
         return None
     if name in COST:
         return case["cost"].exact.get(name)
-    if case["cost"].validity == "infrastructure_invalid":
+    if unit[0] == "E3" and case["cost"].validity == "infrastructure_invalid":
         return None
     return case["facts"].get(name)
 
@@ -306,7 +309,7 @@ def render(frozen=None, cases=None):
             status = LABELS[rec["cost"].validity] + " / " + rec["terminal"] if rec else "missing"
             cells = [track, str(seed), arm, status]
             for k in detailed:
-                exact = rec["facts"].get(k) if exp == "E2" and rec and k not in COST else field(cases, unit, k)
+                exact = field(cases, unit, k)
                 bound = rec["cost"].lower_bounds.get(k) if rec and k in COST else None
                 cells.append("≥" + show(bound) if exact is None and bound is not None else show(exact))
             out.append("| " + " | ".join(cells) + " |")
