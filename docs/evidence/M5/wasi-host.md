@@ -36,4 +36,4 @@ The architect exercised observer commit `1459ee60dd4cfe1da5270fd5062b905f9e01719
 | Revised implementation under the new requirement | None | 28 |
 | Revised implementation plus an outside-scope note | File scope | 28 |
 
-Each of the eight guest invocations retained its concrete input, response, elapsed time and fuel consumption. A separate reader regraded the original case reports. The integration commit is `a2157b82370c0d286e09ae8f9aaac264af84bbd4`. The retained local result is `~/.local/state/purser/development/m5/observer-review-1459ee60d.json`, SHA-256 `690439c0bc2ae60abeda0940334c1b649339d536960878d3ae4b169d77a73923`.
+The control record identifies the concrete input and output of each of the eight guest invocations by SHA-256 and includes elapsed time and fuel consumption. The original scorer regraded the observed rows. The integration commit is `a2157b82370c0d286e09ae8f9aaac264af84bbd4`. The retained local result is `~/.local/state/purser/development/m5/observer-review-1459ee60d.json`, SHA-256 `690439c0bc2ae60abeda0940334c1b649339d536960878d3ae4b169d77a73923`.
