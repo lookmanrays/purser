@@ -1,0 +1,27 @@
+# M5 notification observer preflight
+
+The starting source is `29ade2e5f46b779ff9e657d199eaff580b004a41`. The observer owns measurement of model-supplied notification code on disposable fixture snapshots. The registered protocol fixes the queue calls, legacy tests, criteria and Git scope. The collector owns trial identity, journals and authorization. This packet exercises offline fixtures under ordinary user permissions. [Registered protocol](../../../experiments/manifests/v1/protocol.md) · [Implementation plan](../../implementation-plan-v0.5.md)
+
+## Design and operating feasibility
+
+**PASS for the fixture observer on Darwin 25.5.0 arm64.** The architect's separately owned WASI runtime uses a digest-verified Wasmtime 50.0.1 wheel and CPython 3.15.2 guest, one 64 MiB guest linear memory, instruction fuel, a bounded response and an outer process deadline. It supplies only byte copies of the fixture, the invocation arguments, the guest entry and the guest standard library. Existing native scripted probes were built for trusted fixtures. Docker's local daemon was unavailable. This design needs no daemon, privileged changes or new network access.
+
+Before implementation, an ordinary invocation through the architect's runtime loaded the registered `notify.service.NotificationQueue` and bundled Schedule 1.2.2, returning all eleven seeded queue observations using 4,500,627,402 fuel units. The unchanged native legacy entry under WASI discovered seven results. The Schedule test module failed at its call to `time.tzset()`, which the guest lacks.
+
+A second disposable control used the controller's frozen test and package bytes, checked against every registered SHA-256 before import. Running the original suite recorded 22 concrete queue operations from six tests. Only the operation names and arguments entered the WASI guest. The controller ran the original public assertions against returned values and exceptions. The complete suite ran 28 tests with zero failures on the registered starting fixture. An otherwise identical fixture whose channel policy always returned false failed three original tests. The other 22 tests exercise Schedule directly. Running those tests on the controller requires the starting Schedule bytes and a compatible import surface. A changed core with unknown native behavior makes this part unavailable. [Fixture manifest](../../../experiments/manifests/v1/manifest.json) · [Frozen public queue tests](../../../experiments/manifests/v1/input/tests/test_service.py)
+
+The control's input digest was `8864aef8ff564183ab57c95ec3fdeb823f31dfa8364692c59c4e7f26e9b3c7e0`. The two returned traces had digests `c7fda9e446013b91367b29e79da140e208f5f1b9cca3034074219e8daec57367` and `6587645de23cdc98a382695f43709717b0136c856ded7436066085e9c33b27f6`. This was a feasibility experiment with synthetic inputs. Neither a model nor the real project ledger participated.
+
+## Implementation preflight
+
+**Risk R3.** Importing candidate Python on the controller can expose private state. Accepting a guest-supplied pass can misgrade an experiment. The observer must bind bounded, structurally valid observations to a single immutable candidate and concrete input before the controller can grade.
+
+| Responsibility | Enforcement and planned evidence |
+| --- | --- |
+| Candidate and scope | Freeze blob bytes and modes from a fixture-descended Git commit or a disposable working copy. Keep Git and absolute host paths out of the guest. Verify ancestor, size, special files, aliases and change isolation. Protected scored reports require the submitted Git commit. |
+| Executing candidate code | Use the architect's fresh WASI guest for every queue or public-operation invocation. Originals and changes must change observed values in the expected direction. Check a denied disposable canary, refused network, exhausted limits, and the external cancellation outcome in the runtime's qualification. |
+| Grading and original legacy assertions | Reuse the frozen seeded scorer's case generation, strict sample validation and grading. The controller runs exact digest-checked original tests and Schedule bytes. Drive the six queue tests with the arguments actually issued by those tests and replay only candidate return values or exceptions. Validate the complete public trace. Reject unexpected output, wrong envelope, missing groups or extra operations. |
+| Evidence and failure | A controller callback captures snapshot, runner and protocol identities, bounded input and raw output, elapsed time and causal termination. A missing host, missing legacy capability or invalid response yields an explicit unavailable measurement. Preserve candidate exceptions as observations where the protocol defines them. |
+| First consumer | The public worker uses a frozen working-copy image before submission. Public verifier, changed-premise checkpoint and protected report consumers use the corresponding immutable Git image and the same isolated measurement interface. Compare the complete seeded reports against the original trusted controls on benign starting and prepared candidates. |
+
+The active lenses cover trust, file and process identity, resource limits, contract and module ownership. The immutable study and existing cost/arm logic keep their current authorities. The new boundary consists of the isolated runtime, the fixture observer and the public test controller. The guest and its Python-level instrumentation share one interpreter. Its stdout is untrusted behavioral data checked and interpreted outside it.
