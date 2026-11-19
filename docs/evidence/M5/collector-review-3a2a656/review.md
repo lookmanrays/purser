@@ -1,0 +1,8 @@
+# Original evidence at the study collector
+
+The architect tested the model study CLI at `3a2a656f9bebcf13429e9e4ecf69e6e91d0d5dc7`. Two issues prevented technical acceptance. The controls used a private synthetic E3 registration and one actual loopback HTTP request. [Original observations](observations.json)
+
+1. **P2 · Cold collection lost an available response.** The local service returned a typed proposal and disclosed 41 input and 12 output tokens. The client stopped after the adapter durably captured the complete response and before settlement. A separate reader validated the full original and its registration and turn. Two fresh invocations of the normal collector issued zero further requests. The collector published a final raw record with a call count of zero, unknown token counts and a trace missing the original digest. The first issue belongs to the handoff between the collector's session reader and the transport’s recovery mechanism. A recovered proposal can establish the original call and usage. Its existence alone cannot establish that the interrupted participant acted on it.
+2. **P2 · A registered endpoint with full provenance could not start.** A valid synthetic service profile included its provider, provider version and model revision. Its frozen configuration and spending authority agreed. The normal collector constructed a reduced profile and rejected it during activation. The public transport already supports these fields. The collection and offline paths must preserve the same enrolled identity.
+
+The raw control SHA-256 is `01eec61e7bcc9c57749ec489b95d78807a6f4cee8b0b16fa709be0f1f54d1967`. The study implementation owner received the findings. Both need fresh verification through the whole CLI on the repaired source.
