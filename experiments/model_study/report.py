@@ -10,6 +10,7 @@ from experiments.e1.measurement import MeasurementUnavailable, same
 from experiments.e1.report import Objects, parse, require, wire_valid
 from experiments.e1.recovery import FileArchive, input_identity
 from experiments.e2.outcomes import conjunction
+from experiments.e3.summary import aggregate as aggregate_e3
 
 from experiments.model_costs import FIELDS as COST, ModelCaseCost, render_model_costs
 
@@ -183,9 +184,31 @@ def field(cases, unit, name):
         return None
     if name in COST:
         return case["cost"].exact.get(name)
-    if unit[0] == "E3" and case["cost"].validity == "infrastructure_invalid":
-        return None
     return case["facts"].get(name)
+
+
+def comparison_field(cases, unit, name):
+    case = cases.get(unit)
+    if case and unit[0] == "E3" and name not in COST:
+        if case["cost"].validity == "infrastructure_invalid" or case["facts"].get("eligible") is not True:
+            return None
+    return field(cases, unit, name)
+
+
+def case_measurement(cases, unit, name):
+    value = field(cases, unit, name)
+    case = cases.get(unit)
+    if value is None and case:
+        if name in COST:
+            bound = case["cost"].lower_bounds.get(name)
+            if bound is not None:
+                return "≥" + show(bound)
+        elif name in ("effect_count", "duplicate_count"):
+            count = case["facts"].get("physical_count_lower_bound") or 0
+            bound = count if name == "effect_count" else count - 1
+            if bound > 0:
+                return "≥" + show(bound)
+    return show(value)
 
 
 def column(cases, exp, arm, name):
@@ -194,8 +217,25 @@ def column(cases, exp, arm, name):
         unit = exp, "primary", seed, arm
         case = cases.get(unit)
         eligible = case and case["facts"].get("eligible") is True
-        result.append(field(cases, unit, name) if eligible or name == "intervention_reached" else None)
+        result.append(comparison_field(cases, unit, name) if eligible or name == "intervention_reached" else None)
     return result
+
+
+def e3_predicates(cases):
+    records = {}
+    for (exp, track, seed, arm), case in cases.items():
+        if (exp, track, arm) != ("E3", "primary", "purser"):
+            continue
+        facts = case["facts"]
+        if case["cost"].validity == "infrastructure_invalid":
+            # An observed duplicate or stuck state survives a later outage. An invalid
+            # trial cannot establish that it avoided either or completed the recovery.
+            facts = {"eligible": facts.get("eligible"), "physical_count_lower_bound": facts.get("physical_count_lower_bound"),
+                     "duplicate_count": facts.get("duplicate_count") or None,
+                     "stuck_requires_manual": facts.get("stuck_requires_manual") or None}
+        records[track, seed, arm] = {"facts": facts}
+    arms, _ = aggregate_e3(records)
+    return arms["purser"]["absolute"], arms["purser"]["original_no_advantage"]
 
 
 def predicates(cases, comparator="loop"):
@@ -219,19 +259,12 @@ def predicates(cases, comparator="loop"):
     comparative = _all([lower, final])
     e2 = (_all([_at_least(values("E2", "unaffected_both_retained"), 18), half, final]),
           None if comparative is None else not comparative)
-    d = values("E3", "duplicate_count")
-    no_duplicate = _all([None if v is None else v == 0 for v in d])
-    no_stuck = _all([None if v is None else not v for v in values("E3", "stuck_requires_manual")])
-    clean_recovery = _all([no_duplicate, no_stuck])
-    e3 = (_all([no_duplicate, _at_least(values("E3", "correct_reconciliation"), 20),
-                _at_least(values("E3", "resolved_by_budget"), 20)]),
-          None if clean_recovery is None else not clean_recovery)
-    return {"E1": e1, "E2": e2, "E3": e3}
+    return {"E1": e1, "E2": e2, "E3": e3_predicates(cases)}
 
 
 def healthy(exp, facts):
     if exp == "E3":
-        return facts.get("resolved_by_budget") is True and facts.get("duplicate_count") == 0
+        return facts.get("eligible") is True and facts.get("resolved_by_budget") is True and facts.get("duplicate_count") == 0
     return facts.get("final_parent_closed") is True and facts.get("final_pass") is True
 
 
@@ -252,6 +285,26 @@ def e2_publications(cases):
             "cites its declared candidate and its revised retry grade. The final pass checks all six obligations.", "",
             "| Case | Subject | State change | Publication | Candidate | At delivery | Revised retry passed |",
             "| --- | --- | --- | --- | --- | --- | --- |", *lines]
+
+
+def e3_stress(cases):
+    stress = MANIFEST["experiments"]["E3"]["stress"]
+    lines = []
+    for arm in ARMS:
+        unit = "E3", stress["id"], stress["seed"], arm
+        if unit not in cases:
+            continue
+        facts = cases[unit]["facts"]
+        last = (facts.get("decisions") or [{}])[-1]
+        attempts = max(0, len(facts["releases"]) - 1) if facts.get("external_complete") else None
+        row = (arm, last.get("choice"), last.get("reason"), last.get("next_action"), facts.get("stress_held_pending"),
+               facts.get("uncertainty_remaining"), attempts, case_measurement(cases, unit, "effect_count"))
+        lines.append("| " + " | ".join(show(value) for value in row) + " |")
+    if not lines:
+        return []
+    return ["", "### Inconclusive-observation stress", "",
+            "| Arm | Published choice | Reason | Next action | Actionable pending held | Uncertainty remaining | Additional attempts | Effects |",
+            "| --- | --- | --- | --- | --- | --- | ---: | ---: |", *lines]
 
 
 def render(frozen=None, cases=None):
@@ -293,6 +346,10 @@ def render(frozen=None, cases=None):
                 vals = [v for v in column(cases, exp, arm, key) if v is not None]
                 cells.append(f"{sum(vals) if vals else '?'} / {len(vals)} / 20")
             out.append("| " + " | ".join((key, *cells)) + " |")
+        if exp == "E3":
+            out += ["", "Each case shows the Git and participant observations its sources establish. "
+                    "Outcome differences require two exposed, usable cases. A later infrastructure failure leaves "
+                    "a witnessed duplicate or ordinary stuck state relevant to the registered adverse predicate."]
         if exp == "E2":
             for comparator in ("loop", "loop_equal_verifier"):
                 p, b = [column(cases, exp, arm, "rework_steps") for arm in ("purser", comparator)]
@@ -308,13 +365,12 @@ def render(frozen=None, cases=None):
             rec = cases.get(unit)
             status = LABELS[rec["cost"].validity] + " / " + rec["terminal"] if rec else "missing"
             cells = [track, str(seed), arm, status]
-            for k in detailed:
-                exact = field(cases, unit, k)
-                bound = rec["cost"].lower_bounds.get(k) if rec and k in COST else None
-                cells.append("≥" + show(bound) if exact is None and bound is not None else show(exact))
+            cells.extend(case_measurement(cases, unit, k) for k in detailed)
             out.append("| " + " | ".join(cells) + " |")
         if exp == "E2":
             out.extend(e2_publications(cases))
+        if exp == "E3":
+            out.extend(e3_stress(cases))
         out += ["", "### Paired differences", "",
                 "Each cell subtracts that comparator from Purser in this order — " + ", ".join((*keys, *COST)) + ".", "",
                 "| Track / seed | Purser minus plain loop | Purser minus equal verifier |", "| --- | --- | --- |"]
@@ -324,7 +380,7 @@ def render(frozen=None, cases=None):
                 delta = []
                 for name in (*keys, *COST):
                     pair = [(exp, track, seed, x) for x in (arm, other)]
-                    a, b = [field(cases, u, name) if name in COST or track != "primary"
+                    a, b = [comparison_field(cases, u, name) if name in COST or track != "primary"
                             or cases.get(u, {}).get("facts", {}).get("eligible") is True else None for u in pair]
                     delta.append(show(a - b if a is not None and b is not None else None))
                 cells.append(" / ".join(delta))

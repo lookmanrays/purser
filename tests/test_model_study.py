@@ -124,6 +124,66 @@ class ModelStudy(unittest.TestCase):
             self.assertEqual(b["facts"]["effect_count"], 0)
             self.assertIn("0 of 195 original", first)
 
+    def test_e3_case_shows_native_update_when_a_later_model_request_fails(self):
+        from tests.test_model_e3 import canned_service
+        unit = "E3", "primary", 3013, "loop"
+        with tempfile.TemporaryDirectory() as temp:
+            with canned_service() as server:
+                server.model = "counted-notification-control"
+                server.error_at = 2
+                series = enroll(Path(temp), server.server_port, observer="unavailable")
+                args = "collect", series, "--unit", "/".join(map(str, unit))
+                cli(*args)
+                cli(*args)
+                self.assertEqual(len(server.received), 2)
+            case = case_path(series, unit)
+            native = subprocess.check_output(["git", "--git-dir", str(case / "trial/canonical.git"), "reflog", "show",
+                                              "--format=%gs", "refs/heads/notify"], text=True).splitlines()
+            self.assertEqual(sum(entry.startswith("purser.effect ") for entry in native), 1)
+            self.assertIsNone(json.loads((case / "raw.json").read_bytes())["score"])
+            e3 = cli("report", series).split("\n## E3\n", 1)[1].splitlines()
+            header = next(line for line in e3 if line.startswith("| Track | Seed | Arm |"))
+            row = next(line for line in e3 if line.startswith("| primary | 3013 | loop |"))
+            cells = dict(zip(header.strip("| ").split(" | "), row.strip("| ").split(" | "), strict=True))
+            self.assertEqual([cells[k] for k in ("Validity / terminal", "eligible", "original_truth", "effect_count",
+                                                 "duplicate_count", "correct_reconciliation", "model_calls")],
+                             ["invalid / provider_unavailable", "yes", "landed", "1", "0", "no", "2"])
+            self.assertIn("| effect_count | ? / 0 / 20 | ? / 0 / 20 | ? / 0 / 20 |", e3)
+
+    def test_e3_evidence_bounds_and_exposure_in_comparisons(self):
+        from experiments.model_study.report import case_measurement, comparison_field, e3_predicates
+        primary = "E3", "primary", 3013, "purser"
+        cases = {primary: {"cost": ModelCaseCost("infrastructure_invalid", {"model_calls": 2}),
+                           "facts": {"eligible": True, "physical_count_lower_bound": 1, "correct_reconciliation": False}}}
+        facts = cases[primary]["facts"]
+        self.assertEqual(e3_predicates(cases), (None, None))
+        self.assertEqual(case_measurement(cases, primary, "effect_count"), "≥1")
+        self.assertEqual(case_measurement(cases, primary, "duplicate_count"), "?")
+        facts["physical_count_lower_bound"] = 2
+        self.assertEqual(e3_predicates(cases), (False, True))
+        self.assertEqual(case_measurement(cases, primary, "duplicate_count"), "≥1")
+        self.assertIsNone(comparison_field(cases, primary, "effect_count"))
+        self.assertEqual(comparison_field(cases, primary, "model_calls"), 2)
+        facts["physical_count_lower_bound"] = None
+        facts["duplicate_count"] = 1
+        self.assertEqual(e3_predicates(cases), (False, True))
+        facts["duplicate_count"], facts["stuck_requires_manual"] = 0, True
+        self.assertEqual(e3_predicates(cases), (None, True))
+        facts["eligible"] = None
+        self.assertEqual(e3_predicates(cases), (None, None))
+        for track in ("clean", "inconclusive-observation"):
+            unit = "E3", track, 3001, "purser"
+            other = {unit: {"cost": ModelCaseCost("arm_incomplete", {"model_calls": 1}),
+                            "facts": {"eligible": None, "effect_count": 0, "duplicate_count": 0}}}
+            self.assertEqual(case_measurement(other, unit, "effect_count"), "0")
+            self.assertIsNone(comparison_field(other, unit, "effect_count"))
+            self.assertEqual(comparison_field(other, unit, "model_calls"), 1)
+            self.assertEqual(e3_predicates(other), (None, None))
+        for unit in (("E3", "primary", 3013, "loop"), ("E3", "inconclusive-observation", 3001, "purser")):
+            other = {unit: {"cost": ModelCaseCost("infrastructure_invalid", {}),
+                            "facts": {"eligible": True, "physical_count_lower_bound": 2}}}
+            self.assertEqual(e3_predicates(other), (None, None))
+
     def test_cli_recovers_returned_bytes_before_settlement_without_releasing_a_request(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
