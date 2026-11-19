@@ -14,7 +14,7 @@ TRACE_KIND = "purser.model.e3.turns.v1"
 
 
 def failure_terminal(code):
-    if code == "budget_refused":
+    if code in ("budget_refused", "model_limit"):
         return "model_limit"
     if code in ("invalid_proposal", "unfinished_response", "unusable_response"):
         return "blocked"
