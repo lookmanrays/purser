@@ -195,9 +195,10 @@ def _child(runtime, case, fuel, output_limit):
         store.set_limits(memory_size=MEMORY, table_elements=100_000, instances=1, tables=1, memories=1)
         store.set_fuel(fuel)
         store.set_wasi(wasi)
-        guest = link.instantiate(store, module)
         state, code = 'completed', 0
         try:
+            # A module can execute guest instructions during instantiation.
+            guest = link.instantiate(store, module)
             guest.exports(store)['_start'](store)
         except wasmtime.ExitTrap as error:
             code = error.code

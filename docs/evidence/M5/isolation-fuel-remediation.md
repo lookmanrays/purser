@@ -1,0 +1,15 @@
+# M5 guest fuel disposition
+
+## Reconciled preflight
+
+The first independent finding in this cluster concerns guest termination across Wasmtime entry points. The submitted source was `62d812335c1803f46c3cc88900b6f8aa4b229650`. Its runtime and runtime tests match this worker's clean base `4f7d2dfed1fd5bd95b46b2bff3cab44da2a13e27`. The assurance record `wasi-tiny-fuel.json` has SHA-256 `d928718f7e05d55ecc899727caba15be5dea25e86be0cf88737530b7e996c9bf`. Two legal starting allowances, 1 and 30,000 fuel units, raised Wasmtime's `OUT_OF_FUEL` while creating the interpreter instance. The foreground API reported a native host process exit in both cases. At 160,000,000 units it correctly attributed fuel exhaustion during the exported call. A new ordinary invocation on this worktree reproduced the startup report with fuel 1.
+
+**Risk R3.** The guest runtime owns execution disposition. Every Wasmtime call that can run guest instructions must attribute a guest trap to that invocation and preserve the bounded bytes and consumed fuel. Host/configuration and archive errors retain their own unavailable outcome. The public `run` interface accepts every positive integer fuel allowance through its enrolled maximum.
+
+The pinned binding enters Wasm at `Linker.instantiate` and when calling the exported `_start`. Both use one Store. The existing handler covers the second entry. Compiling the pinned module, creating imports, establishing capabilities, setting limits and retaining the output are trusted host operations. The existing specific `ExitTrap` and `Trap` classifications can cover the two guest entries together. This cluster has no earlier remediation or Reset. The separate adapter exchange review concerns different state and ownership. Operating feasibility is **PASS** with the enrolled arm64 macOS archives and ordinary permissions. The existing resource, containment and byte-capture limits apply.
+
+Verify both reported starting allowances, a workload that writes a marker before exhausting fuel in the exported call, and a fresh successfully completed guest. Also exercise a genuine local host configuration failure on a disposable runtime and confirm that it remains unavailable. The focused checks run serially.
+
+## Boundary results
+
+On the enrolled Darwin 25.5.0 arm64 host, CPython 3.11.15 ran the three focused runtime tests in 5.632 seconds. Starting allowances of 1 and 30,000 returned `fuel_limit`, each with its full allowance consumed, no exit code, and empty guest streams. A 160,000,000-unit arithmetic workload returned `fuel_limit` with the original `entered` line preserved. A fresh guest then completed and printed `ready` in the startup recovery control. A disconnected import in a separate disposable interpreter copy produced the genuine unavailable-host outcome. The existing memory and combined-output controls in the same run also passed. No external service was contacted. This local regression evidence accompanies the candidate for independent integrated review. [Runtime tests](../../../tests/test_wasi_runtime.py)
