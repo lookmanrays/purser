@@ -72,7 +72,8 @@ def cli(*args):
 
 def enroll(folder, port, *, observer):
     from purser.adapters.model import LocalEndpoint
-    endpoint = LocalEndpoint(port, "counted-notification-control", sha(b"disposable counted HTTP control"), 8000)
+    endpoint = LocalEndpoint(port, "counted-notification-control", sha(b"disposable counted HTTP control"), 8000,
+                             provider="fixture-provider", provider_version="1.0", model_revision="local-revision-7")
     policy = SpendingAuthority(sha(b"synthetic local qualification"), endpoint.service_sha256, 0, 0, 0)
     budget = folder / "budget.sqlite"
     ModelBudget.enroll(budget, policy)
@@ -120,6 +121,35 @@ class ModelStudy(unittest.TestCase):
             self.assertEqual(b["cost"].exact["input_tokens"], 19)
             self.assertEqual(b["facts"]["effect_count"], 0)
             self.assertIn("0 of 195 original", first)
+
+    def test_cli_recovers_returned_bytes_before_settlement_without_releasing_a_request(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            unit = "E3", "primary", 3001, "loop"
+            with counted([choice("defer", reason="check the scope", next_action="inspect")]) as (port, calls):
+                series = enroll(root, port, observer="unavailable")
+                target = "/".join(map(str, unit))
+                cut = """
+import os, runpy
+from experiments.model_budget import ModelBudget
+def terminated(*args, **kwargs):
+    os._exit(49)
+ModelBudget.settle = terminated
+runpy.run_module('experiments.model_study', run_name='__main__')
+"""
+                proc = subprocess.run([sys.executable, "-c", cut, "collect", str(series), "--unit", target],
+                                      cwd=ROOT, capture_output=True)
+                self.assertEqual(proc.returncode, 49, proc.stderr)
+                cli("collect", series, "--unit", target)
+                cli("collect", series, "--unit", target)
+                self.assertEqual(len(calls), 1)
+            _, cases = inspect(series)
+            result = cases[unit]
+            self.assertEqual(result["cost"].validity, "infrastructure_invalid")
+            self.assertEqual([result["cost"].exact.get(k) for k in ("model_calls","input_tokens","output_tokens","spend_usd_micros")],
+                             [1,19,7,0], result["errors"])
+            self.assertEqual(result["facts"]["model_decisions"], [])
+            self.assertEqual(result["facts"]["model_receipts"], 1)
 
     @unittest.skipUnless(WASI, "requires the enrolled disposable macOS WASI fixture")
     def test_e1_wrong_source_false_parent_and_e2_real_premise(self):

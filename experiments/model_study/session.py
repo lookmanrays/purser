@@ -23,9 +23,7 @@ def service(freeze):
             raise ValueError("disabled control must register a disabled service")
         return None, None
     registered = conditions["service"]
-    endpoint = LocalEndpoint(registered["port"], registered["model"], registered["runtime_sha256"], registered["context_window"])
-    if endpoint.profile() != registered:
-        raise ValueError("endpoint differs from registration")
+    endpoint = LocalEndpoint.from_profile(registered)
     binding = freeze["budget_file"]
     path = Path(binding["path"]).resolve(strict=True)
     info = path.stat()
@@ -75,16 +73,25 @@ class Session:
         for number, path in enumerate(sorted(self.directory.glob("invoke-*.json")), 1):
             turn = parse(path.read_bytes())
             require(turn["ordinal"] == number <= LIMITS["max_model_calls"], "noncontiguous model session")
+            settlement = record = None
             if self.budget is not None:
                 key = ModelTurn(self.identity["registration_sha256"], tuple(self.identity["unit"]), number, turn["request_sha256"])
+                try:
+                    record = self.adapter.recover_released(key, deadline=time.monotonic() + 10)
+                except ModelIncomplete as error:
+                    if error.code not in ("unresolved_release", "recovery_deadline"):
+                        raise
+                    turn["recovery"] = error.code
                 settlement = self.budget.inspect(key)
-            else:
-                settlement = None
             turn["reservation"] = settlement
-            result = turn.get("result_sha256") or (settlement or {}).get("result_sha256")
-            if result:
-                record = self.adapter.read_record(result)
-                turn["record"] = self.assets.put(encoded(record), "bin")
+            if record is not None:
+                sealed = self.assets.put(encoded(record), "bin")
+                require(turn.get("result_sha256") in (None, sealed["sha256"]), "different original caller receipt")
+                turn["record"] = sealed
+                if turn.get("result_sha256") is None:
+                    turn["recovery"] = "sealed_original"
+            elif turn.get("result_sha256"):
+                raise ValueError("returned model decision no longer has an attributable original")
             turns.append(turn)
         return {**self.identity, "turns": turns}
 

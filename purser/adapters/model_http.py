@@ -1,6 +1,6 @@
 """A single bounded native HTTP exchange to an explicitly enrolled loopback service."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 import http.client
 import io
 import re
@@ -50,6 +50,20 @@ class LocalEndpoint:
         return {**identity, 'protocol': 'purser.local.chat.v1', 'host': HOST, 'port': self.port, 'route': ROUTE,
                 'model': self.model, 'runtime_sha256': self.runtime_sha256,
                 'context_window': self.context_window, 'service_charge_usd_micros': 0}
+
+    @classmethod
+    def from_profile(cls, profile):
+        """Recover the complete registered endpoint, including optional provider provenance."""
+        if type(profile) is not dict:
+            raise ValueError('invalid registered endpoint')
+        operands = {f.name: profile[f.name] for f in fields(cls) if f.name in profile}
+        try:
+            endpoint = cls(**operands)
+        except TypeError as error:
+            raise ValueError('incomplete registered endpoint') from error
+        if encoded(endpoint.profile()) != encoded(profile):
+            raise ValueError('endpoint differs from registration')
+        return endpoint
 
     @property
     def service_sha256(self):
