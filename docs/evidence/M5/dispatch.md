@@ -31,6 +31,8 @@ The owner has two concrete options for the live series. One is GPT-6 Luna at the
 
 ## What can be exercised locally
 
+The implemented transport accepts an enrolled zero-price loopback endpoint. The proposed paid option needs an authenticated provider adapter and qualification of its price and spending enforcement before a hosted series can start. [Current delivery](../../delivery.md#current-implementation) · [Transport enrollment](../../../purser/adapters/model.py)
+
 The checkout includes the ordinary collection and reporting commands. Run `python3.11 -m experiments.model_study report` for the scheduled population. For a collected series, supply its directory to rebuild the comparisons from original evidence. The report identifies the population and replicate and shows the denominator for each measurement. [Command entry point](../../../experiments/model_study/__main__.py)
 
 The independent observer approved the local software on `3308ef7` after checking alternate model decisions, changed premises, interrupted requests and Git recovery through the ordinary CLI. All 310 repository tests passed, including the isolated guest suites. The project still has zero registered genuine model observations. [Independent disposition](review-3308ef7/review.md) · [Native originals and offline reproduction](review-3308ef7/verification.md)

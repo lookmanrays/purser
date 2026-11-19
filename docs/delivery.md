@@ -8,9 +8,29 @@ M0 through M4 passed their local engineering gates. The CLI explains current or 
 
 The M5 adapter, isolated fixture runner and study CLI are implemented. An independent reviewer approved the local study software at `3308ef7b9e256c980e0b5c4186d3be7708b98fe0`. All 310 repository tests passed on that source. Controlled replies changed the code under test and whether a real local Git update landed. A cold report retained that update after a later service error and left the failed trial’s scientific score empty. [Independent review](evidence/M5/review-3308ef7/review.md) · [Reproducible evidence and tests](evidence/M5/review-3308ef7/verification.md)
 
-**M5 remains open.** The project assignment is at revision 74 with an independently enrolled criterion. Genuine model coverage is 0 of 195 and actual model-service spend is US$0. The next action is the owner’s choice of a model and its operating budget. The original trials and their independent report precede the separate go, revise or stop decision for v1 and the M6 coding-agent milestone. [Study population, scripted comparisons and operating options](evidence/M5/dispatch.md)
+**M5 remains open.** The project assignment is at revision 74 with an independently enrolled criterion. Genuine model coverage is 0 of 195 and actual model-service spend is US$0. A separate full-schedule engineering check used 195 canned cases and 441 loopback requests. Its offline report reproduces from the committed archive. [Full-schedule verification](evidence/M5/review-3308ef7/verification.md#one-collection-across-all-195-cases)
 
-## M0 · Design and experimental protocol
+The next decision is the owner's choice of model, permitted data and spending ceiling. The implemented adapter accepts an enrolled zero-price service at `127.0.0.1`. A local model still needs runtime and context qualification and a real typed response. A paid hosted service would also need an authenticated adapter that enforces its authorized prices and budget. The architect then registers the original series before collection, obtains independent report verification and records a go, revise or stop decision for v1. [Operating options](evidence/M5/dispatch.md#operating-decision-at-dispatch) · [Adapter enrollment](../purser/adapters/model.py)
+
+| Milestone | Status | What demonstrates completion |
+| --- | --- | --- |
+| M0 · Contracts and experiment design | Accepted | A fresh reviewer reproduced the event examples, fault schedules and hand-scored cases for the three comparison arms. [M0 evidence](evidence/M0/acceptance.md) |
+| M1 · Durable kernel and CLI | Accepted | Concurrent writers and interrupted SQLite transactions recovered a complete history. A fresh CLI reproduced pending approvals and prior receipts. [M1 evidence](evidence/M1/acceptance.md) |
+| M2 · Work and evidence | Accepted | Independent evidence closed the correct candidate. The human accepted a real Purser CLI change at revision 24. The scripted E1 comparison measured false completion. [M2 evidence](evidence/M2/acceptance.md) |
+| M3 · Changed requirements | Accepted | A changed premise reopened affected work and preserved its valid siblings. Fresh processes explained why. The real project child closed at revision 51. [M3 evidence](evidence/M3/acceptance.md) |
+| M4 · Governed Git and restart | Accepted on the trusted local host | The foreground broker recovered an interrupted branch update. Ten continuity questions were answered with models disabled, and the real project child closed at revision 68. [M4 evidence](evidence/M4/acceptance.md) |
+| M5 · Real-model evaluation | Local software qualified, trials and decision open | Freeze the original registration, collect the 195 scheduled real-model cases, account for missing results and costs, and decide whether to build v1. [Study protocol and status](evidence/M5/dispatch.md) |
+| M6 · One real coding agent | Planned after an M5 go | An isolated agent uses the assignment-bound MCP tools, submits a real change, passes independent verification, reconciles its Git update and obtains human root acceptance. |
+| M7 · Unattended operation and recovery | Planned | Observe seven days on the agreed host, including idle model-call counts, restart, a real authenticated human approval and a verified off-machine restore. A local approval channel qualifies. Remote delivery is optional. [D-30](decisions/0030-principal-approval.md) |
+| M8 · Field evaluation | Planned | Collect at least four complete weeks across Purser development and an agreed second domain. Rehearse an old-log upgrade and recovery. The owner decides whether to continue, revise or stop. |
+
+The original architecture and plan contain the milestones as proposed on 18 November 2026. The acceptance records above and subsequent decisions give their current disposition. [Design](architecture-v0.5.md) · [Detailed implementation plan](implementation-plan-v0.5.md) · [Contributor setup and reproduction](../CONTRIBUTING.md)
+
+## Historical dispatches
+
+The entries below describe the state at the time of each assignment and recovery. Some name former worker branches, private workstation paths or gates that were open at the time. The table above links the final records.
+
+### M0 · Design and experimental protocol
 
 Accepted at `4460381e44f3dd42d22848bf6d82fea9a817a833` after independent review. See [M0 acceptance](evidence/M0/acceptance.md). M1-A and M1-B are released against the [M1 preflight](evidence/M1/preflight.md).
 
@@ -22,7 +42,7 @@ Dispatched from `122b729bb5e549383dec72d2065b242cfbe5d9d5`. The two planning doc
 | M0-B | Evaluation worker | Versioned manifest and fixture identity, paired seeds, controls, budgets, three arms, external truth, measurements and hand-scored examples in `experiments/manifests/`. Return local candidate and reproducible manifest. |
 | M0-G | Orchestrator with independent reviewer | Integrate both packets and verify the correct closure, stale pass, unaffected sibling, guarded Git effect and original thresholds from a clean checkout. |
 
-### Operating envelope
+#### Operating envelope
 
 The reference development machine is Darwin 25.5.0 on arm64. Python 3.11.15 with SQLite 3.53.1 and Git 2.50.1 passed local preflight. On this machine the unqualified system `python3` is 3.9.6. Select a project-compatible Python 3.11+ interpreter for all worker commands. No service account or paid model is required to build and exercise the offline kernel and scripted experiments.
 
@@ -34,13 +54,13 @@ Before M5 runs model-authored Python, qualify the narrow candidate-execution bou
 
 Track the 3,000-line target using physical Python source lines, including comments and blank lines, in the tracked `purser/` production package. Include semantic authority, projection, admission and closure code even if subsequently extracted under another package. Exclude tests, fixtures and separately qualified adapter-only infrastructure. Crossing the target triggers an architectural review. Record the measured scope and count with each integrated code gate.
 
-## M1 · Local ledger, admission and CLI
+### M1 · Local ledger, admission and CLI
 
 Dispatch base `dad1118aee40c509bbbc30a31224777deaf79026` contains the accepted M0 inputs and [implementation preflight](evidence/M1/preflight.md). The store worker owns `lookman/purser-m1-store`. The CLI worker owns `lookman/purser-m1-cli`. Both return local commits to the orchestrator. The orchestrator owns the dependent admission module and integrates the three packages. The independent reviewer tests the resulting immutable commit through the CLI and separate SQLite processes.
 
 M1-G declined `fc6d72a` because a named historical read could contradict its surviving head. The corrected candidate `59454662450feb58e7a76a80f36000ea093d7ef0` passed independent M1-G. See the [acceptance and reproduced outcomes](evidence/M1/acceptance.md).
 
-## M2 · Independent evidence and work closure
+### M2 · Independent evidence and work closure
 
 M2-A and M2-B are released against the [M2 preflight](evidence/M2/preflight.md). The work worker owns the shared gate/projector registrations and the evaluation worker owns the independent scorer, baseline and scripted harness. The orchestrator owns the dependent driver, CLI integration and real development commitment. The existing frozen inputs remain at their M0 identities.
 
@@ -54,7 +74,7 @@ The owner authorized a separate primary implementation chat for recovery. Its Co
 
 **M2-G accepted.** The independent verifier issued GO on the integrated product, real accepted commitment and registered E1 replication at `63a9439382d68d68c65a9ee56011a94c9ea648e0`. Each arm caught all 20 faults. The plain loop took 24 steps on clean work, compared with 42 for Purser and 42 for the equal-verifier loop. The experimental source, raw results, checksums and gate disposition are in the [M2 acceptance record](evidence/M2/acceptance.md).
 
-## M3 · Reconsider decisions and preserve unaffected work
+### M3 · Reconsider decisions and preserve unaffected work
 
 M3-A and M3-B are released from the accepted M2 base at `661a08c1d26fc9811ecd0d6c9656640f03631e89`. The implementation chat owns the two technical packets, their preflights and their independent candidate evidence. The architect owns integration and the M3-G decision. [M3 dispatch](evidence/M3/dispatch.md)
 

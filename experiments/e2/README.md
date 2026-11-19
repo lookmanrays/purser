@@ -1,6 +1,6 @@
 # Scripted E2
 
-Use the joined M3 source, the local Git fixture, Python 3.11+ and SQLite. The official schedule has 60 primary units, three clean units under the old schedule, and three already-closed affected stress units. It consumes zero model calls.
+The published v1 results and their matching reader are together at commit `c7459faa138e1b81de33e381b5c1f43644216826`. In a disposable clone, switch to that commit and run `python3.11 -B -m experiments.e2 report experiments/results/e2-scripted-v1` from the repository root. The official schedule has 60 primary units, three clean units under the old schedule, and three already-closed affected stress units. It uses local Git and SQLite and consumes zero model calls. [Reproducing the published studies](../../CONTRIBUTING.md#reproduce-the-published-studies)
 
 Run `python -B -m experiments.e2 freeze DIRECTORY` from a clean checkout. Commit its standalone `freeze.json` before `python -B -m experiments.e2 collect DIRECTORY`. The collector verifies the registration, checks the source bytes, takes a directory writer lock and never starts an existing participant again. Interrupted work is read from its preserved store and the sealed candidates. Private repetitions use `--replicate N --reason TEXT` and separate directories.
 

@@ -2,11 +2,13 @@
 
 Purser is a local research kernel for coding work that survives a change of agent or a process restart. It tracks commitments, scoped authority, observations and the evidence needed to close work.
 
-Read the [architecture](docs/architecture-v0.5.md), the [implementation plan](docs/implementation-plan-v0.5.md) and the [delivery record](docs/delivery.md) for the current milestone and adopted amendments.
+From a local checkout you can track a piece of work, inspect what evidence would close it, and recover an interrupted update to a dedicated local Git branch. M0–M4 have passed their local checks. The M5 study software is available, with 0 of 195 genuine model trials collected. Connecting a real coding agent through MCP is planned for M6. [Current roadmap and evidence](docs/delivery.md#current-implementation)
+
+The original architecture and implementation plan describe the intended system. The delivery record tracks what has been built. Decision D-30 makes remote delivery of approvals optional. [Architecture v0.5](docs/architecture-v0.5.md) · [Original implementation plan](docs/implementation-plan-v0.5.md) · [Approval decision](docs/decisions/0030-principal-approval.md) · [Contributor setup and tests](CONTRIBUTING.md)
 
 ## Try the local CLI
 
-Run these commands from this checkout with Python 3.11 or newer. The database lives in a private temporary directory for this example.
+Run these commands from the repository root in a POSIX shell with Python 3.11 or newer. The local CLI uses Python’s standard library. The example creates a private temporary directory for its SQLite ledger.
 
 ```sh
 workspace=$(mktemp -d)
@@ -27,7 +29,7 @@ python3.11 -m purser --db "$workspace/purser.db" why C-retries
 python3.11 -m purser --db "$workspace/purser.db" replay
 ```
 
-The creation receipt records revision 2. `why` explains that the commitment awaits activation. Running the identical proposal again returns its existing receipt. The [wire contract](docs/contracts/kernel-v1.md) describes activation, historical reads and JSON exit codes.
+The creation receipt records revision 2. `why` shows the commitment in the proposed state. Sending the identical proposal again returns its existing receipt. The wire contract describes activation by the local principal, historical reads and JSON exit codes. [Wire contract](docs/contracts/kernel-v1.md)
 
 For an active commitment, `frontier` lists permitted next actions. `context ASSIGNMENT` reconstructs the work, candidate, required evidence and scope for that assignment. `why WORK` explains the evidence or acceptance the work still needs. Each command can read a complete historical revision. `run` takes one local driver turn and reports whether it dispatched work or went idle. A trusted launcher can attach a scripted executor to its assigned identity. The owner CLI can evaluate eligible child closure directly. [Work and evidence operations](docs/contracts/work-v1.md)
 
