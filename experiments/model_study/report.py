@@ -20,6 +20,8 @@ OUTCOMES = {"E1": E1_FIELDS, "E2": E2_FIELDS,
             "E3": ("correct_reconciliation", "duplicate_count", "effect_count", "resolved_by_budget",
                    "stuck_requires_manual", "manual_repair")}
 E3_EXTRAS = ("original_truth", "original_report", "justified_in_order", "uncertainty_remaining")
+E2_EXTRAS = ("publicly_delivered", "checkpoint_candidate", "stale_at_delivery", "new_bad_closure", "observed_retention",
+             "observed_reopened", "reopened_subjects", "observed_invalid_closure", "rework_observed", "final_parent_closed")
 LABELS = {"complete": "complete", "arm_incomplete": "incomplete", "infrastructure_invalid": "invalid"}
 UNREADABLE = (*READ_ERRORS, OSError, SubprocessError, ImportError, MeasurementUnavailable)
 
@@ -140,6 +142,9 @@ def inspect(directory):
                 errors.append(parse((path / "dispute.json").read_bytes())["error"])
             if problem:
                 errors.append(str(problem))
+            if facts.get("qualification_dispute"):
+                errors.append(facts["qualification_dispute"])
+            errors.extend(facts.get("public_observation_gaps", []))
             facts.update(provenance)
             cases[unit] = {"facts": facts, "terminal": raw["terminal"], "errors": errors,
                            "cost": ModelCaseCost(validity, exact, lower)}
@@ -155,6 +160,8 @@ def show(value):
         return "?"
     if type(value) is bool:
         return "yes" if value else "no"
+    if isinstance(value, (list, tuple)):
+        return ", ".join(map(show, value)) or "∅"
     return str(value).replace("|", "&#124;").replace("\n", " ")
 
 
@@ -225,6 +232,25 @@ def healthy(exp, facts):
     return facts.get("final_parent_closed") is True and facts.get("final_pass") is True
 
 
+def e2_publications(cases):
+    lines = []
+    for (exp, track, seed, arm), case in cases.items():
+        if exp != "E2":
+            continue
+        for field, action in (("reopen_observations", "reopened"), ("closure_observations", "closed")):
+            for observation in case["facts"].get(field, []):
+                cells = (f"{track} / {seed} / {arm}", observation["subject"], action, observation["publication"],
+                         observation["candidate"], observation["at_delivery"], observation.get("revised_pass"))
+                lines.append("| " + " | ".join(show(c) for c in cells) + " |")
+    if not lines:
+        return []
+    return ["", "### Observed E2 publications", "",
+            "Each reopening cites its publication and the previously closed candidate. Each affected closure "
+            "cites its declared candidate and its revised retry grade. The final pass checks all six obligations.", "",
+            "| Case | Subject | State change | Publication | Candidate | At delivery | Revised retry passed |",
+            "| --- | --- | --- | --- | --- | --- | --- |", *lines]
+
+
 def render(frozen=None, cases=None):
     cases = {} if cases is None else cases
     units = list(schedule())
@@ -269,8 +295,8 @@ def render(frozen=None, cases=None):
                 p, b = [column(cases, exp, arm, "rework_steps") for arm in ("purser", comparator)]
                 ratio = "?" if None in p + b else "undefined" if sum(b) == 0 else str(sum(p) / sum(b))
                 out += ["", f"Total rework ratio, Purser / {comparator} — {ratio}."]
-        detailed = (*keys, "eligible", *(E3_EXTRAS if exp == "E3" else ("final_pass", "final_parent_closed")
-                              if exp == "E1" else ("checkpoint_candidate", "stale_at_delivery")), *COST)
+        detailed = (*keys, "eligible", *(E3_EXTRAS if exp == "E3" else E2_EXTRAS if exp == "E2"
+                                          else ("final_pass", "final_parent_closed")), *COST)
         out += ["", "### Case measurements", "",
                 "| Track | Seed | Arm | Validity / terminal | " + " | ".join(detailed) + " |",
                 "| --- | ---: | --- | --- |" + " ---: |" * len(detailed)]
@@ -280,10 +306,12 @@ def render(frozen=None, cases=None):
             status = LABELS[rec["cost"].validity] + " / " + rec["terminal"] if rec else "missing"
             cells = [track, str(seed), arm, status]
             for k in detailed:
-                exact = field(cases, unit, k)
+                exact = rec["facts"].get(k) if exp == "E2" and rec and k not in COST else field(cases, unit, k)
                 bound = rec["cost"].lower_bounds.get(k) if rec and k in COST else None
                 cells.append("≥" + show(bound) if exact is None and bound is not None else show(exact))
             out.append("| " + " | ".join(cells) + " |")
+        if exp == "E2":
+            out.extend(e2_publications(cases))
         out += ["", "### Paired differences", "",
                 "Each cell subtracts that comparator from Purser in this order — " + ", ".join((*keys, *COST)) + ".", "",
                 "| Track / seed | Purser minus plain loop | Purser minus equal verifier |", "| --- | --- | --- |"]

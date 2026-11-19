@@ -15,7 +15,75 @@ def event(kind, payload, original=None):
     return {**(original or {}), "kind": kind, "payload": payload}
 
 
-class Participant:
+class PublishedHistory:
+    """Publications and attributed actions consumed by the E2 outcome scorer in either executor mode."""
+
+    def __init__(self, source, journal, seed):
+        self.arm, self.source, self.journal, self.seed = source.arm, source, journal, seed
+        self.read, self.trace = source.read, source.trace or {}
+        self.public_complete = source.complete
+        self.first_delivered = None
+
+    def checkpoint(self, ck):
+        return self.source.lookup(ck)
+
+    def public_states_after(self, fault):
+        receipt = fault["payload"].get("after")
+        reported = {identity(self.arm, receipt): fault["seq"]}
+        for row in self.journal:
+            if row["kind"] == "public_state":
+                state = row["payload"]
+                ck = state.get("checkpoint")
+                after_sample = (row["seq"] >= fault["seq"] and not state.get("original_publication")
+                                and (self.arm == "purser" or "issued_monotonic_ns" not in fault["payload"]
+                                     or state.get("recovery_read_utc")))
+                if after_sample or self.source.compare(receipt, ck) in (-1, 0):
+                    reported.setdefault(identity(self.arm, ck), row["seq"])
+            if row["kind"] == "action" and row["payload"].get("after_intervention") is True:
+                for field in ("before", "port_before", "context_source", "port_after", "after"):
+                    ck = row["payload"].get(field)
+                    key = identity(self.arm, ck)
+                    if key is None:
+                        continue
+                    if self.arm != "purser" or self.checkpoint(ck) is not None and field in ("port_after", "after"):
+                        reported.setdefault(key, row["seq"])
+        return self.source.states_after(receipt, reported)
+
+    def notice_at(self, pub, fallback=None):
+        """Identify a physically published notice using its original plan write or SQLite event."""
+        if self.arm != "purser":
+            row = pub.rows["W2"]
+            marker = row.get("_publication", {})
+            notice = row.get("premise")
+            if (not isinstance(notice, dict) or pub.attempt != notice.get("id")
+                    or marker.get("attempt") != pub.attempt or marker.get("actor") != "fixture_observer"
+                    or marker.get("subject") != "W2"):
+                return None
+        else:
+            record = next((e["data"] for e in pub.events if e["type"] == "PremiseObserved"
+                           and e["actor_id"] == attr.PORTS["receive"][-2] and e["data"]["id"] == policy.OBSERVATION), None)
+            if not record or record.get("assumption") != policy.ASSUMPTION or record.get("finding") != "contradicts":
+                return None
+            checksum = record.get("artifact_sha256")
+            notice = None
+            ref = self.trace.get("kernel_artifacts", {}).get(checksum)
+            if ref is not None:
+                try:
+                    content = self.read(ref)
+                    require(checksum == sha(encoded(content)), "premise artifact digest mismatch")
+                    notice = content
+                except READ_ERRORS as error:
+                    self.source.read_failure("original premise artifact", error)
+            if notice is None:
+                for candidate in (self.trace.get("recovered_bindings", {}).get(checksum), fallback,
+                                  policy.notice(self.seed) if self.seed is not None else None):
+                    if candidate is not None and sha(encoded(candidate)) == checksum:
+                        notice = candidate
+                        break
+        return notice if isinstance(notice, dict) and same(notice, policy.notice(notice.get("seed"))) else None
+
+
+class Participant(PublishedHistory):
     def __init__(self, arm, journal, platform, read, issue, *, originals=None, objects=None, seed=None,
                  track=None, unavailable=None):
         self.arm, self.read, self.issue = arm, read, issue
@@ -118,9 +186,6 @@ class Participant:
         elif self.public_complete and None not in self.arrivals:
             self.fault_receipt = False
 
-    def checkpoint(self, ck):
-        return self.source.lookup(ck)
-
     def issues_through(self, end=None):
         """The versioned issuer charges before dispatch. A later gap cannot hide earlier work."""
         return self.modern and all(end is not None and lower is not None and lower >= end
@@ -129,28 +194,6 @@ class Participant:
     @property
     def issued_coverage(self):
         return self.issues_through()
-
-    def public_states_after(self, fault):
-        receipt = fault["payload"].get("after")
-        reported = {identity(self.arm, receipt): fault["seq"]}
-        for row in self.journal:
-            if row["kind"] == "public_state":
-                state = row["payload"]
-                ck = state.get("checkpoint")
-                after_sample = (row["seq"] >= fault["seq"] and not state.get("original_publication")
-                                and (self.arm == "purser" or "issued_monotonic_ns" not in fault["payload"]
-                                     or state.get("recovery_read_utc")))
-                if after_sample or self.source.compare(receipt, ck) in (-1, 0):
-                    reported.setdefault(identity(self.arm, ck), row["seq"])
-            if row["kind"] == "action" and row["payload"].get("after_intervention") is True:
-                for field in ("before", "port_before", "context_source", "port_after", "after"):
-                    ck = row["payload"].get(field)
-                    key = identity(self.arm, ck)
-                    if key is None:
-                        continue
-                    if self.arm != "purser" or self.checkpoint(ck) is not None and field in ("port_after", "after"):
-                        reported.setdefault(key, row["seq"])
-        return self.source.states_after(receipt, reported)
 
     def incomplete(self, message):
         self.actions_complete = False
@@ -488,39 +531,6 @@ class Participant:
         except READ_ERRORS as error:
             p["return_authenticated"] = False
             self.dispute(f"public plan attempt {p['attempt']}: {error}")
-
-    def notice_at(self, pub, fallback=None):
-        """Identify a physically published notice using its original plan write or SQLite event."""
-        if self.arm != "purser":
-            row = pub.rows["W2"]
-            marker = row.get("_publication", {})
-            notice = row.get("premise")
-            if (not isinstance(notice, dict) or pub.attempt != notice.get("id")
-                    or marker.get("attempt") != pub.attempt or marker.get("actor") != "fixture_observer"
-                    or marker.get("subject") != "W2"):
-                return None
-        else:
-            record = next((e["data"] for e in pub.events if e["type"] == "PremiseObserved"
-                           and e["actor_id"] == attr.PORTS["receive"][-2] and e["data"]["id"] == policy.OBSERVATION), None)
-            if not record or record.get("assumption") != policy.ASSUMPTION or record.get("finding") != "contradicts":
-                return None
-            checksum = record.get("artifact_sha256")
-            notice = None
-            ref = self.trace.get("kernel_artifacts", {}).get(checksum)
-            if ref is not None:
-                try:
-                    content = self.read(ref)
-                    require(checksum == sha(encoded(content)), "premise artifact digest mismatch")
-                    notice = content
-                except READ_ERRORS as error:
-                    self.source.read_failure("original premise artifact", error)
-            if notice is None:
-                for candidate in (self.trace.get("recovered_bindings", {}).get(checksum), fallback,
-                                  policy.notice(self.seed) if self.seed is not None else None):
-                    if candidate is not None and sha(encoded(candidate)) == checksum:
-                        notice = candidate
-                        break
-        return notice if isinstance(notice, dict) and same(notice, policy.notice(notice.get("seed"))) else None
 
     def canonical_fault(self, before, after, message):
         return {"attempt": message["id"], "observation_id": message["id"], "released": message,
