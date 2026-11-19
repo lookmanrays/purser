@@ -8,7 +8,7 @@ import time
 
 from experiments.e1.artifacts import MANIFEST, Artifacts, encoded, sha
 from experiments.e1.recovery import FileArchive, sync_directory, write_atomic
-from experiments.e1.report import parse, require
+from experiments.e1.report import Objects, parse, require
 from experiments.e1.run import utc
 from experiments.e1.measurement import MeasurementUnavailable
 from experiments.e2.outcomes import FIELDS as E2_FIELDS
@@ -143,10 +143,14 @@ def collect_one(directory, unit, freeze, wire, endpoint, budget, observer, snaps
     trace = session.retain()
     trace_ref = assets.put(trace, "json")
     write_atomic(case / "session.json", encoded(trace_ref))
-    records, exact, lower = transport.read_session(trace, archive, freeze, identity)
+    records, exact, lower, _ = transport.read_session(trace, archive, freeze, identity)
     if experiment != "E3":
         raw["artifacts"]["model"] = trace_ref
         try:
+            objects = Objects(archive)
+            platform = objects.item(raw["artifacts"]["platform"])
+            platform["referenced_files"] = readback.referenced_files(raw["artifacts"], platform, objects)
+            raw["artifacts"]["platform"] = assets.put(platform, "json")
             facts = readback.reconstruct_case(raw, archive, records, registration_sha256=identity["registration_sha256"])
         except (OSError, ValueError, KeyError, TypeError, MeasurementUnavailable) as error:
             # Keep the sealed observation and all surviving objects for offline audit.
@@ -155,6 +159,7 @@ def collect_one(directory, unit, freeze, wire, endpoint, budget, observer, snaps
         else:
             raw["score"] = coding_score(raw, facts)
             raw["validity"] = coding_validity(raw["terminal"], track, facts)
-        raw["cost"].update(exact, model_calls=exact["model_calls"] if exact["model_calls"] is not None else lower["model_calls"])
+        raw["cost"].update({key: exact.get(key) for key in transport.USAGE})
+        raw["cost"]["model_calls"] = exact.get("model_calls", lower.get("model_calls", 0))
     # The raw row is the last publication. Re-entry after publication cannot re-expose the case.
     write_atomic(case / "raw.json", encoded(raw))

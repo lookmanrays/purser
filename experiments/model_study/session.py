@@ -7,13 +7,11 @@ from experiments.e1.artifacts import encoded, sha
 from experiments.e1.recovery import write_atomic
 from experiments.e1.report import Objects, parse, require
 from experiments.model_budget import LIMITS, ModelBudget, ModelTurn
+from experiments.model_costs import USAGE, measure_model_turns
 from purser.adapters.model import LocalEndpoint, LocalModelAdapter, ModelIncomplete, verify_model_record
 from purser.adapters.model_evidence import request_identity
 
 from .registration import validate_conditions
-
-USAGE = ("input_tokens", "output_tokens", "spend_usd_micros")
-
 
 def service(freeze):
     conditions = freeze["conditions"]
@@ -99,8 +97,7 @@ class Session:
 def read_session(trace, archive, frozen, identity):
     objects = Objects(archive)
     require({k: trace[k] for k in identity} == identity, "session was recorded for a different case")
-    released, uncertain = 0, False
-    measurements = {k: [] for k in USAGE}
+    originals = []
     records = {}
     for number, turn in enumerate(trace["turns"], 1):
         require(number == turn["ordinal"] <= LIMITS["max_model_calls"], "model turn order differs")
@@ -115,12 +112,9 @@ def read_session(trace, archive, frozen, identity):
                     and reservation["number"] == number and reservation["request_sha256"] == turn["request_sha256"],
                     "reservation differs from registered turn")
         if "record" not in turn:
-            if reservation is not None:
-                uncertain = True
-                for values in measurements.values():
-                    values.append(None)
-            elif frozen["population"] != "disabled_control" and "outcome" not in turn:
-                uncertain = True
+            if reservation is not None or (frozen["population"] != "disabled_control"
+                                          and turn.get("outcome") not in ("disabled", "budget_refused", "deadline")):
+                originals.append(None)
             continue
         ref = turn["record"]
         r = verify_model_record(objects.blob(ref), expected_sha256=ref["sha256"])
@@ -132,14 +126,10 @@ def read_session(trace, archive, frozen, identity):
                 and turn.get("result_sha256") in (None, ref["sha256"])
                 and (turn.get("outcome") in (None, r["outcome"], "evidence_unavailable")),
                 "original model release, request or settlement differs")
+        if reservation["result_sha256"] is not None:
+            require(all(reservation[key] == r["usage"][key] for key in USAGE),
+                    "settled usage differs from the original transport receipt")
         records[number] = r
-        released += 1  # Original bounded transport attempt, including a refused connection.
-        for key, values in measurements.items():
-            values.append(r["usage"][key])
-    exact = {"model_calls": None if uncertain else released}
-    lower = {"model_calls": released}
-    for key, values in measurements.items():
-        observed = [n for n in values if n is not None]
-        exact[key] = sum(observed) if len(values) == len(observed) and not (uncertain and not values) else None
-        lower[key] = sum(observed) if observed else None
-    return records, exact, lower
+        originals.append(r)
+    exact, lower, first = measure_model_turns(originals)
+    return records, exact, lower, first
