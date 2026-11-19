@@ -143,7 +143,7 @@ def collect_one(directory, unit, freeze, wire, endpoint, budget, observer, snaps
     trace = session.retain()
     trace_ref = assets.put(trace, "json")
     write_atomic(case / "session.json", encoded(trace_ref))
-    records, exact, lower = transport.read_session(trace, archive, freeze, identity)
+    records, exact, lower, _ = transport.read_session(trace, archive, freeze, identity)
     if experiment != "E3":
         raw["artifacts"]["model"] = trace_ref
         try:
@@ -159,6 +159,7 @@ def collect_one(directory, unit, freeze, wire, endpoint, budget, observer, snaps
         else:
             raw["score"] = coding_score(raw, facts)
             raw["validity"] = coding_validity(raw["terminal"], track, facts)
-        raw["cost"].update(exact, model_calls=exact["model_calls"] if exact["model_calls"] is not None else lower["model_calls"])
+        raw["cost"].update({key: exact.get(key) for key in transport.USAGE})
+        raw["cost"]["model_calls"] = exact.get("model_calls", lower.get("model_calls", 0))
     # The raw row is the last publication. Re-entry after publication cannot re-expose the case.
     write_atomic(case / "raw.json", encoded(raw))

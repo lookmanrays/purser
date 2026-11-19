@@ -1,7 +1,10 @@
 """Cold, provider-free comparison over the prospective population and original case artifacts."""
 
+import base64
 from pathlib import Path
+from subprocess import SubprocessError
 
+from experiments.e1.accounting import READ_ERRORS
 from experiments.e1.artifacts import MANIFEST, REGISTRATION, sha
 from experiments.e1.measurement import MeasurementUnavailable, same
 from experiments.e1.report import Objects, parse, require, wire_valid
@@ -18,6 +21,7 @@ OUTCOMES = {"E1": E1_FIELDS, "E2": E2_FIELDS,
                    "stuck_requires_manual", "manual_repair")}
 E3_EXTRAS = ("original_truth", "original_report", "justified_in_order", "uncertainty_remaining")
 LABELS = {"complete": "complete", "arm_incomplete": "incomplete", "infrastructure_invalid": "invalid"}
+UNREADABLE = (*READ_ERRORS, OSError, SubprocessError, ImportError, MeasurementUnavailable)
 
 
 class Archive(FileArchive):
@@ -25,6 +29,21 @@ class Archive(FileArchive):
     def __init__(self, directory):
         self.directory = directory
         self.objects = directory / "objects"
+
+
+def reported_models(records):
+    result = set()
+    for record in records.values():
+        wire = record["transport"]
+        if not wire.get("response_complete", wire["status"] == "response") or not wire.get("response_base64"):
+            continue
+        try:
+            response = parse(base64.b64decode(wire["response_base64"], validate=True))
+        except (ValueError, UnicodeError, RecursionError):
+            continue
+        if isinstance(response, dict) and isinstance(response.get("model"), str):
+            result.add(response["model"])
+    return sorted(result)
 
 
 def inspect(directory):
@@ -47,14 +66,26 @@ def inspect(directory):
         archive = Archive(path)
         objects = Objects(archive)
         exact, lower, facts, raw = {}, {}, {}, {}
+        records, provenance, errors = {}, {}, []
+        trace_ref = trace = None
         try:
             marker = parse((path / "started.json").read_bytes())
             require(marker["identity"] == identity and type(marker["monotonic_ns"]) is int, "invalid original start marker")
             require(previous_marker is None or marker["started_utc"] >= previous_marker,
                     "case starts disagree with the registered arm rotation")
             previous_marker = marker["started_utc"]
-            trace_ref = parse((path / "session.json").read_bytes())
-            records, exact, lower = read_session(objects.item(trace_ref), archive, frozen, identity)
+            try:
+                trace_ref = parse((path / "session.json").read_bytes())
+                trace = objects.item(trace_ref)
+                records, exact, lower, first = read_session(trace, archive, frozen, identity)
+            except UNREADABLE as error:
+                errors.append(f"collector session: {type(error).__name__}: {error}")
+            else:
+                exposure = {"ordinal": first["turn"]["ordinal"], "request_sha256": first["request_sha256"],
+                            "send_interval_ns": [first["started_monotonic_ns"], first["returned_monotonic_ns"]],
+                            "http_status": first["transport"]["http_status"]} if first else None
+                provenance = {"collector_invocations": len(trace["turns"]), "model_receipts": len(records),
+                              "first_model_exposure": exposure, "reported_models": reported_models(records)}
             raw = parse((path / "raw.json").read_bytes())
             exp, track, seed, arm = unit
             require(wire_valid(raw, schema, schema) and raw["mode"] == "model" and raw["suite"] == frozen["suite"] and
@@ -66,13 +97,28 @@ def inspect(directory):
                 facts = reconstruct_case(raw, archive, **e3_args(frozen, identity),
                                          service_sha256=frozen["conditions"]["authority"]["service_sha256"],
                                          authority_sha256=frozen["conditions"]["authority"]["authority_sha256"])
+                participant_turns = objects.item(raw["artifacts"]["model"])["turns"]
+                for entry in participant_turns:
+                    ref = entry.get("result") or entry.get("recovered_result")
+                    common = records.get(entry["ordinal"])
+                    if common is not None and ref:
+                        require(objects.item(ref) == common, "participant and collector retained different original replies")
                 for k, value in facts["cost_exact"].items():
-                    if k in exact and exact[k] is not None:
-                        require(exact[k] == value, "E3 cost differs from shared original collector evidence")
-                    exact[k] = value
-                lower.update(facts["cost_lower_bounds"])
+                    if value is not None:
+                        require(exact.get(k, value) == value, "E3 cost differs from shared original collector evidence")
+                        exact[k] = value
+                for k, value in facts["cost_lower_bounds"].items():
+                    if value is not None:
+                        lower[k] = max(lower.get(k, 0), value)
+                        require(exact.get(k, lower[k]) >= lower[k], "E3 lower bound exceeds an original measurement")
+                first_observed = [r for r in (facts.get("first_model_exposure"), provenance.get("first_model_exposure")) if r]
+                if len(first_observed) == 2 and first_observed[0]["ordinal"] == first_observed[1]["ordinal"]:
+                    require(first_observed[0] == first_observed[1], "readers disagree about the first confirmed send")
+                provenance["first_model_exposure"] = min(first_observed, key=lambda r: r["ordinal"], default=None)
+                provenance["model_receipts"] = len({*records, *(e["ordinal"] for e in participant_turns
+                                                   if e.get("result") or e.get("recovered_result"))})
             else:
-                require(raw["artifacts"]["model"] == trace_ref, "model trace differs from original session")
+                require(not errors and raw["artifacts"]["model"] == trace_ref, "model trace differs from original session")
                 facts = readback.reconstruct_case(raw, archive, records, registration_sha256=identity["registration_sha256"])
                 for k, partial in (("elapsed_ns", "elapsed_lower_ns"), ("steps", "observed_steps")):
                     exact[k] = facts[k]
@@ -80,22 +126,26 @@ def inspect(directory):
                 require(raw["validity"] == coding_validity(raw["terminal"], track, facts),
                         "published classification differs from participant exit and actual exposure")
                 require(same(raw["score"], coding_score(raw, facts)), "published score differs from original evidence")
-            for k, value in exact.items():
-                if value is not None:
-                    require(same(value, raw["cost"][k]), "published cost differs from original " + k)
+                for k in COST:
+                    expected = exact.get(k)
+                    if expected is None and k in ("steps", "elapsed_ns", "model_calls"):
+                        expected = lower.get(k)
+                    require(same(expected, raw["cost"][k]), "published cost differs from original " + k)
             platform = objects.item(raw["artifacts"]["platform"])
             problem = platform.get("failure") or facts.get("error")
-            trace = objects.item(trace_ref)
-            errors = [t.get("outcome", "interrupted model request") for t in trace["turns"] if t.get("outcome") != "decision"]
+            validity = "infrastructure_invalid" if errors else raw["validity"]
+            if trace is not None:
+                errors.extend(t.get("outcome", "interrupted model request") for t in trace["turns"] if t.get("outcome") != "decision")
             if (path / "dispute.json").exists():
                 errors.append(parse((path / "dispute.json").read_bytes())["error"])
             if problem:
                 errors.append(str(problem))
+            facts.update(provenance)
             cases[unit] = {"facts": facts, "terminal": raw["terminal"], "errors": errors,
-                           "cost": ModelCaseCost(raw["validity"], exact, lower)}
-        except (OSError, ValueError, KeyError, TypeError, IndexError, ImportError, MeasurementUnavailable) as error:
-            cases[unit] = {"facts": {}, "terminal": "unavailable original evidence",
-                           "errors": [f"{type(error).__name__}: {error}"],
+                           "cost": ModelCaseCost(validity, exact, lower)}
+        except UNREADABLE as error:
+            cases[unit] = {"facts": provenance, "terminal": "unavailable original evidence",
+                           "errors": [*errors, f"{type(error).__name__}: {error}"],
                            "cost": ModelCaseCost("infrastructure_invalid", exact, lower)}
     return frozen, cases
 
@@ -181,9 +231,13 @@ def render(frozen=None, cases=None):
     population = frozen["population"] if frozen else "unregistered original coverage"
     out = [f"# Notification model study · {population}", ""]
     if frozen:
+        service = frozen["conditions"]["service"]
         out += [f"Replicate {frozen['replicate']} on `{frozen['source_commit']}`. "
-                f"Service `{frozen['conditions']['service'].get('model', 'disabled')}`. "
+                f"Service `{service.get('model', 'disabled')}`. "
                 f"{len(cases)} of {len(units)} scheduled case directories are present.", ""]
+        if not service.get("disabled"):
+            out += ["Registered provider, provider version and model revision — " + " / ".join(
+                show(service.get(k)) for k in ("provider", "provider_version", "model_revision")) + ".", ""]
         if frozen.get("replication_reason"):
             out += ["Replication reason — " + frozen["replication_reason"], ""]
     if not frozen or population != "model":
@@ -217,14 +271,18 @@ def render(frozen=None, cases=None):
                 out += ["", f"Total rework ratio, Purser / {comparator} — {ratio}."]
         detailed = (*keys, "eligible", *(E3_EXTRAS if exp == "E3" else ("final_pass", "final_parent_closed")
                               if exp == "E1" else ("checkpoint_candidate", "stale_at_delivery")), *COST)
-        out += ["", "### Original case measurements", "",
+        out += ["", "### Case measurements", "",
                 "| Track | Seed | Arm | Validity / terminal | " + " | ".join(detailed) + " |",
                 "| --- | ---: | --- | --- |" + " ---: |" * len(detailed)]
         for unit in (u for u in units if u[0] == exp):
             _, track, seed, arm = unit
             rec = cases.get(unit)
             status = LABELS[rec["cost"].validity] + " / " + rec["terminal"] if rec else "missing"
-            cells = [track, str(seed), arm, status, *(show(field(cases, unit, k)) for k in detailed)]
+            cells = [track, str(seed), arm, status]
+            for k in detailed:
+                exact = field(cases, unit, k)
+                bound = rec["cost"].lower_bounds.get(k) if rec and k in COST else None
+                cells.append("≥" + show(bound) if exact is None and bound is not None else show(exact))
             out.append("| " + " | ".join(cells) + " |")
         out += ["", "### Paired differences", "",
                 "Each cell subtracts that comparator from Purser in this order — " + ", ".join((*keys, *COST)) + ".", "",
@@ -246,7 +304,22 @@ def render(frozen=None, cases=None):
         if all(r and r["cost"].validity == "complete" and healthy(exp, r["facts"]) and r["cost"].exact.get("steps") is not None for r in pair):
             flag = pair[0]["cost"].exact["steps"] > 2 * pair[1]["cost"].exact["steps"]
         out += ["", f"Healthy matched clean pair above twice plain-loop steps — {show(flag)}.", ""]
-    out += [render_model_costs(units, {u: c["cost"] for u,c in cases.items()}), "## Original errors", ""]
+    out.append(render_model_costs(units, {u: c["cost"] for u,c in cases.items()}))
+    if cases:
+        out += ["## Retained model evidence", "",
+                "A collector invocation can end before a request reaches the service. The first confirmed send "
+                "links to its original request digest. A sealed reply can survive the loss of its participant.", "",
+                "| Case | Collector invocations | Transport receipts | First confirmed send | Model IDs in responses |",
+                "| --- | ---: | ---: | --- | --- |"]
+        for unit, case in cases.items():
+            facts = case["facts"]
+            first = facts.get("first_model_exposure")
+            first_label = f"{first['ordinal']} · `{first['request_sha256']}`" if first else "?"
+            ids = facts.get("reported_models", [])
+            out.append("| " + " | ".join(("/".join(map(str, unit)), show(facts.get("collector_invocations")),
+                       show(facts.get("model_receipts")), first_label, show(", ".join(ids) or None))) + " |")
+        out.append("")
+    out += ["## Original errors", ""]
     for unit, case in cases.items():
         if case["errors"]:
             out.append("- " + " / ".join(map(str, unit)) + " — " + show(", ".join(case["errors"])))
