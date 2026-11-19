@@ -1,6 +1,5 @@
 """Model-selected coding and plan actions against a real disposable arm."""
 
-import json
 import time
 from itertools import combinations
 
@@ -64,6 +63,23 @@ def prompt_bytes(prompt):
             "actions": {name: spec.describe() for name, spec in prompt.actions.items()}}
 
 
+def workspace_view(experiment, rows, repo, oid, notice, history, turn):
+    work = {w: {k: v for k, v in row.items() if not k.startswith("_")} for w, row in rows.items()}
+    previous = []
+    for event in history:
+        if event["kind"] == "action":
+            p = event["payload"]
+            if (turn and p.get("model_turn") == turn and "return" in p
+                    and p["input"].get("tool") != "public plan and working Git tree"):
+                previous.append({"id": p["action_id"], "action": p["action"], "actor": p["actor"],
+                                 "work": p["subject"], "candidate": p["candidate"], "result": p["return"]})
+    return {"work": work, "candidate": oid, "git_changes": changes(repo, oid),
+            "policy_files": {p: git(repo, "show", f"{oid}:{p}").decode() for p in PATHS.values()},
+            "notice": notice, "last_public_actions": previous,
+            "tasks": policy.TASK_TITLES if experiment == "E2" else TASKS,
+            "retry_requirement": policy.NEW if notice else policy.OLD}
+
+
 class Participant:
     def __init__(self, experiment, track, seed, candidates, adapter, journal, checks, decide):
         self.experiment, self.track, self.seed = experiment, track, seed
@@ -76,19 +92,12 @@ class Participant:
         self.phase = policy.LINEAR
         self.notice = None
         self.adopted = False
-        self.last = {}
-        self.diagnosis = {}
         self.worked = set()
 
     def view(self):
         rows, _ = self.arm.public_view()
-        rows = {w: {k: v for k, v in row.items() if not k.startswith("_")} for w, row in rows.items()}
-        repo, oid = self.candidates.archive, self.candidates.head
-        return {"work": rows, "candidate": oid, "git_changes": changes(repo, oid),
-                "policy_files": {p: git(repo, "show", f"{oid}:{p}").decode() for p in PATHS.values()},
-                "notice": self.notice, "last_public_result": self.last,
-                "tasks": policy.TASK_TITLES if self.experiment == "E2" else TASKS,
-                "retry_requirement": (policy.NEW if self.notice else policy.OLD)}
+        return workspace_view(self.experiment, rows, self.candidates.archive, self.candidates.head,
+                              self.notice, self.j.rows, self.public.turn)
 
     def execute(self):
         while self.public.turn < LIMITS["max_model_calls"]:
@@ -112,8 +121,7 @@ class Participant:
             self.j.persist()
             try:
                 exit_reason = self.apply(decision.action, decision.arguments)
-            except WorkRefused as refusal:
-                self.last = {"refused": refusal.receipt}
+            except WorkRefused:
                 continue
             if exit_reason:
                 return exit_reason
@@ -132,7 +140,7 @@ class Participant:
             return "blocked"
         if action == "read":
             path, page = args["path"], int(args["page"])
-            self.last = self.call("context", PARENT, "executor", args, lambda: {
+            self.call("context", PARENT, "executor", args, lambda: {
                 "path": path, "page": page, "source": git(self.candidates.archive, "show", f"{oid}:{path}")
                 [page * 8192:(page + 1) * 8192].decode(errors="replace")}, oid)
             return None
@@ -164,7 +172,7 @@ class Participant:
             return None
         work = args["work"]
         if action == "reopen":
-            self.last = self.assign(work)
+            self.assign(work)
         elif action == "inspect":
             def inspect_work():
                 from purser.kernel.wire import KernelError
@@ -172,12 +180,11 @@ class Participant:
                     return self.arm.context(work)
                 except KernelError as error:
                     return {"disposition": "refused", "code": str(error)}
-            self.last = self.call("context", work, "executor", {"work": work}, inspect_work, self.state(work)[1])
+            self.call("context", work, "executor", {"work": work}, inspect_work, self.state(work)[1])
         elif action == "diagnose":
             labels = [] if args["obligations"] == "none" else args["obligations"].split(",")
             current = self.state(work)[1]
-            self.last = self.call("check", work, "plan_reviewer", args, lambda: {"missing": labels}, current)
-            self.diagnosis[work] = labels
+            self.call("check", work, "plan_reviewer", args, lambda: {"missing": labels}, current)
         elif action == "close":
             if self.state(work)[1] != oid:
                 if self.state(work)[1] is not None:
@@ -205,11 +212,10 @@ class Participant:
             self.j.event("fault", {"seed": self.seed, "intervention": fault[0], "candidate": oid,
                         "source_candidate": before, "work": work, "target": fault[2],
                         "trigger": "first submission of " + work, "released": claim})
-        submitted = self.call("submit", work, "executor", {"candidate": oid, "claim": claim},
+        self.call("submit", work, "executor", {"candidate": oid, "claim": claim},
                               lambda: self.arm.submit(work, oid), oid)
-        audit = self.call("check", work, "plan_reviewer", {"check": "post-submit public self-review"},
+        self.call("check", work, "plan_reviewer", {"check": "post-submit public self-review"},
                           lambda: self.checks.public_check("review", self.experiment, oid, {"work": work, "phase": self.phase}), oid)
-        verified = {}
         if self.j.arm != "loop":
             for label in (LEAVES[work],) if work in LEAVES else PARENT_CHECKS:
                 self.call("plan", work, "planner", {"open_run": label}, lambda: self.arm.opening(work, label), oid)
@@ -222,9 +228,6 @@ class Participant:
                     reply = self.arm.verify(work, label, dict(result, verdict=verdict))
                     return dict(reply, diagnosis=[] if verdict == "pass" else [label])
                 self.call("decide", work, "independent_verifier", {"criterion": label, "verdict": verdict}, verify, oid)
-                verified[label] = {"report": result, "verdict": verdict}
-        self.last = {"work": work, "candidate": oid, "worker_check": checked, "claim": claim,
-                     "submission": submitted, "review": audit, "verifications": verified}
         return oid
 
     def close(self, work, oid):
@@ -233,8 +236,7 @@ class Participant:
                 return self.arm.decide(work, {})
             self.arm.update(work, state="closed")
             return {"claim": self.arm._plan_row(work), "diagnosis": []}
-        decision = self.call("decide", work, "closure", {"request": "close"}, declare, oid)
-        self.last = {"previous": self.last, "closure": decision} if "closure" not in self.last else {"closure": decision}
+        self.call("decide", work, "closure", {"request": "close"}, declare, oid)
         self.check_premise(work, oid)
         return "done" if work == PARENT and is_closed(self.state(PARENT)[0]) else None
 

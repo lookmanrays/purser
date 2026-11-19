@@ -1,6 +1,6 @@
 """Reconstruct coding outcomes from original public heads, Git objects and isolated observations."""
 
-from collections import defaultdict
+import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -8,7 +8,6 @@ from experiments.e1 import accounting, capture, outcomes
 from experiments.e1.artifacts import REGISTRATION, START, changes, encoded, git, sha
 from experiments.e1.executor import LEAVES, PARENT, PATHS, fault_for
 from experiments.e1.measurement import same
-from experiments.e1.recovery import input_identity
 from experiments.e1.report import GitPacks, Objects, require
 from experiments.e2 import checkpoint, evidence, measure, plan_versions, policy
 from experiments.e2.outcomes import all_pass, criteria
@@ -58,17 +57,22 @@ def validate_overlay(repo, before, after, fault, seed):
     require(git(repo, "ls-tree", after, "--", path).startswith(b"100644 blob "), "invalid overlay file mode")
 
 
-def model_application(actions, records, objects, repos, source):
+def model_application(actions, records, objects, repos, source, experiment, complete):
     chosen = {}
     for a in actions:
         if not a.get("choice"):
             continue
         n, choice = a["model_turn"], a["choice"]
-        r = records[n]
+        r = records.get(n)
+        if r is None and not complete:
+            continue
+        require(r is not None and a["issued_monotonic_ns"] <= r["started_monotonic_ns"]
+                <= r["returned_monotonic_ns"] <= a.get("work_started_ns", r["returned_monotonic_ns"]),
+                "model receipt lies outside the original public decision interval")
         require(n not in chosen and choice["request_sha256"] == r["request_sha256"]
                 and choice["result_sha256"] == sha(encoded(r))
                 and r["proposal"] == {k: choice[k] for k in ("action", "arguments")}
-                and objects.item(a["prompt"]) == __import__("json").loads(r["request"]["messages"][1]["content"]),
+                and objects.item(a["prompt"]) == json.loads(r["request"]["messages"][1]["content"]),
                 "applied choice differs from original model response or prompt")
         group = [p for p in actions if p.get("model_turn") == n and p["attempt"] >= a["attempt"]
                  and p["input"].get("tool") != "public plan and working Git tree"]
@@ -76,11 +80,25 @@ def model_application(actions, records, objects, repos, source):
         preceding = [p["payload"] for p in source[:first["seq"] - 1] if p["kind"] == "action"]
         view = preceding[-1]
         prompt = objects.item(a["prompt"])
-        from .participant import BY_PATH, TASK, menu, prompt_bytes
+        from .participant import BY_PATH, TASK, menu, prompt_bytes, workspace_view
         from purser.adapters.model_protocol import ModelPrompt
         work_done = {p["subject"] for p in preceding if p["action"] == "edit" and p.get("return", {}).get("edited")}
         paths = [path for work, path in PATHS.items() if work != "W2" or {"W1", "W3"} <= work_done]
-        actual = view["return"]
+        previous_rows = source[:first["seq"] - 1]
+        previous_oid = START
+        notice = None
+        for row in previous_rows:
+            payload = row["payload"]
+            if row["kind"] == "action" and payload["action"] == "edit":
+                previous_oid = payload.get("return", {}).get("candidate", previous_oid)
+            if row["kind"] == "fault":
+                if experiment == "E2":
+                    notice = payload["released"]
+                else:
+                    previous_oid = payload["candidate"]
+        actual = workspace_view(experiment, objects.item(view["before"]["view"]), repos[previous_oid],
+                                previous_oid, notice, previous_rows, n - 1)
+        require(same(view["return"], actual), "model public context differs from participant, Git or public replies")
         outside = [row["path"] for row in actual["git_changes"] if row["status"] == "A" and row["path"] not in BY_PATH]
         revised = actual["notice"] and not any(p["action"] == "plan" and "adopt" in p["input"]
                                                 and "failure" not in p.get("return", {}) for p in preceding)
@@ -112,7 +130,21 @@ def model_application(actions, records, objects, repos, source):
                                 "candidate bytes differ from returned source")
             if p["actor"] == "closure":
                 require(action == "close" or args.get("disposition") == "request_close", "unrequested closure")
+        if matches:
+            applied = matches[-1] if action == "close" else matches[0]
+            if action in ("stop", "read", "diagnose"):
+                require(applied["input"] == args, "public operands differ from the requested decision")
+            if action in ("inspect", "reopen", "close"):
+                require(applied["subject"] == args["work"], "wrong public work operand")
+            if action == "read" and "failure" not in applied.get("return", {}):
+                page = int(args["page"])
+                data = git(repos[previous_oid], "show", f"{previous_oid}:{args['path']}")
+                require(applied["return"] == {"path":args["path"], "page":page,
+                                "source":data[page*8192:(page+1)*8192].decode(errors="replace")}, "Git read differs")
         chosen[n] = choice
+    if complete:
+        require(set(chosen) == {n for n, r in records.items() if r["outcome"] == "decision"},
+                "original model decision is missing its public application")
     return chosen
 
 
@@ -156,7 +188,7 @@ def reconstruct_case(raw, archive, records, *, registration_sha256):
             p = row["payload"]
             before = positions[encoded(p["before"])]
             require(previous == before or not complete, "unobserved change of public participant state")
-            after = positions.get( encoded(p.get("after")))
+            after = positions.get(encoded(p.get("after")))
             if after is None:
                 require(not complete, "public work never yielded a measured endpoint")
                 continue
@@ -212,8 +244,7 @@ def reconstruct_case(raw, archive, records, *, registration_sha256):
                     require(same(report["cases"][0]["all_changes"], changes(repos[oid], oid)),
                             "protected scope differs from Git tree")
                 grades[oid, label, version] = grade
-        if complete:
-            model_application(actions, records, objects, repos, rows)
+        model_application(actions, records, objects, repos, rows, experiment, complete)
         notices = [r for r in rows if r["kind"] == "fault"]
         require(len(notices) <= (0 if track == "clean" else 1), "unexpected intervention count")
         notice = notices[0] if notices else None

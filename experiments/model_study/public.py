@@ -84,6 +84,7 @@ class PublicRun:
             action = self.j.begin_action(kind, work, actor, oid, deepcopy(inputs), before=before,
                                          metadata={"model_turn": self.turn or None,
                                                    "issued_monotonic_ns": time.monotonic_ns()})
+        action["work_started_ns"] = time.monotonic_ns()
         self.j.persist()
         def proposal(value):
             action.setdefault("proposals", []).append(value)
