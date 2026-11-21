@@ -5,14 +5,18 @@ package codec
 
 import "time"
 
+// unimplemented is a variable so static analysis does not treat the stubs as
+// never returning.
+var unimplemented = func() { panic("unimplemented: P1-01") }
+
 // Encode returns the canonical JSON bytes of v.
-func Encode(_ any) ([]byte, error) { panic("unimplemented: P1-01") }
+func Encode(_ any) ([]byte, error) { unimplemented(); return nil, nil }
 
 // Decode strictly decodes data into a Value.
-func Decode(_ []byte) (any, error) { panic("unimplemented: P1-01") }
+func Decode(_ []byte) (any, error) { unimplemented(); return nil, nil }
 
 // DecodeObject strictly decodes data that must be a JSON object.
-func DecodeObject(_ []byte) (map[string]any, error) { panic("unimplemented: P1-01") }
+func DecodeObject(_ []byte) (map[string]any, error) { unimplemented(); return nil, nil }
 
 // Tag names a hash domain.
 type Tag string
@@ -30,19 +34,19 @@ const (
 const ZeroHash = "0000000000000000000000000000000000000000000000000000000000000000"
 
 // Hash returns H(tag, v).
-func Hash(_ Tag, _ any) (string, error) { panic("unimplemented: P1-01") }
+func Hash(_ Tag, _ any) (string, error) { unimplemented(); return "", nil }
 
 // ValidID reports whether s is a valid record ID.
-func ValidID(_ string) bool { panic("unimplemented: P1-01") }
+func ValidID(_ string) bool { unimplemented(); return false }
 
 // ValidApprovalID reports whether s is a generated approval ID.
-func ValidApprovalID(_ string) bool { panic("unimplemented: P1-01") }
+func ValidApprovalID(_ string) bool { unimplemented(); return false }
 
 // FormatTime formats t in the canonical UTC form.
-func FormatTime(_ time.Time) string { panic("unimplemented: P1-01") }
+func FormatTime(_ time.Time) string { unimplemented(); return "" }
 
 // ParseTime parses a canonical UTC time.
-func ParseTime(_ string) (time.Time, error) { panic("unimplemented: P1-01") }
+func ParseTime(_ string) (time.Time, error) { unimplemented(); return time.Time{}, nil }
 
 // Event is one stored kernel event.
 type Event struct {
@@ -69,21 +73,19 @@ type EventSpec struct {
 }
 
 // ParseEvent strictly decodes one stored event.
-func ParseEvent(_ []byte) (Event, error) { panic("unimplemented: P1-01") }
+func ParseEvent(_ []byte) (Event, error) { unimplemented(); return Event{}, nil }
 
 // Body returns the event as a map without its hash.
-func (Event) Body() map[string]any { panic("unimplemented: P1-01") }
+func (Event) Body() map[string]any { unimplemented(); return nil }
 
 // Map returns the event as a map including its hash.
-func (Event) Map() map[string]any { panic("unimplemented: P1-01") }
+func (Event) Map() map[string]any { unimplemented(); return nil }
 
 // ComputeHash returns H("event", e.Body()).
-func (Event) ComputeHash() (string, error) { panic("unimplemented: P1-01") }
+func (Event) ComputeHash() (string, error) { unimplemented(); return "", nil }
 
 // VerifyChain checks hashes, revisions, links and batches.
-func VerifyChain(_ []Event, _ string, _ int64) error {
-	panic("unimplemented: P1-01")
-}
+func VerifyChain(_ []Event, _ string, _ int64) error { unimplemented(); return nil }
 
 // Error is the codec's typed error.
 type Error struct {
@@ -93,4 +95,4 @@ type Error struct {
 }
 
 // Error implements the error interface.
-func (*Error) Error() string { panic("unimplemented: P1-01") }
+func (*Error) Error() string { unimplemented(); return "" }

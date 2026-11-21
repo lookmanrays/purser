@@ -2,6 +2,7 @@ package codec
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -74,10 +75,8 @@ func TestAC2_HashFormatAndTagSeparation(t *testing.T) {
 		if len(h) != 64 {
 			t.Fatalf("Hash(%s) length %d, want 64", tag, len(h))
 		}
-		for _, c := range h {
-			if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
-				t.Fatalf("Hash(%s) = %s is not lowercase hex", tag, h)
-			}
+		if strings.Trim(h, "0123456789abcdef") != "" {
+			t.Fatalf("Hash(%s) = %s is not lowercase hex", tag, h)
 		}
 		if other, dup := seen[h]; dup {
 			t.Fatalf("tags %s and %s produce the same hash", other, tag)
