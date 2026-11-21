@@ -69,6 +69,32 @@ func TestAC2_PassesUnexpectedly(t *testing.T) {
 	}
 }
 
+func TestAC8_RedFailsWhenPackageDoesNotCompile(t *testing.T) {
+	defer guard(t)
+
+	repo := setupFixtureRepo(t)
+
+	// Write a syntax/compilation error into the fixture's stub
+	stubPath := filepath.Join(repo, "tools", "p091", "zz_stub.go")
+	badSyntaxContent := `package p091
+
+// compilation error: invalid syntax
+func InvalidSyntax( {
+`
+	if err := os.WriteFile(stubPath, []byte(badSyntaxContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := Red(repo, "P0-91")
+	if err == nil {
+		t.Fatal("expected Red to fail when package does not compile, got nil")
+	}
+	errStr := strings.ToLower(err.Error())
+	if !strings.Contains(errStr, "build") && !strings.Contains(errStr, "compile") && !strings.Contains(errStr, "syntax") {
+		t.Fatalf("expected error mentioning compilation/build/syntax failure, got: %v", err)
+	}
+}
+
 func TestAC8_RedAllFailPasses(t *testing.T) {
 	defer guard(t)
 
