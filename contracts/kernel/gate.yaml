@@ -69,11 +69,11 @@ interface:
 
     type Pending struct {
         ApprovalID string
-        Events     []store.EventSpec
+        Events     []codec.EventSpec
     }
 
     type Outcome struct {
-        Events    []store.EventSpec
+        Events    []codec.EventSpec
         Rejection *Rejection
         Pending   *Pending
     }

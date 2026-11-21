@@ -4,7 +4,7 @@ version: 1
 status: draft
 package: internal/kernel/ops/work
 layer: kernel
-allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/gate, internal/kernel/artifacts, internal/kernel/view, internal/kernel/store]
+allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/gate, internal/kernel/artifacts, internal/kernel/view]
 owner: P1-04
 summary: >
   Work, result, obligation, run, observation, evidence and waiver operators

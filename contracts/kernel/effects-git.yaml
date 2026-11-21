@@ -4,7 +4,7 @@ version: 1
 status: draft
 package: internal/effects/git
 layer: effects
-allowed_imports: [internal/kernel/codec, internal/kernel/gate]
+allowed_imports: [internal/kernel/codec]
 owner: P1-08b
 summary: >
   A controlled local reftable repository where an authorized intent moves a

@@ -4,7 +4,7 @@ version: 1
 status: draft
 package: internal/kernel/ops/decision
 layer: kernel
-allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/gate, internal/kernel/impact, internal/kernel/artifacts, internal/kernel/store]
+allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/gate, internal/kernel/impact, internal/kernel/artifacts]
 owner: P1-07
 summary: Assumption, decision, opinion, dependency, premise-observation and dispatch operators.
 spec_refs:

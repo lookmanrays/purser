@@ -22,20 +22,13 @@ interface:
   go: |
     type Clock func() time.Time
 
-    // EventSpec is what a decide callback returns; the store fills in the envelope.
-    type EventSpec struct {
-        Type         string
-        EventVersion int64
-        Data         map[string]any
-    }
-
     type Snapshot struct {
         Revision   int64
         HeadHash   string
         Projection projection.Projection
     }
 
-    type Decide func(s Snapshot, at time.Time) ([]EventSpec, error)
+    type Decide func(s Snapshot, at time.Time) ([]codec.EventSpec, error)
 
     type Options struct {
         Registry *projection.Registry

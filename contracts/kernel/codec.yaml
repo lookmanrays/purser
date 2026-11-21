@@ -61,6 +61,14 @@ interface:
         Hash         string
     }
 
+    // EventSpec is the part of an event that operators decide; the store fills in
+    // the envelope (revision, batch, actor, proposal, time, hashes).
+    type EventSpec struct {
+        Type         string
+        EventVersion int64
+        Data         map[string]any
+    }
+
     func ParseEvent(raw []byte) (Event, error)
     func (e Event) Body() map[string]any
     func (e Event) Map() map[string]any

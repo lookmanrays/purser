@@ -4,7 +4,7 @@ version: 1
 status: draft
 package: internal/kernel/ops/graph
 layer: kernel
-allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/gate, internal/kernel/store]
+allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/gate]
 owner: P2-08
 summary: The v2 graph.snapshot operator, which records a system graph snapshot as a GraphSnapshot record.
 interface:

@@ -4,7 +4,7 @@ version: 1
 status: draft
 package: internal/kernel/ops/effect
 layer: kernel
-allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/gate, internal/kernel/artifacts, internal/kernel/view, internal/kernel/store]
+allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/gate, internal/kernel/artifacts, internal/kernel/view]
 owner: P1-08a
 summary: Effect slots, authority grants, intents, authorization cutoffs and reconciliation.
 spec_refs:
