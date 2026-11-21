@@ -21,8 +21,9 @@ KEYS = ["id", "title", "phase", "status", "size", "builder", "test_author", "rev
         "deps_allowed", "budget"]
 SECTIONS = ["Goal", "Context", "Design", "Out of scope", "Test plan", "Acceptance criteria",
             "Definition of done", "Escalate if"]
-BUILDERS = {"codex", "antigravity", "purser", "you"}
-AUTHORS = {"codex", "antigravity", "purser", "none"}
+# antigravity-2 is a second, independent Antigravity agent: its own chat, never the builder's.
+BUILDERS = {"codex", "antigravity", "purser", "you", "claude"}
+AUTHORS = {"codex", "antigravity", "antigravity-2", "claude", "purser", "none"}
 BUDGET = {"S": 200, "M": 600, "L": 600}
 CONTRACT_KEYS = ["contract", "kind", "version", "status", "owner", "summary"]
 KINDS = {"module", "function", "data", "endpoint", "event", "ui", "cli"}
