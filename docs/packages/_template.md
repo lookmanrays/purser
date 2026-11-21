@@ -5,7 +5,7 @@ phase: PX
 status: draft            # draft | ready | done
 size: S                  # S: up to 200 changed lines; M: up to 600; L: allowed only in draft, split before ready
 builder: codex           # codex | antigravity | purser | you
-test_author: antigravity # the other agent; never the builder; "none" only for bootstrap or review work; purser/purser only when Purser's test-author role (P4-06) writes the tests
+test_author: antigravity # the other agent (antigravity-2 = a second Antigravity agent in its own chat); never the builder; "none" only for bootstrap or review work; purser/purser only when Purser's test-author role (P4-06) writes the tests
 reviewer: antigravity    # the test author, or you
 merge: auto              # auto only for size S with no contract change; otherwise human
 contract_change: false   # true when the package adds or changes anything under contracts/
