@@ -65,7 +65,7 @@ Situations where the agent must stop and write a contradiction file instead of i
 5. No third-party module was added unless it is listed in `deps_allowed`.
 6. Every exported identifier has a doc comment, and the contract file is unchanged.
 7. The PR body has an evidence note: each AC with the tests that prove it, the commands run, coverage numbers and any deviation.
-8. No TODO without a linked tam task.
+8. No TODO without a linked issue or brief.
 
 ## Rules for the test author
 
