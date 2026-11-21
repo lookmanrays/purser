@@ -1,0 +1,108 @@
+contract: kernel.projection
+kind: module
+version: 1
+status: draft
+package: internal/kernel/projection
+layer: kernel
+allowed_imports: [internal/kernel/codec]
+owner: P1-02a
+summary: >
+  The projection data model and a registry of pure reducers keyed by event type
+  and version. The store and the gate share these reducers.
+spec_refs:
+  - reference/python/docs/contracts/kernel-v1.md#ownership-and-compatibility
+  - reference/python/purser/kernel/projector.py
+vectors:
+  - testdata/vectors/purser-v1/wire-v1.json#expected.snapshot_at_4
+  - testdata/vectors/purser-v1/wire-v1.json#expected.snapshot_at_8
+  - testdata/vectors/golden/**/snapshots.jsonl
+interface:
+  go: |
+    type Record struct {
+        ID         string
+        Kind       string
+        Commitment string
+        Changed    int64
+        Fields     map[string]any
+    }
+
+    type Receipt struct {
+        ActorID     string
+        ProposalID  string
+        Digest      string
+        Disposition string // admitted, pending or rejected
+        Code        string
+        Details     map[string]any
+        Revision    int64
+    }
+
+    type Edge struct {
+        Kind   string
+        FromID string
+        ToID   string
+    }
+
+    // Projection is immutable from the caller's view: Apply returns a new value.
+    type Projection struct {
+        Records  []Record  // sorted by ID
+        Receipts []Receipt // sorted by (ActorID, ProposalID)
+        Edges    []Edge    // sorted by (Kind, FromID, ToID)
+    }
+
+    func Empty() Projection
+    func (p Projection) Map() map[string]any
+    func (p Projection) Checksum() (string, error) // codec.Hash(TagProjection, p.Map())
+    func (p Projection) Record(id string) (Record, bool)
+    func (p Projection) ByKind(kind string) []Record
+    func (p Projection) Receipt(actorID, proposalID string) (Receipt, bool)
+    func (p Projection) EdgesTo(kind, toID string) []Edge
+    func FromMap(m map[string]any) (Projection, error)
+
+    // Changes reports what one event changed, so the store can update only those rows.
+    type Changes struct {
+        Records  []string
+        Receipts [][2]string
+        Edges    []Edge
+        Removed  []Edge
+    }
+
+    type Reducer func(p Projection, data map[string]any, revision, batchEnd int64) (Projection, Changes, error)
+
+    type Registry struct{ /* unexported */ }
+
+    func NewRegistry() *Registry
+    func (r *Registry) Register(eventType string, version int64, fn Reducer) error
+    func (r *Registry) Apply(p Projection, e codec.Event) (Projection, Changes, error)
+    func (r *Registry) Known(eventType string, version int64) bool
+    func Base() *Registry
+functions:
+  - name: Registry.Apply
+    pre: ["e passed codec.VerifyChain"]
+    post:
+      - "applies the reducer registered for (e.Type, e.EventVersion)"
+      - "CommitmentCreated v0 is upcast by renaming text to statement before its reducer runs"
+      - "the input projection is not mutated"
+    errors: [unsupported_version, integrity_error]
+    examples:
+      - {vector: "wire-v1.json: folding events 1..4 equals expected.snapshot_at_4.projection"}
+      - {vector: "wire-v1.json#legacy: folding legacy events yields expected_projection_hash"}
+      - {given: {event_type: "Unknown", version: 1}, then: {error: unsupported_version}}
+  - name: Registry.Register
+    errors: [duplicate_reducer]
+    examples:
+      - {given: {register_twice: "CommitmentCreated v1"}, then: {error: duplicate_reducer}}
+  - name: Projection.Checksum
+    examples:
+      - {vector: "wire-v1.json#expected.status_by_revision[*].projection_hash"}
+invariants:
+  - "reducers are pure: no I/O, no clock, no randomness, no global state"
+  - "a reducer validates its event's closed field set and returns integrity_error on mismatch"
+  - "ProposalReceipted may advance a receipt only from pending, with the same digest"
+  - "sort orders hold after every Apply"
+errors:
+  unsupported_version: "no reducer for the event type and version"
+  integrity_error: "event data violates its closed field set or a receipt transition rule"
+  duplicate_reducer: "a second registration for the same type and version"
+non_goals:
+  - "No storage and no SQL"
+  - "No admission logic"

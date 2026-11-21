@@ -1,0 +1,60 @@
+contract: kernel.ops.decision
+kind: module
+version: 1
+status: draft
+package: internal/kernel/ops/decision
+layer: kernel
+allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/gate, internal/kernel/impact, internal/kernel/artifacts, internal/kernel/store]
+owner: P1-07
+summary: Assumption, decision, opinion, dependency, premise-observation and dispatch operators.
+spec_refs:
+  - reference/python/docs/contracts/decisions-v1.md
+  - reference/python/purser/kernel/decisionops.py
+  - reference/python/purser/kernel/decisionevents.py
+vectors:
+  - testdata/vectors/purser-v1/lifecycle-v1.json#continuity_overlay
+  - testdata/vectors/golden/test_decisions.*
+interface:
+  go: |
+    func Register(g *gate.Gate, reg *projection.Registry) error
+
+    const (
+        OpAssumptionCreate  = "assumption.create"
+        OpDecisionRecord    = "decision.record"
+        OpDecisionOpine     = "decision.opine"
+        OpDependencyAdd     = "dependency.add"
+        OpDependencyRemove  = "dependency.remove"
+        OpAssumptionObserve = "assumption.observe"
+        OpAssignmentDispatch = "assignment.dispatch"
+    )
+functions:
+  - name: assumption.observe
+    post:
+      - "stores the premise artifact and emits PremiseObserved"
+      - "a first contradiction of a trigger assumption invalidates it and applies impact.AffectedBy in the same batch"
+    errors: [forbidden, not_found, invalid_op, digest_mismatch]
+    examples:
+      - {vector: "decisions-v1.md example"}
+      - {vector: "golden test_decisions.*"}
+  - name: decision.record
+    post: ["with supersedes: predecessor history kept; incoming depends_on edges redirected in the same event"]
+    errors: [invalid_op, not_found, invalid_transition, id_exists]
+    examples:
+      - {given: {supersedes: "D-1 reconsidering with dependents W-a, W-b"}, then: {edges: "W-a and W-b depend on D-2", history: "D-1 queryable as superseded"}}
+  - name: assignment.dispatch
+    post: ["admitted only while support and generation qualify; local release cutoff"]
+    errors: [forbidden, invalid_transition, stale_base]
+    examples:
+      - {given: {state: "dependency invalidated after assignment"}, then: {code: invalid_transition}}
+invariants:
+  - "changing a dependency of assigned work fences its generation"
+  - "reducers registered for every event in decisionevents.py"
+errors:
+  invalid_op: "fields malformed"
+  forbidden: "binding may not perform the op"
+  not_found: "referenced record missing"
+  invalid_transition: "lifecycle forbids the op"
+  id_exists: "ID already used"
+  digest_mismatch: "premise artifact digest mismatch"
+non_goals:
+  - "No effect operators"

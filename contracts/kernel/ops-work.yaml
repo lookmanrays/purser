@@ -1,0 +1,76 @@
+contract: kernel.ops.work
+kind: module
+version: 1
+status: draft
+package: internal/kernel/ops/work
+layer: kernel
+allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/gate, internal/kernel/artifacts, internal/kernel/view, internal/kernel/store]
+owner: P1-04
+summary: >
+  Work, result, obligation, run, observation, evidence and waiver operators
+  from purser-main's work contract, plus the v2 work.spec operator. P1-05 adds
+  work.close and work.accept to the same package.
+spec_refs:
+  - reference/python/docs/contracts/work-v1.md#operators
+  - reference/python/purser/kernel/workops.py
+  - reference/python/purser/kernel/workevents.py
+vectors:
+  - testdata/vectors/purser-v1/lifecycle-v1.json#steps
+  - testdata/vectors/purser-v1/lifecycle-v1.json#evidence_bindings
+  - testdata/vectors/golden/test_work.*
+interface:
+  go: |
+    func Register(g *gate.Gate, reg *projection.Registry) error
+
+    // Operator names registered by P1-04.
+    const (
+        OpWorkCreate        = "work.create"
+        OpWorkCoverage      = "work.coverage"
+        OpWorkAssign        = "work.assign"
+        OpResultSubmit      = "result.submit"
+        OpObligationSet     = "obligation.set"
+        OpRunOpen           = "run.open"
+        OpObservationRecord = "observation.record"
+        OpEvidenceRecord    = "evidence.record"
+        OpObligationWaive   = "obligation.waive"
+        OpWorkSpec          = "work.spec" // v2
+    )
+
+    // Registered by P1-05.
+    const (
+        OpWorkClose  = "work.close"
+        OpWorkAccept = "work.accept"
+    )
+functions:
+  - name: work.spec
+    pre: ["binding role is principal or planner", "work exists in the envelope commitment and is not closed"]
+    post: ["validates spec against contracts/records WorkSpec schema", "emits WorkSpecSet {id, spec}; the reducer stores it as fields.spec"]
+    errors: [invalid_op, forbidden, not_found, invalid_transition]
+    examples:
+      - {given: {op: {op: "work.spec", id: "W-a", spec: {kind: function, implements: "billing.ApplyCredit@1", tier: implementer, scope: {write: ["internal/billing/credit.go"], read: []}, reuse: [], tests: ["O-a"], budget: {diff_lines: 120, files: 2, attempts: 3}}}}, then: {disposition: admitted}}
+      - {given: {op: {op: "work.spec", id: "W-a", spec: {kind: "lambda"}}}, then: {code: invalid_op}}
+  - name: run.open
+    post: ["freezes candidate, definition and environment identities from witness bytes"]
+    errors: [forbidden, digest_mismatch, invalid_op, invalid_transition]
+    examples:
+      - {vector: "lifecycle-v1.json#evidence_bindings"}
+      - {given: {binding: "observer is the result producer"}, then: {code: forbidden}}
+  - name: work.assign
+    post: ["advances generation; clears the previous result and candidate"]
+    errors: [forbidden, not_found, invalid_transition]
+    examples:
+      - {vector: "golden test_work.test_frontier_from_restart_and_assignment_attenuation"}
+invariants:
+  - "every op records its reads in the ReadSet before deciding"
+  - "witness bytes larger than artifacts.MaxWitnessBytes are rejected before storage"
+  - "the result producer is never the observer or verifier of a run over that result"
+  - "reducers are registered for every work event type in workevents.py"
+errors:
+  invalid_op: "fields malformed or spec invalid"
+  forbidden: "role or separation-of-duty violation"
+  not_found: "referenced record missing in scope"
+  invalid_transition: "lifecycle does not allow the op"
+  digest_mismatch: "witness bytes do not match declared digests"
+  closure_blocked: "P1-05: work.close on ineligible work, with typed reasons"
+non_goals:
+  - "work.spec is stored, not enforced, until P3 and P4"

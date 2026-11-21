@@ -1,0 +1,82 @@
+contract: effects.git
+kind: module
+version: 1
+status: draft
+package: internal/effects/git
+layer: effects
+allowed_imports: [internal/kernel/codec, internal/kernel/gate]
+owner: P1-08b
+summary: >
+  A controlled local reftable repository where an authorized intent moves a
+  branch and writes a protected receipt ref in one transaction, with an
+  independent observer.
+spec_refs:
+  - reference/python/docs/contracts/git-effects-v1.md
+  - reference/python/purser/effects/git.py
+  - reference/python/purser/effects/_git_store.py
+  - reference/python/purser/effects/foreground.py
+interface:
+  go: |
+    const MinGitVersion = "2.45.0"
+
+    type Binding struct {
+        Repository         string
+        RepositoryInstance string
+        Branch             string
+        Digest             string
+    }
+
+    type Prepared struct {
+        IntentDigest       string
+        RepositoryInstance string
+        ChangedPaths       []string
+    }
+
+    type Observation struct {
+        State  string         // confirmed_happened, confirmed_absent, pending
+        Reason string         // protected_receipt_verified, quiescent_no_application, or a pending reason
+        Fields map[string]any // the fifteen observation fields
+    }
+
+    type AuthorizeFunc func(p Prepared) error
+
+    type FaultHook func(point string) error // test-only: "after_authorize", "after_write"
+
+    func CheckGit() (version string, err error)
+    func Initialize(staging, dir, branch string, commits []string) (Binding, error)
+
+    type Broker struct{ /* unexported */ }
+    func OpenBroker(b Binding, faults FaultHook) (*Broker, error)
+    func (br *Broker) Prepare(intent map[string]any) (Prepared, error)
+    func (br *Broker) Dispatch(intent map[string]any, attempt string, authorize AuthorizeFunc) error
+    func (br *Broker) Close() error
+
+    func Observe(b Binding, intent map[string]any, attempt string) (Observation, error)
+functions:
+  - name: Dispatch
+    post:
+      - "holds an exclusive flock on the repository directory for the whole call"
+      - "prepares again under the lock and calls authorize before any write"
+      - "git update-ref --stdin with start, prepare, commit moves the branch and creates refs/purser/receipts/<digest> together"
+      - "hooks, remote transports and background maintenance are disabled"
+    errors: [git_too_old, busy, unauthorized, git_failed]
+    examples:
+      - {given: {fault: after_authorize}, then: {observe: {state: confirmed_absent, reason: quiescent_no_application}}}
+      - {given: {fault: after_write}, then: {observe: {state: confirmed_happened, reason: protected_receipt_verified}}}
+  - name: Observe
+    post: ["takes a shared non-blocking lock; never writes"]
+    errors: [git_too_old]
+    examples:
+      - {given: {state: "concurrent writer holds the lock"}, then: {state: pending}}
+      - {given: {state: "reflog rewritten"}, then: {state: pending}}
+invariants:
+  - "commands run with the opened directory as working directory; a replaced path cannot redirect a write"
+  - "the binding digest is anchored in the first reflog entry"
+errors:
+  git_too_old: "Git older than MinGitVersion"
+  busy: "the repository lock is held"
+  unauthorized: "authorize returned an error; nothing was written"
+  git_failed: "a Git command failed; details carry stderr"
+non_goals:
+  - "No Windows-native locking; WSL2 only"
+  - "No network remotes"

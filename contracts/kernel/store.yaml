@@ -1,0 +1,114 @@
+contract: kernel.store
+kind: module
+version: 1
+status: draft
+package: internal/kernel/store
+layer: kernel
+allowed_imports: [internal/kernel/codec, internal/kernel/projection]
+owner: P1-02a
+summary: >
+  The durable SQLite event log with materialized projections. One transaction
+  numbers, hashes, appends and projects a batch. P1-02b adds fast reads and
+  P1-02c adds replay and verification against the same contract.
+spec_refs:
+  - reference/python/docs/contracts/kernel-v1.md#ownership-and-compatibility
+  - reference/python/purser/kernel/store.py
+vectors:
+  - testdata/vectors/purser-v1/wire-v1.json#events
+  - testdata/vectors/purser-v1/wire-v1.json#clock_by_batch
+  - testdata/vectors/purser-v1/wire-v1.json#legacy
+  - testdata/vectors/golden/**
+interface:
+  go: |
+    type Clock func() time.Time
+
+    // EventSpec is what a decide callback returns; the store fills in the envelope.
+    type EventSpec struct {
+        Type         string
+        EventVersion int64
+        Data         map[string]any
+    }
+
+    type Snapshot struct {
+        Revision   int64
+        HeadHash   string
+        Projection projection.Projection
+    }
+
+    type Decide func(s Snapshot, at time.Time) ([]EventSpec, error)
+
+    type Options struct {
+        Registry *projection.Registry
+        BusyTimeout time.Duration
+    }
+
+    type Store struct{ /* unexported */ }
+
+    func Open(path string, opts Options) (*Store, error)
+    func (s *Store) Close() error
+    func (s *Store) Initialize() (Snapshot, error)
+    func (s *Store) Snapshot(revision *int64) (Snapshot, error)
+    func (s *Store) Transact(actorID, proposalID string, clock Clock, decide Decide) (Snapshot, []codec.Event, error)
+    func (s *Store) Events(from, to int64) ([]codec.Event, error)
+    func (s *Store) RawEvents(from, to int64) ([][]byte, error)
+
+    // P1-02c
+    type TrustedHead struct {
+        Revision int64
+        Hash     string
+    }
+    func (s *Store) Verify(trusted *TrustedHead) error
+    func (s *Store) Replay(trusted *TrustedHead) (Snapshot, error)
+functions:
+  - name: Initialize
+    post:
+      - "a new store has revision 0, an empty projection and HeadHash == codec.ZeroHash"
+      - "on an existing store it verifies the chain and returns the head snapshot"
+    errors: [unavailable, integrity_error, unsupported_version]
+    examples:
+      - {vector: "wire-v1.json#expected.init"}
+  - name: Transact
+    pre: ["actorID and proposalID are valid IDs"]
+    post:
+      - "takes write ownership with BEGIN IMMEDIATE before reading the snapshot"
+      - "samples clock exactly once and passes the instant to decide"
+      - "events get contiguous revisions, shared batch_start and batch_size, at = FormatTime(sample), actor_id and proposal_id from the arguments"
+      - "events, receipts, records, edges and head are written in the same transaction"
+      - "an empty event list commits nothing and returns the unchanged snapshot"
+      - "an error from decide rolls back everything and is returned unchanged"
+    errors: [unavailable, integrity_error, unsupported_version]
+    examples:
+      - {vector: "wire-v1.json: each batch of events, under clock_by_batch, reproduces its stored bytes and hashes"}
+  - name: Snapshot
+    post:
+      - "nil reads the head from materialized tables after checking meta.head_hash against the last event (P1-02b)"
+      - "a revision at a batch boundary returns the state as of that revision"
+    errors: [bad_revision, integrity_error, unavailable]
+    examples:
+      - {vector: "wire-v1.json#expected.snapshot_at_4"}
+      - {given: {revision: "inside a batch"}, then: {error: bad_revision}}
+  - name: Verify
+    post: ["reads stored bytes, verifies the chain and known versions; writes nothing"]
+    errors: [integrity_error, unsupported_version]
+    examples:
+      - {given: {mutation: "one byte flipped at revision N"}, then: {error: integrity_error, details: {revision: N}}}
+  - name: Replay
+    post:
+      - "verifies, folds into fresh tables and swaps them in atomically under write ownership"
+      - "readers observe the complete old or the complete new state"
+    errors: [integrity_error, unsupported_version, unavailable]
+    examples:
+      - {vector: "wire-v1.json#legacy: replay gives expected_projection_hash and expected_head_hash"}
+invariants:
+  - "events are stored as their exact canonical bytes and never rewritten"
+  - "the head is always a complete batch"
+  - "the materialized projection equals the fold of all events (P1-02b property test)"
+  - "SQLite runs in WAL mode with synchronous=FULL"
+errors:
+  unavailable: "the database cannot be opened, is locked beyond BusyTimeout, or I/O failed"
+  integrity_error: "stored bytes, hashes, links, batches or head metadata are inconsistent; details carry the first bad revision"
+  unsupported_version: "an event type or version without a registered reducer"
+  bad_revision: "a requested revision is negative, beyond the head or inside a batch"
+non_goals:
+  - "No admission rules; the gate decides what to append"
+  - "No cgo"

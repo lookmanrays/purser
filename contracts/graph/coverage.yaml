@@ -1,0 +1,46 @@
+contract: graph.coverage
+kind: module
+version: 1
+status: draft
+package: internal/graph/coverage
+layer: graph
+allowed_imports: [internal/graph/store]
+owner: P2-06
+summary: Per-test coverage mapped to covered_by edges from symbols to tests.
+interface:
+  go: |
+    type Options struct {
+        Repo        string
+        Parallelism int
+        Timeout     time.Duration
+        CacheDir    string
+    }
+
+    type TestRun struct {
+        TestID   string
+        Failed   bool
+        Cached   bool
+        Duration time.Duration
+    }
+
+    func GoCoverage(ctx context.Context, s *store.Store, opts Options) ([]TestRun, error)
+    func VitestCoverage(ctx context.Context, s *store.Store, opts Options) ([]TestRun, error)
+functions:
+  - name: GoCoverage
+    post:
+      - "each test function runs alone with -coverpkg=./...; covered blocks map to the symbols whose ranges contain them"
+      - "test nodes test:go:<package>.<TestName>; edges symbol -> test with kind covered_by"
+      - "cache key: SHA-256 of the test file and the package's source files"
+    errors: [go_failed, timeout]
+    examples:
+      - {given: {repo: "testdata/gocov"}, then: {edges: "equal testdata/gocov/golden.json"}}
+  - name: VitestCoverage
+    errors: [vitest_missing, timeout]
+    examples:
+      - {given: {repo: "testdata/vitestcov"}, then: {edges: "equal testdata/vitestcov/golden.json"}}
+errors:
+  go_failed: "go test could not build the package"
+  vitest_missing: "vitest not installed in the repository"
+  timeout: "a test run exceeded its timeout"
+non_goals:
+  - "No line-level coverage reports"

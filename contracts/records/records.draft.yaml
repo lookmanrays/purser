@@ -1,0 +1,89 @@
+# Record kinds and fields (draft input to P0-03)
+#
+# Every projected record has the envelope {id, kind, commitment, changed, fields}.
+# v1 kinds come from purser-main: P0-03 derives their exact field sets from the
+# projections in testdata/vectors/purser-v1/wire-v1.json and lifecycle-v1.json.
+# Where this file and the vectors disagree, the vectors win for v1 kinds.
+# v2 kinds are new; their fields are defined here and become final in P0-03.
+
+envelope:
+  id: {type: string, rule: "matches [A-Za-z][A-Za-z0-9_.-]{0,95}, or a:<64 hex> for generated approval IDs"}
+  kind: {type: string, rule: "one of the kinds below"}
+  commitment: {type: string}
+  changed: {type: integer, rule: "last event revision that changed this record"}
+  fields: {type: object, rule: "closed field set per kind and version"}
+
+v1_kinds:   # kind names exactly as purser-main writes them; fields from the vectors and reference reducers
+  - Commitment       # statement, root, principal, state (proposed, active, satisfied, released)
+  - WorkItem         # title, parent, state, generation, assignment, candidate, coverage, children
+  - Approval         # requester, request, request_digest, read_versions, expires_at, state
+  - Assignment       # work, executor, generation, work_supports
+  - Result           # assignment, candidate
+  - Obligation       # work, version, title, observer, verifier, definition_sha256, environment_sha256
+  - VerificationRun  # obligation, result, frozen identities
+  - Observation      # run or assumption, observer, artifact digests
+  - Evidence         # run, observation, verdict
+  - Waiver           # obligation, version, result, reason
+  - Assumption       # statement, observer, state, affected
+  - Decision         # choice, alternatives, rationale, support, triggers, supersedes, state
+  - DecisionOpinion  # decision, author, stance, rationale
+  - Effect           # work, slot, repository, repository_instance, resource, paths, state
+  - AuthorityGrant   # work, slot, assignment, generation, grantee, expires_at, state
+  - EffectAttempt    # effect, intent_digest, state
+
+# v2 kinds use the same PascalCase convention: Contract, GraphSnapshot,
+# Contradiction, Routing, Cost. WorkSpec is not a kind: it is stored as
+# fields.spec on a WorkItem.
+v2_kinds:
+  WorkSpec:        # stored as fields.spec on a WorkItem, set by the v2 op work.spec (P1-04)
+    kind: {type: string, enum: [feature, module, function, wiring, spike]}
+    implements: {type: [string, "null"], rule: "contract ID with @version, or null"}
+    tier: {type: string, enum: [architect, lead, implementer, tool]}
+    scope: {type: object, fields: {write: "array of globs", read: "array of globs"}}
+    reuse: {type: array, items: "symbol ID"}
+    tests: {type: array, items: "obligation ID"}
+    budget: {type: object, fields: {diff_lines: integer, files: integer, attempts: integer}}
+
+  Contract:        # P3-03
+    contract: {type: string, rule: "contract ID from the file"}
+    version: {type: integer}
+    contract_kind: {type: string, enum: [module, function, data, endpoint, event, ui, cli]}
+    path: {type: string}
+    digest: {type: string, rule: "sha256 of exact file bytes"}
+    producer: {type: [string, "null"], rule: "work ID"}
+    consumers: {type: array, items: "work ID"}
+    state: {type: string, enum: [proposed, accepted, superseded]}
+
+  GraphSnapshot:   # P2-08
+    git_commit: {type: string, rule: "typed candidate identity of the indexed commit"}
+    digest: {type: string, rule: "sha256 over the canonical graph rows"}
+    indexers: {type: array, items: {name: string, version: string}}
+    files: {type: integer}
+    symbols: {type: integer}
+
+  Contradiction:   # P4-10
+    target: {type: string, rule: "contract or decision ID"}
+    raised_by: {type: string, rule: "assignment ID"}
+    reason: {type: string}
+    evidence: {type: array, items: "artifact sha256"}
+    state: {type: string, enum: [open, resolved]}
+    resolution: {type: [string, "null"], rule: "decision or contract version that resolved it"}
+
+  Routing:         # P5-02
+    work: {type: string}
+    level: {type: integer, rule: "0 to 3"}
+    tier: {type: string}
+    model: {type: string}
+    attempt: {type: integer}
+    reason: {type: string}
+
+  Cost:            # P5-04
+    work: {type: [string, "null"]}
+    role: {type: string}
+    tier: {type: string}
+    provider: {type: string}
+    model: {type: string}
+    input_tokens: {type: integer}
+    output_tokens: {type: integer}
+    cached_tokens: {type: integer}
+    usd_micros: {type: integer}

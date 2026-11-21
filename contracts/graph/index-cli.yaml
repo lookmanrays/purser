@@ -1,0 +1,31 @@
+contract: graph.cli
+kind: cli
+version: 1
+status: draft
+package: internal/cli
+layer: cli
+owner: P2-08
+summary: purser index and purser graph subcommands. The graph.snapshot operator is contracts/kernel/ops-graph.yaml.
+request:
+  commands:
+    - {name: index, flags: ["--full", "--repo PATH", "--graph PATH", "--coverage", "--db PATH"]}
+    - {name: graph symbol, args: [NAME], flags: ["--lang L", "--limit N"]}
+    - {name: graph refs, args: [ID]}
+    - {name: graph callers, args: [ID]}
+    - {name: graph neighbors, args: [ID], flags: ["--depth N", "--kinds K,K", "--limit N"]}
+    - {name: graph interface, args: [PKG_ID]}
+    - {name: graph reuse, flags: ["--contract FILE", "--symbol ID", "--limit N"]}
+    - {name: graph stats}
+responses:
+  schemas: contracts/cli/graph/
+  rules:
+    - "index replies {v, mode, from_commit, to_commit, affected_files, digest, snapshot_receipt, fallbacks}"
+    - "graph subcommands reply {v, nodes, edges, truncated} or {v, candidates}"
+invariants:
+  - "graph commands read only the graph store; index writes the graph store and proposes one graph.snapshot"
+errors:
+  invalid_input: "exit 2"
+  not_found: "exit 4"
+  unavailable: "exit 6"
+non_goals:
+  - "No MCP serving (P4-08)"

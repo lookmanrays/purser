@@ -1,0 +1,53 @@
+contract: kernel.impact
+kind: module
+version: 1
+status: draft
+package: internal/kernel/impact
+layer: kernel
+allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/view]
+owner: P1-06
+summary: >
+  Pure invalidation: what a contradicted assumption affects, which closed work
+  must reopen after a basis change, and which closures and satisfied
+  commitments no longer hold.
+spec_refs:
+  - reference/python/docs/contracts/decisions-v1.md#closure-and-explanation
+  - reference/python/purser/kernel/support.py
+vectors:
+  - testdata/vectors/purser-v1/lifecycle-v1.json#continuity_overlay
+  - testdata/vectors/golden/test_decisions.*
+interface:
+  go: |
+    type Affected struct {
+        Decisions []string // sorted
+        Work      []string // sorted
+        Edges     []projection.Edge
+    }
+
+    func AffectedBy(p projection.Projection, assumptionID string) (Affected, error)
+    func Reopen(p projection.Projection, v *view.View, changed []string) []string
+    func Settle(p projection.Projection, v *view.View) (stale []string, unsatisfied []string)
+functions:
+  - name: AffectedBy
+    post:
+      - "follows incoming depends_on edges to any depth"
+      - "crosses a decision only when assumptionID is among its triggers"
+      - "terminates on cycles; each ID appears once"
+    errors: [not_found]
+    examples:
+      - {vector: "lifecycle-v1.json#continuity_overlay: invalidated_assumption affects exactly decision_under_reconsideration and its dependents; unaffected_original_siblings untouched"}
+  - name: Reopen
+    post: ["returns closed work and ancestors whose basis contains a changed ID, sorted, nothing else"]
+    examples:
+      - {given: {changed: ["O-1"], tree: "W-root > W-a(O-1) , W-b"}, then: {result: ["W-a", "W-root"]}}
+  - name: Settle
+    post: ["reports closures whose coverage no longer qualifies and satisfied commitments whose accepted digest differs from the current outcome"]
+    examples:
+      - {given: {state: "commitment satisfied for digest D, current outcome D'"}, then: {unsatisfied: ["C-x"]}}
+invariants:
+  - "no events and no I/O"
+  - "an inserted edge counts as a change to the relation set"
+errors:
+  not_found: "unknown assumption"
+non_goals:
+  - "No traversal of outgoing edges"

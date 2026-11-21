@@ -1,0 +1,43 @@
+contract: kernel.artifacts
+kind: module
+version: 1
+status: draft
+package: internal/kernel/artifacts
+layer: kernel
+allowed_imports: [internal/kernel/codec]
+owner: P1-04
+summary: Content-addressed artifact bytes under their SHA-256, verified on every read.
+spec_refs:
+  - reference/python/docs/contracts/work-v1.md
+  - reference/python/purser/kernel/artifacts.py
+interface:
+  go: |
+    const MaxWitnessBytes = 8 << 20
+
+    type Store struct{ /* unexported */ }
+
+    func Open(dir string) (*Store, error)
+    func (s *Store) Put(data []byte) (digest string, err error)
+    func (s *Store) Get(digest string) ([]byte, error)
+    func (s *Store) Has(digest string) (bool, error)
+    func Digest(data []byte) string
+functions:
+  - name: Put
+    post: ["writes to a temporary file, fsyncs and renames to <dir>/<aa>/<digest>; idempotent"]
+    errors: [too_large, unavailable]
+    examples:
+      - {given: {data: "hello"}, then: {digest: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"}}
+  - name: Get
+    post: ["returns the bytes only if their SHA-256 equals digest"]
+    errors: [not_found, digest_mismatch, unavailable]
+    examples:
+      - {given: {state: "file altered on disk"}, then: {error: digest_mismatch}}
+invariants:
+  - "publication stages bytes before any record references the digest"
+errors:
+  too_large: "data exceeds MaxWitnessBytes when stored as a witness"
+  not_found: "no file for the digest"
+  digest_mismatch: "stored bytes do not hash to the digest"
+  unavailable: "I/O failure"
+non_goals:
+  - "No deletion or garbage collection in v1"

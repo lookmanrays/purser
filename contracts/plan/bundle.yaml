@@ -1,0 +1,27 @@
+contract: plan.bundle
+kind: data
+version: 1
+status: draft
+owner: P3-03
+summary: >
+  Boundary contract. The plan an architect or module lead produces, before it
+  becomes kernel proposals. The validator (P3-05, P3-07) reads it; the planning
+  CLI (P3-08) shows it; tam approval (P6-03) attaches it.
+data:
+  - {name: v, type: integer, required: true, rule: "1"}
+  - {name: task, type: string, required: true, rule: "commitment ID"}
+  - {name: level, type: integer, required: true, rule: "0 to 3"}
+  - {name: scope, type: string, required: true, rule: "task or a module work ID for module-lead bundles"}
+  - {name: decisions, type: array, required: true, rule: "[{id, choice, alternatives[], rationale, assumptions[], triggers[]}]"}
+  - {name: contracts, type: array, required: true, rule: "[{path, text}] in contract format v1"}
+  - {name: work, type: array, required: true, rule: "[{id, parent, title, spec}] with spec per WorkSpec"}
+  - {name: tests, type: array, required: true, rule: "[{id, work, kind: acceptance|integration|unit|property, criterion, verifies[], derived_from[]}]"}
+  - {name: dependencies, type: array, required: true, rule: "[{from, to}] work IDs or system graph symbol IDs"}
+  - {name: unknowns, type: array, required: true, rule: "[{question, settled_by: decision ID | spike work ID}]"}
+  - {name: estimate, type: object, required: true, rule: "{usd_micros, human_minutes, budget_request?}"}
+  - {name: acceptance_map, type: object, required: true, rule: "acceptance criterion index -> test IDs"}
+invariants:
+  - "IDs follow the kernel ID grammar"
+  - "converting a bundle to proposals is deterministic"
+non_goals:
+  - "No code bodies"

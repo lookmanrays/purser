@@ -1,0 +1,52 @@
+contract: graph.reuse
+kind: module
+version: 1
+status: draft
+package: internal/graph/reuse
+layer: graph
+allowed_imports: [internal/graph/store]
+owner: P2-07
+summary: Ranks existing symbols that already do what a contract or symbol describes.
+interface:
+  go: |
+    type Query struct {
+        Name      string
+        Signature string // Go or TypeScript signature text
+        Summary   string
+        Lang      string
+        Package   string // optional: the package the new code will live in
+    }
+
+    type Weights struct{ Name, Signature, Text, Structure float64 }
+
+    var DefaultWeights = Weights{Name: 0.30, Signature: 0.40, Text: 0.25, Structure: 0.05}
+
+    const DefaultThreshold = 0.55
+
+    type Candidate struct {
+        SymbolID   string
+        Score      float64
+        Components map[string]float64 // name, signature, text, structure
+        Reason     string
+    }
+
+    type Finder struct{ /* unexported */ }
+
+    func New(s *store.Store, w Weights, threshold float64) *Finder
+    func (f *Finder) Find(q Query, limit int) ([]Candidate, error)
+    func (f *Finder) FindLike(symbolID string, limit int) ([]Candidate, error)
+functions:
+  - name: Find
+    post:
+      - "candidates scored by weighted components; only score >= threshold returned"
+      - "test and generated files excluded"
+      - "sorted by score descending, ties by symbol ID"
+    examples:
+      - {given: {query: {name: ApplyDiscount, signature: "func(Invoice, Money) Invoice"}, seeded: "applyDiscount in pricing/discount.go"}, then: {top3_contains: "pricing.applyDiscount"}}
+      - {given: {query: {name: Parse, signature: "func(string) (Config, error)"}, lookalike: "func Parse(b []byte) Token"}, then: {lookalike_above_threshold: false}}
+invariants:
+  - "deterministic for the same store and query"
+errors:
+  not_found: "FindLike with an unknown symbol"
+non_goals:
+  - "No model calls or embeddings in v1"

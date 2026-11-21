@@ -1,0 +1,61 @@
+contract: graph.lsp
+kind: module
+version: 1
+status: draft
+package: internal/graph/lsp
+layer: graph
+allowed_imports: []
+owner: P2-04
+summary: Minimal LSP client for gopls and typescript-language-server.
+interface:
+  go: |
+    type Location struct {
+        Path  string
+        Range struct{ StartLine, StartCol, EndLine, EndCol int } // byte columns
+    }
+
+    type Edit struct {
+        Path    string
+        Range   struct{ StartLine, StartCol, EndLine, EndCol int }
+        NewText string
+    }
+
+    type Symbol struct {
+        Name     string
+        Kind     string
+        Location Location
+    }
+
+    type Config struct {
+        Command []string // e.g. ["gopls"] or ["typescript-language-server", "--stdio"]
+        Root    string
+        Timeout time.Duration
+    }
+
+    type Client struct{ /* unexported */ }
+
+    func Start(ctx context.Context, cfg Config) (*Client, error)
+    func (c *Client) Definition(ctx context.Context, path string, line, col int) ([]Location, error)
+    func (c *Client) References(ctx context.Context, path string, line, col int, includeDecl bool) ([]Location, error)
+    func (c *Client) Hover(ctx context.Context, path string, line, col int) (string, error)
+    func (c *Client) WorkspaceSymbols(ctx context.Context, query string) ([]Symbol, error)
+    func (c *Client) Rename(ctx context.Context, path string, line, col int, newName string) ([]Edit, error)
+    func (c *Client) Close() error
+functions:
+  - name: References
+    post: ["positions in and out are byte columns; conversion from UTF-16 is exact"]
+    errors: [timeout, server_crashed, server_error]
+    examples:
+      - {given: {fixture: "testdata/exchanges/references.json"}, then: {result: "the recorded locations"}}
+  - name: Rename
+    post: ["returns edits; never writes files"]
+    errors: [timeout, server_crashed, server_error, rename_rejected]
+    examples:
+      - {given: {fixture: "testdata/exchanges/rename.json"}, then: {edits: "the recorded edits"}}
+errors:
+  timeout: "a call exceeded Config.Timeout; the client stays usable"
+  server_crashed: "the server exited twice"
+  server_error: "a JSON-RPC error response; details carry code and message"
+  rename_rejected: "prepareRename refused the position"
+non_goals:
+  - "No diagnostics, completion or code actions"

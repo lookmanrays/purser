@@ -1,0 +1,179 @@
+contract: graph.store
+kind: module
+version: 1
+status: draft
+package: internal/graph/store
+layer: graph
+allowed_imports: []
+owner: P2-01
+summary: >
+  Derived SQLite index of modules, packages, files, symbols and tests with
+  typed edges, a query API and a deterministic content digest.
+interface:
+  go: |
+    type NodeKind string
+
+    const (
+        KindModule  NodeKind = "module"
+        KindPackage NodeKind = "package"
+        KindFile    NodeKind = "file"
+        KindSymbol  NodeKind = "symbol"
+        KindTest    NodeKind = "test"
+    )
+
+    type EdgeKind string
+
+    const (
+        EdgeContains   EdgeKind = "contains"
+        EdgeDefines    EdgeKind = "defines"
+        EdgeReferences EdgeKind = "references"
+        EdgeCalls      EdgeKind = "calls"
+        EdgeImports    EdgeKind = "imports"
+        EdgeImplements EdgeKind = "implements"
+        EdgeCoveredBy  EdgeKind = "covered_by"
+    )
+
+    type Range struct{ StartLine, StartCol, EndLine, EndCol int }
+
+    type Node struct {
+        ID            string   `json:"id"`
+        Kind          NodeKind `json:"kind"`
+        SymbolKind    string   `json:"symbol_kind,omitempty"`
+        Lang          string   `json:"lang"`
+        Name          string   `json:"name"`
+        Path          string   `json:"path,omitempty"`
+        Range         *Range   `json:"range,omitempty"`
+        Signature     string   `json:"signature,omitempty"`
+        Doc           string   `json:"doc,omitempty"`
+        Exported      bool     `json:"exported"`
+        ContentSHA256 string   `json:"content_sha256,omitempty"`
+        Source        string   `json:"source"`
+        Error         string   `json:"error,omitempty"`
+        Owner         string   `json:"owner"` // file ID that owns this node, or "" for modules
+    }
+
+    type Edge struct {
+        From   string   `json:"from"`
+        To     string   `json:"to"`
+        Kind   EdgeKind `json:"kind"`
+        Source string   `json:"source"`
+        Weight int      `json:"weight"`
+    }
+
+    type Indexer struct{ Name, Version string }
+
+    type Meta struct {
+        GitCommit     string
+        Mode          string // full or incremental
+        Indexers      []Indexer
+        AffectedFiles int
+        UpdatedAt     time.Time
+    }
+
+    type Batch struct {
+        Files []string // file IDs whose owned nodes are replaced
+        Nodes []Node
+        Edges []Edge
+    }
+
+    type Direction int
+
+    const (
+        Out Direction = iota
+        In
+        Both
+    )
+
+    type Query struct {
+        Name       string
+        NamePrefix string
+        Kind       NodeKind
+        Lang       string
+        PathPrefix string
+        Limit      int
+    }
+
+    type Subgraph struct {
+        Nodes     []Node
+        Edges     []Edge
+        Truncated bool
+    }
+
+    type Stats struct {
+        Nodes    map[NodeKind]int
+        Edges    map[EdgeKind]int
+        Dangling int
+    }
+
+    type Store struct{ /* unexported */ }
+
+    func Open(path string) (*Store, error)
+    func (s *Store) Close() error
+    func (s *Store) Replace(b Batch, m Meta) error
+    func (s *Store) Node(id string) (Node, bool, error)
+    func (s *Store) Find(q Query) ([]Node, error)
+    func (s *Store) Edges(id string, d Direction, kinds ...EdgeKind) ([]Edge, error)
+    func (s *Store) Neighbors(id string, kinds []EdgeKind, depth, limit int) (Subgraph, error)
+    func (s *Store) Interface(pkgID string) ([]Node, error)
+    func (s *Store) DropDangling() (int, error)
+    func (s *Store) Meta() (Meta, error)
+    func (s *Store) Stats() (Stats, error)
+    func (s *Store) Digest() (string, error)
+data:
+  node:
+    - {name: id, type: string, required: true, rule: "prefix mod:, pkg:, file:, sym: or test:; unique"}
+    - {name: kind, type: string, required: true, rule: "module, package, file, symbol or test"}
+    - {name: symbol_kind, type: string, required: false, rule: "function, method, type, interface, field, const, var, class, enum; symbols only"}
+    - {name: lang, type: string, required: true, rule: "go or typescript in v1"}
+    - {name: name, type: string, required: true}
+    - {name: path, type: string, required: false, rule: "repository-relative, forward slashes"}
+    - {name: range, type: object, required: false, rule: "1-based lines, 0-based byte columns"}
+    - {name: signature, type: string, required: false}
+    - {name: doc, type: string, required: false}
+    - {name: exported, type: boolean, required: true}
+    - {name: content_sha256, type: string, required: false, rule: "files only"}
+    - {name: source, type: string, required: true, rule: "scip, syntax, lsp or coverage"}
+    - {name: error, type: string, required: false, rule: "files with syntax errors"}
+    - {name: owner, type: string, required: true, rule: "owning file ID, empty for modules and packages"}
+  edge:
+    - {name: from, type: string, required: true}
+    - {name: to, type: string, required: true}
+    - {name: kind, type: string, required: true, rule: "contains, defines, references, calls, imports, implements or covered_by"}
+    - {name: source, type: string, required: true}
+    - {name: weight, type: integer, required: true, rule: "occurrence count; 1 when not counted"}
+  meta:
+    - {name: git_commit, type: string, required: true}
+    - {name: mode, type: string, required: true, rule: "full or incremental"}
+    - {name: indexers, type: array, required: true, rule: "[{name, version}]"}
+    - {name: affected_files, type: integer, required: true}
+  examples:
+    node: {id: "sym:scip-go gomod example.com/app v1 `example.com/app/billing`/ApplyCredit().", kind: symbol, symbol_kind: function, lang: go, name: ApplyCredit, path: billing/credit.go, range: {StartLine: 12, StartCol: 5, EndLine: 12, EndCol: 16}, signature: "func ApplyCredit(ctx context.Context, inv Invoice, c Credit) (Invoice, error)", exported: true, source: scip, owner: "file:billing/credit.go"}
+    edge: {from: "file:billing/credit.go", to: "sym:scip-go gomod example.com/app v1 `example.com/app/billing`/ApplyCredit().", kind: defines, source: scip, weight: 1}
+    meta: {git_commit: "4f2a9c1e0b7d", mode: full, indexers: [{name: scip-go, version: "0.1.x"}], affected_files: 42}
+functions:
+  - name: Replace
+    post:
+      - "in one transaction: delete nodes whose owner is in b.Files and edges whose from is one of those nodes; insert b.Nodes and b.Edges; write m"
+      - "nodes with no owner (modules, packages) are upserted"
+    errors: [invalid_node, invalid_edge, unavailable]
+    examples:
+      - {given: {state: "file:a.go defines sym A", batch: {files: ["file:a.go"], nodes: ["sym B owned by file:a.go"]}}, then: {nodes: "B present, A absent"}}
+  - name: Neighbors
+    post: ["breadth-first from id over the given kinds in both directions; depth counted in edges; stops at limit with Truncated=true"]
+    errors: [not_found]
+    examples:
+      - {given: {depth: 1, kinds: [calls]}, then: {nodes: "id plus direct callers and callees"}}
+  - name: Digest
+    post: ["SHA-256 over nodes sorted by id then edges sorted by (from, kind, to), each json.Marshal of the struct plus newline; Meta excluded"]
+    examples:
+      - {given: {same_content: "inserted in two orders"}, then: {digest: "equal"}}
+invariants:
+  - "the store is derived: deleting the file loses nothing that cannot be rebuilt"
+  - "no import of internal/kernel"
+errors:
+  invalid_node: "a node violates the data rules"
+  invalid_edge: "an edge has an unknown kind or empty endpoint"
+  not_found: "unknown node ID"
+  unavailable: "database I/O failure"
+non_goals:
+  - "No call-graph inference inside the store"

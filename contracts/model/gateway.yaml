@@ -1,0 +1,87 @@
+contract: model.gateway
+kind: module
+version: 1
+status: draft
+package: internal/model
+layer: adapter
+allowed_imports: [internal/schema]
+owner: P3-01
+summary: >
+  Boundary contract. One interface over every model provider; roles ask by role
+  and tier, never by provider. Detailed in the P3 planning batch.
+interface:
+  go: |
+    type Role string   // router, architect, lead, test_author, implementer, integrator, reviewer
+    type Tier string   // local, haiku, sonnet, opus (names from config/models.yaml)
+
+    type Message struct {
+        Role    string // user or assistant
+        Content string
+    }
+
+    type Request struct {
+        Role          Role
+        Tier          Tier
+        StablePrefix  string // cacheable system prompt prefix
+        System        string // variable system text
+        Messages      []Message
+        Schema        []byte // JSON Schema for structured output; nil for text
+        MaxTokens     int
+        Temperature   float64
+        WorkID        string // for cost attribution; may be empty
+    }
+
+    type Usage struct {
+        Provider     string
+        Model        string
+        InputTokens  int64
+        OutputTokens int64
+        CachedTokens int64
+        USDMicros    int64
+        Latency      time.Duration
+    }
+
+    type Response struct {
+        Text  string
+        JSON  map[string]any // set when Request.Schema was set and validated
+        Usage Usage
+    }
+
+    type Provider interface {
+        Name() string
+        Complete(ctx context.Context, model string, r Request) (Response, error)
+        Health(ctx context.Context) error
+    }
+
+    type Gateway interface {
+        Complete(ctx context.Context, r Request) (Response, error)
+        Models() []ModelInfo
+    }
+
+    type ModelInfo struct {
+        Tier     Tier
+        Provider string
+        Model    string
+        Healthy  bool
+    }
+functions:
+  - name: Gateway.Complete
+    post:
+      - "resolves role and tier to a model through config/models.yaml"
+      - "validates structured output; one repair retry, then schema_violation"
+      - "returns Usage for every call, including failed ones that consumed tokens"
+    errors: [schema_violation, provider_unavailable, throttled, deadline_exceeded, no_model]
+    examples:
+      - {given: {role: implementer, tier: local, config: "local -> ollama/qwen"}, then: {usage.provider: ollama}}
+      - {given: {tier: opus, config: "no opus entry"}, then: {error: no_model}}
+invariants:
+  - "no role or package outside internal/model names a provider"
+  - "replay mode never opens a network connection"
+errors:
+  schema_violation: "structured output failed validation after the repair retry"
+  provider_unavailable: "provider unreachable or unhealthy"
+  throttled: "rate limited after retries"
+  deadline_exceeded: "the context deadline passed"
+  no_model: "no model configured for the role and tier"
+non_goals:
+  - "No routing decisions; the router picks the tier"

@@ -1,0 +1,30 @@
+contract: iface.mcp
+kind: endpoint
+version: 1
+status: draft
+owner: P4-08
+summary: >
+  Boundary contract. The MCP tools any worker (Purser's own, OpenCode, Codex,
+  Antigravity) uses. Identity comes from the connection token, never from
+  arguments.
+request:
+  transport: [stdio, streamable_http]
+  auth: "assignment token minted at dispatch; bound to actor, assignment and generation; expires with the assignment"
+  tools:
+    - {name: context_pack, input: {work_id: string}, output: "plan.contextpack"}
+    - {name: submit, input: {work_id: string, commit: string, note: string}, output: "kernel receipt"}
+    - {name: contradiction, input: {work_id: string, target: string, reason: string, evidence: "array of artifact digests"}, output: "kernel receipt"}
+    - {name: graph_symbol, input: {name: string, lang: string}, output: "graph nodes"}
+    - {name: graph_refs, input: {id: string}, output: "graph edges"}
+    - {name: graph_neighbors, input: {id: string, depth: integer, kinds: "array"}, output: "subgraph"}
+    - {name: graph_interface, input: {package: string}, output: "graph nodes"}
+    - {name: reuse_find, input: {name: string, signature: string, summary: string}, output: "reuse candidates"}
+responses:
+  errors_as: "MCP tool errors with code and details"
+errors:
+  unauthenticated: "missing, expired or revoked token"
+  forbidden: "token bound to a different assignment or generation"
+  not_found: "unknown work or symbol"
+  invalid_input: "arguments fail the tool schema"
+non_goals:
+  - "No shell or file-system tools; workers edit their own worktree"

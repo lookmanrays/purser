@@ -1,0 +1,33 @@
+contract: graph.syntax
+kind: module
+version: 1
+status: draft
+package: internal/graph/syntax
+layer: graph
+allowed_imports: [internal/graph/store]
+owner: P2-03
+summary: >
+  Declarations and imports for Go (go/parser) and TypeScript (TypeScript
+  compiler API via an embedded Node script) when no SCIP index exists.
+interface:
+  go: |
+    func ExtractGo(repo string, files []string) ([]store.Batch, error)
+    func ExtractTS(ctx context.Context, repo string, files []string) ([]store.Batch, error)
+functions:
+  - name: ExtractGo
+    post: ["one batch per file; syntax errors give a file node with error set"]
+    examples:
+      - {given: {repo: "testdata/go"}, then: {batches: "equal testdata/go/golden.json"}}
+  - name: ExtractTS
+    errors: [node_missing, typescript_missing, extractor_failed]
+    examples:
+      - {given: {repo: "testdata/ts-no-typescript"}, then: {error: typescript_missing}}
+invariants:
+  - "symbol IDs start with sym:syntax: and never equal SCIP IDs"
+  - "every node and edge has source syntax"
+errors:
+  node_missing: "node is not on PATH"
+  typescript_missing: "the repository has no typescript package"
+  extractor_failed: "the script exited non-zero; details carry stderr"
+non_goals:
+  - "No cgo and no tree-sitter in v1"
