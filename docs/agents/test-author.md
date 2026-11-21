@@ -25,7 +25,14 @@ Do not read or write any implementation of this package. If you find one, ignore
 ## 3. Write
 
 - Write only paths matching `tests_frozen`, plus `zz_stub.go` files in the package directories of `scope.write`.
-- A stub holds exactly the contract's Go declarations. Function bodies are `panic("unimplemented: <ID>")`. Blank unused parameter names (`_`) so the linter passes, and give every exported identifier a doc comment.
+- A stub holds exactly the contract's Go declarations, with blank parameter names (`_`) and a doc comment on every exported identifier. Bodies call a panicking function variable and then return zero values, so staticcheck does not treat the stubs as never returning (it would flag the test code after each call as dead):
+
+  ```go
+  var unimplemented = func() { panic("unimplemented: <ID>") }
+
+  // Encode returns the canonical JSON bytes of v.
+  func Encode(_ any) ([]byte, error) { unimplemented(); return nil, nil }
+  ```
 - Every acceptance criterion gets at least one test named `TestACn_<What>`. Cover every bullet of the brief's Test plan.
 - Start every test and subtest with a panic guard, so one stub panic does not abort the test binary:
 
