@@ -1,0 +1,158 @@
+contract: kernel.codec
+kind: module
+version: 1
+status: draft
+package: internal/kernel/codec
+layer: kernel
+allowed_imports: []
+owner: P1-01
+summary: >
+  Canonical JSON bytes, tagged SHA-256 hashes, strict decoding, ID and time
+  grammar, and event-chain verification, byte-compatible with purser-main v1.
+spec_refs:
+  - reference/python/docs/contracts/kernel-v1.md#canonical-bytes-and-hashes
+  - reference/python/purser/kernel/wire.py
+vectors:
+  - testdata/vectors/purser-v1/wire-v1.json#encoding_vector
+  - testdata/vectors/purser-v1/wire-v1.json#events
+  - testdata/vectors/purser-v1/wire-v1.json#request_digests
+  - testdata/vectors/purser-v1/wire-v1.json#legacy
+  - testdata/vectors/golden/**/events.jsonl
+interface:
+  go: |
+    // A Value is nil, bool, string, int64, []any or map[string]any.
+    // Decode produces only these types; Encode accepts them plus int.
+
+    func Encode(v any) ([]byte, error)
+    func Decode(data []byte) (any, error)
+    func DecodeObject(data []byte) (map[string]any, error)
+
+    type Tag string
+
+    const (
+        TagProposal   Tag = "proposal"
+        TagEvent      Tag = "event"
+        TagProjection Tag = "projection"
+        TagOutcome    Tag = "outcome"
+        TagEffect     Tag = "effect"
+    )
+
+    const ZeroHash = "0000000000000000000000000000000000000000000000000000000000000000"
+
+    func Hash(tag Tag, v any) (string, error)
+
+    func ValidID(s string) bool
+    func ValidApprovalID(s string) bool
+    func FormatTime(t time.Time) string
+    func ParseTime(s string) (time.Time, error)
+
+    type Event struct {
+        V            int64
+        EventVersion int64
+        Revision     int64
+        BatchStart   int64
+        BatchSize    int64
+        ActorID      string
+        ProposalID   string
+        At           string
+        Type         string
+        Data         map[string]any
+        PrevHash     string
+        Hash         string
+    }
+
+    func ParseEvent(raw []byte) (Event, error)
+    func (e Event) Body() map[string]any
+    func (e Event) Map() map[string]any
+    func (e Event) ComputeHash() (string, error)
+    func VerifyChain(events []Event, prevHash string, nextRevision int64) error
+
+    type Error struct {
+        Code     string
+        Revision int64
+        Detail   string
+    }
+
+    func (e *Error) Error() string
+functions:
+  - name: Encode
+    pre: ["v contains only Value types, with int accepted as int64"]
+    post:
+      - "keys sorted by Unicode code point at every depth; array order preserved"
+      - "no whitespace, no BOM, no trailing newline"
+      - "escapes exactly as Python json.dumps(ensure_ascii=False): \\\" \\\\ \\n \\r \\t \\b \\f, other U+0000..U+001F as lowercase \\u00xx, all other characters raw UTF-8"
+    errors: [invalid_value, integer_range, invalid_utf8]
+    examples:
+      - {given: {v: {"b": 1, "a": "<&>"}}, then: {bytes: '{"a":"<&>","b":1}'}}
+      - {given: {v: "line sep\u007f"}, then: {bytes: '"line sep\u007f" with both characters raw'}}
+      - {given: {v: "\u0001"}, then: {bytes: '"\u0001" as six ASCII characters with lowercase hex'}}
+      - {given: {v: 0}, then: {bytes: "0"}}
+  - name: Decode
+    post: ["Encode(Decode(b)) is canonical; Decode(Encode(v)) deep-equals v"]
+    errors: [duplicate_key, non_integer, integer_range, invalid_utf8, lone_surrogate, trailing_data, invalid_json]
+    examples:
+      - {given: {data: '{"a":1,"a":2}'}, then: {error: duplicate_key}}
+      - {given: {data: '1.0'}, then: {error: non_integer}}
+      - {given: {data: '9007199254740992'}, then: {error: integer_range}}
+      - {given: {data: '"\ud800"'}, then: {error: lone_surrogate}}
+  - name: Hash
+    post: ['returns lowercase hex of SHA256("purser/" + tag + "/v1" || 0x00 || Encode(v))']
+    errors: [invalid_value, integer_range, invalid_utf8]
+    examples:
+      - {vector: "wire-v1.json#events[*].hash, computed over the event without its hash field"}
+      - {vector: "wire-v1.json#request_digests, computed over {actor_id, proposal}"}
+  - name: ValidID
+    post: ["true iff s matches ^[A-Za-z][A-Za-z0-9_.-]{0,95}$"]
+    examples:
+      - {given: {s: "W-root"}, then: {result: true}}
+      - {given: {s: "1abc"}, then: {result: false}}
+      - {given: {s: "a:0123"}, then: {result: false}}
+  - name: ValidApprovalID
+    post: ["true iff s matches ^a:[0-9a-f]{64}$"]
+    examples:
+      - {given: {s: "a: followed by 64 lowercase hex"}, then: {result: true}}
+  - name: ParseTime
+    post: ["accepts only YYYY-MM-DDTHH:MM:SS.ffffffZ with a valid Gregorian date; FormatTime(ParseTime(s)) == s"]
+    errors: [bad_time]
+    examples:
+      - {given: {s: "2026-11-18T12:00:00.000000Z"}, then: {ok: true}}
+      - {given: {s: "2026-02-30T00:00:00.000000Z"}, then: {error: bad_time}}
+      - {given: {s: "2026-11-18T12:00:00Z"}, then: {error: bad_time}}
+  - name: ParseEvent
+    post: ["decodes strictly; the field set is exactly the twelve event fields; types match"]
+    errors: [duplicate_key, invalid_json, bad_event]
+    examples:
+      - {vector: "wire-v1.json#events"}
+  - name: VerifyChain
+    pre: ["events in stored order"]
+    post:
+      - "each event's Hash equals ComputeHash()"
+      - "revisions are contiguous from nextRevision"
+      - "PrevHash links to the previous event, the first to prevHash"
+      - "batch_start and batch_size are equal across a batch, and the batch covers exactly batch_size events"
+    errors: [bad_hash, chain_gap, bad_link, bad_batch]
+    examples:
+      - {vector: "wire-v1.json#events with prevHash ZeroHash and nextRevision 1"}
+      - {given: {mutation: "flip one byte of events[3].data"}, then: {error: bad_hash, revision: 4}}
+invariants:
+  - "Encode is deterministic and independent of Go map iteration order"
+  - "no function performs I/O or reads the clock"
+errors:
+  invalid_value: "a Go value outside the Value types, such as float64 or a struct"
+  integer_range: "an integer outside -(2^53-1)..(2^53-1)"
+  invalid_utf8: "a string that is not valid UTF-8"
+  duplicate_key: "an object with a repeated key"
+  non_integer: "a number with a fraction or exponent"
+  lone_surrogate: "an escaped surrogate without its pair"
+  trailing_data: "bytes after the top-level value"
+  invalid_json: "any other syntax error"
+  bad_time: "a time string outside the grammar"
+  bad_event: "an event with missing, extra or ill-typed fields"
+  bad_hash: "an event whose stored hash differs from its computed hash"
+  chain_gap: "a missing or repeated revision"
+  bad_link: "prev_hash does not equal the previous hash"
+  bad_batch: "inconsistent batch_start or batch_size"
+non_goals:
+  - "No use of encoding/json for canonical output"
+  - "No Unicode normalization"
+  - "No float support"

@@ -1,0 +1,44 @@
+contract: graph.incremental
+kind: module
+version: 1
+status: draft
+package: internal/graph/incremental
+layer: graph
+allowed_imports: [internal/graph/store, internal/graph/scip, internal/graph/syntax]
+owner: P2-05
+summary: Updates the graph for the files changed between the indexed commit and a new commit.
+interface:
+  go: |
+    type Options struct {
+        Repo          string
+        MaxAffected   int // default 500 files; beyond it, run a full index
+        PreferSCIP    bool
+    }
+
+    type Result struct {
+        Mode          string // incremental or full
+        FromCommit    string
+        ToCommit      string
+        AffectedFiles int
+        Duration      time.Duration
+    }
+
+    func Full(ctx context.Context, s *store.Store, opts Options, commit string) (Result, error)
+    func Update(ctx context.Context, s *store.Store, opts Options, commit string) (Result, error)
+functions:
+  - name: Update
+    post:
+      - "affected = changed files plus files of packages importing a changed package"
+      - "renames are delete plus add"
+      - "after Update the store digest equals the digest Full would produce at commit"
+      - "no dangling edges remain"
+    errors: [no_base, git_failed, indexer_missing]
+    examples:
+      - {given: {change: "edit one function body"}, then: {mode: incremental, digest: "equals full"}}
+      - {given: {change: "600 files"}, then: {mode: full}}
+errors:
+  no_base: "the store has no indexed commit; call Full"
+  git_failed: "git diff failed"
+  indexer_missing: "no SCIP indexer and no syntax fallback available for a language"
+non_goals:
+  - "No file watching"

@@ -1,0 +1,49 @@
+contract: graph.scip
+kind: module
+version: 1
+status: draft
+package: internal/graph/scip
+layer: graph
+allowed_imports: [internal/graph/store]
+owner: P2-02
+summary: Runs scip-go and scip-typescript and maps SCIP indexes to graph store batches.
+interface:
+  go: |
+    type Lang string
+
+    const (
+        Go         Lang = "go"
+        TypeScript Lang = "typescript"
+    )
+
+    type Tool struct {
+        Name               string
+        Version            string
+        SupportsPackageSet bool // can index a subset of packages
+    }
+
+    func Detect(lang Lang) (Tool, error)
+    func Run(ctx context.Context, repo string, lang Lang, packages []string) (indexPath string, err error)
+    func Load(indexPath, repo string, only map[string]bool) ([]store.Batch, store.Indexer, error)
+functions:
+  - name: Run
+    pre: ["repo is a directory containing go.mod or package.json"]
+    post: ["writes index.scip to a temporary directory and returns its path; packages restricts the run only when the tool supports it"]
+    errors: [indexer_missing, indexer_failed, timeout]
+    examples:
+      - {given: {lang: go, tool: absent}, then: {error: indexer_missing}}
+  - name: Load
+    post:
+      - "one batch per document; only limits documents when non-nil"
+      - "local symbols skipped; references counted per (from, to) pair"
+    errors: [invalid_index]
+    examples:
+      - {given: {index: "testdata/go/index.scip"}, then: {batches: "equal testdata/go/golden.json"}}
+      - {given: {index: "testdata/ts/index.scip"}, then: {batches: "equal testdata/ts/golden.json"}}
+errors:
+  indexer_missing: "tool not on PATH; details name the tool and an install hint"
+  indexer_failed: "non-zero exit; details carry stderr"
+  timeout: "run exceeded its deadline"
+  invalid_index: "protobuf decode failed"
+non_goals:
+  - "No writes to the store; callers apply batches"

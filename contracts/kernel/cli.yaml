@@ -1,0 +1,49 @@
+contract: kernel.cli
+kind: cli
+version: 1
+status: draft
+package: internal/cli
+layer: cli
+owner: P1-09
+summary: >
+  The kernel commands init, propose, status, why, replay, frontier, context and
+  graph --work, with frozen reply shapes and exit codes.
+spec_refs:
+  - reference/python/docs/contracts/kernel-v1.md#cli-surface-and-no-model-answers
+  - reference/python/purser/cli.py
+vectors:
+  - testdata/vectors/purser-v1/wire-v1.json#expected
+request:
+  global_flags:
+    - {flag: "--db PATH", required: true}
+    - {flag: "--json | --text", default: "--json"}
+  commands:
+    - {name: init}
+    - {name: propose, args: ["FILE or -"]}
+    - {name: status, flags: ["--revision N", "--as-of TIME"]}
+    - {name: why, args: [ID], flags: ["--revision N", "--as-of TIME"]}
+    - {name: replay, flags: ["--as-of TIME"]}
+    - {name: frontier, flags: ["--revision N", "--as-of TIME"]}
+    - {name: context, args: [WORK_ID], flags: ["--revision N"]}
+    - {name: graph, flags: ["--work", "--format text|dot|json"]}
+responses:
+  schemas: contracts/cli/
+  exit_codes: contracts/cli/exit-codes.yaml
+  rules:
+    - "one UTF-8 JSON object plus a newline on stdout"
+    - "receipts use {v, receipt}; other failures use {v, error: {code, details}}"
+    - "without --as-of, the single sampled clock instant is reported as as_of"
+invariants:
+  - "the human CLI is bound to principal:local; no flag or JSON selects identity"
+  - "no command calls a model or the network"
+errors:
+  invalid_input: "exit 2"
+  unauthenticated: "exit 5"
+  unavailable: "exit 6"
+  integrity_error: "exit 7"
+  unsupported_version: "exit 7"
+  not_found: "exit 4"
+  bad_revision: "exit 4"
+  id_conflict: "exit 4"
+non_goals:
+  - "No index, plan, run, cost or serve commands"

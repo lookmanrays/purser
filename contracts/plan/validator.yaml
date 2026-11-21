@@ -1,0 +1,22 @@
+contract: plan.validator
+kind: data
+version: 1
+status: draft
+owner: P3-05
+summary: >
+  Boundary contract. The validator report shape for checks 1 to 12 of the
+  definition of done for planning. Attached to every design the human approves.
+data:
+  - {name: v, type: integer, required: true, rule: "1"}
+  - {name: bundle_digest, type: string, required: true}
+  - {name: graph_digest, type: string, required: true}
+  - {name: kernel_revision, type: integer, required: true}
+  - {name: passed, type: boolean, required: true, rule: "true iff findings has no error"}
+  - {name: findings, type: array, required: true, rule: "[{check: 1..12, severity: error|warning, subjects[], message, hint}] sorted by (check, subjects)"}
+  - {name: checks_run, type: array, required: true, rule: "check numbers actually evaluated"}
+  - {name: digest, type: string, required: true, rule: "SHA-256 of the canonical report without this field"}
+invariants:
+  - "deterministic: equal inputs give equal reports"
+  - "check 10 findings come only from P3-07"
+non_goals:
+  - "No model opinion in findings"

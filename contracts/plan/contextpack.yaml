@@ -1,0 +1,28 @@
+contract: plan.contextpack
+kind: data
+version: 1
+status: draft
+owner: P3-02
+summary: >
+  Boundary contract. The context pack every role and worker receives: exactly
+  what the work item needs and nothing else. Canonical JSON with a digest.
+data:
+  - {name: v, type: integer, required: true, rule: "1"}
+  - {name: work, type: string, required: true, rule: "work item ID"}
+  - {name: role, type: string, required: true}
+  - {name: task, type: object, required: true, rule: "{statement, acceptance_criteria[]}"}
+  - {name: contract, type: object, required: true, rule: "{id, version, digest, text}"}
+  - {name: neighbours, type: array, required: true, rule: "[{symbol_id, signature, doc}] from scope.read packages"}
+  - {name: decisions, type: array, required: true, rule: "[{id, choice, rationale}] supporting this work"}
+  - {name: reuse_targets, type: array, required: true, rule: "[{symbol_id, signature, score, reason, required}]"}
+  - {name: tests, type: array, required: true, rule: "[{obligation, path, digest, source?}]; source omitted for implementers only if the role forbids"}
+  - {name: scope, type: object, required: true, rule: "{write[], read[]}"}
+  - {name: tools, type: array, required: true, rule: "tool contract IDs the role may call"}
+  - {name: budget, type: object, required: true, rule: "{diff_lines, files, attempts, usd_micros}"}
+  - {name: trimmed, type: array, required: true, rule: "items dropped to meet limits, with section and ID"}
+  - {name: digest, type: string, required: true, rule: "SHA-256 of the canonical pack without this field"}
+invariants:
+  - "a test_author pack never contains implementation bodies"
+  - "equal inputs give equal digests"
+non_goals:
+  - "No whole files unless the contract names them"

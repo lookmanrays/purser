@@ -1,0 +1,73 @@
+contract: kernel.view
+kind: module
+version: 1
+status: draft
+package: internal/kernel/view
+layer: kernel
+allowed_imports: [internal/kernel/codec, internal/kernel/projection]
+owner: P1-05
+summary: >
+  Pure reads over a projection: closure eligibility, outcome bases and digests,
+  typed reasons, q01 to q10 answers, frontier and capabilities.
+spec_refs:
+  - reference/python/docs/contracts/work-v1.md#outcomes-and-reads
+  - reference/python/docs/contracts/kernel-v1.md#cli-surface-and-no-model-answers
+  - reference/python/purser/kernel/workview.py
+  - reference/python/purser/queries.py
+vectors:
+  - testdata/vectors/purser-v1/lifecycle-v1.json#outcome_vectors
+  - testdata/vectors/purser-v1/wire-v1.json#expected.status_by_revision
+  - testdata/vectors/purser-v1/wire-v1.json#expected.why_active_commitment
+  - testdata/vectors/purser-v1/m2-legacy-status-v1.json
+interface:
+  go: |
+    type Reason struct {
+        Code string
+        Refs []string
+    }
+
+    type Basis map[string]any // keys exactly: work, generation, candidate, coverage, children, witnesses, decisions, obligations, effects
+
+    type View struct{ /* unexported */ }
+
+    func New(p projection.Projection) *View
+    func (v *View) Basis(workID string) (Basis, error)
+    func (v *View) Outcome(workID string) (string, error) // codec.Hash(TagOutcome, basis)
+    func (v *View) Closable(workID string, at time.Time) (bool, []Reason)
+    func (v *View) Closed(workID string) bool
+    func (v *View) Reasons(id string, at time.Time) []Reason
+    func (v *View) Answers(at time.Time) map[string]any // q01..q10
+    func (v *View) Frontier(at time.Time) []FrontierItem
+    func (v *View) Capabilities(workID string, at time.Time) []string
+
+    type FrontierItem struct {
+        Work   string
+        Action string // assign, observe, verify, rework, reconsider, authorize_dispatch, reconcile, evaluate_close, principal_approve, principal_accept
+        Refs   []string
+    }
+functions:
+  - name: Outcome
+    post: ["basis sets sorted by ID; digest = codec.Hash(TagOutcome, basis)"]
+    errors: [not_found]
+    examples:
+      - {vector: "lifecycle-v1.json#outcome_vectors"}
+  - name: Closable
+    post:
+      - "leaf: current candidate and every positive obligation has a qualifying verdict from the current run or a matching waiver"
+      - "parent: coverage all, any or k_of_n over qualifying closed children, plus own obligations"
+      - "fail, inconclusive or mixed verdicts block until a fresh pass or waiver"
+      - "reasons sorted by (code, refs)"
+    examples:
+      - {given: {coverage: "k_of_n with k=2 over children C,A,B all qualifying"}, then: {witnesses: ["A", "B"]}}
+      - {given: {coverage: "any over A (failed), B (qualifying)"}, then: {witnesses: ["B"]}}
+  - name: Answers
+    examples:
+      - {vector: "wire-v1.json#expected.status_by_revision[*].answers"}
+      - {vector: "m2-legacy-status-v1.json"}
+invariants:
+  - "no I/O, no clock reads; evaluation time is a parameter"
+  - "an evaluation time changes derived expiry only"
+errors:
+  not_found: "unknown work ID"
+non_goals:
+  - "No events; operators turn view results into events"

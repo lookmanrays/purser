@@ -1,0 +1,69 @@
+contract: kernel.ops.effect
+kind: module
+version: 1
+status: draft
+package: internal/kernel/ops/effect
+layer: kernel
+allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/gate, internal/kernel/artifacts, internal/kernel/view, internal/kernel/store]
+owner: P1-08a
+summary: Effect slots, authority grants, intents, authorization cutoffs and reconciliation.
+spec_refs:
+  - reference/python/docs/contracts/effects-v1.md
+  - reference/python/docs/contracts/kernel-v1.md#evidence-decisions-and-the-external-effect-cutoff
+  - reference/python/purser/kernel/effectops.py
+  - reference/python/purser/kernel/effectevents.py
+  - reference/python/purser/kernel/effectpolicy.py
+vectors:
+  - testdata/vectors/purser-v1/lifecycle-v1.json#immutable_effect
+  - testdata/vectors/purser-v1/lifecycle-v1.json#alternative_cutoff_orders
+  - testdata/vectors/purser-v1/lifecycle-v1.json#alternative_recovery
+  - testdata/vectors/golden/test_effects.*
+interface:
+  go: |
+    func Register(g *gate.Gate, reg *projection.Registry) error
+
+    const (
+        OpEffectRequire   = "effect.require"
+        OpGrantRequest    = "grant.request"
+        OpGrantRevoke     = "grant.revoke"
+        OpEffectRequest   = "effect.request"
+        OpEffectAuthorize = "effect.authorize"
+        OpEffectReconcile = "effect.reconcile"
+    )
+
+    func IntentDigest(intent map[string]any) (string, error) // codec.Hash(TagEffect, intent)
+    func ReceiptRef(digest string) string                    // "refs/purser/receipts/" + digest
+
+    // Redelivery returns an earlier exact receipt for a retried request, or ok=false.
+    func Redelivery(p projection.Projection, b gate.Binding, raw []byte) (r projection.Receipt, ok bool, err error)
+functions:
+  - name: IntentDigest
+    examples:
+      - {vector: "lifecycle-v1.json#immutable_effect.intent_digest"}
+  - name: ReceiptRef
+    examples:
+      - {vector: "lifecycle-v1.json#immutable_effect.protected_receipt_ref"}
+  - name: effect.authorize
+    post:
+      - "requires a current grant for the slot, assignment and generation"
+      - "expiry is exclusive: authorization at exactly expires_at is refused"
+      - "a second live dispatch to the same ref is excluded while the first is unresolved"
+    errors: [forbidden, approval_expired, invalid_transition, stale_base]
+    examples:
+      - {vector: "lifecycle-v1.json#alternative_cutoff_orders"}
+  - name: effect.reconcile
+    pre: ["git_observation attachment from the launcher binding with exactly its listed keys"]
+    errors: [forbidden, invalid_op, invalid_transition]
+    examples:
+      - {vector: "lifecycle-v1.json#alternative_recovery"}
+invariants:
+  - "trusted attachments git_preparation and git_observation come only from the launcher binding"
+  - "an earlier revocation prevents authorization; a later one records in-flight attempts"
+  - "the gate transaction never runs Git"
+errors:
+  forbidden: "binding or attachment not allowed"
+  invalid_op: "fields or attachment keys malformed"
+  invalid_transition: "effect or attempt state forbids the op"
+  approval_expired: "grant expired at or before the instant"
+non_goals:
+  - "No Git process execution (P1-08b)"

@@ -1,0 +1,33 @@
+contract: kernel.ops.graph
+kind: module
+version: 1
+status: draft
+package: internal/kernel/ops/graph
+layer: kernel
+allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/gate, internal/kernel/store]
+owner: P2-08
+summary: The v2 graph.snapshot operator, which records a system graph snapshot as a GraphSnapshot record.
+interface:
+  go: |
+    const OpGraphSnapshot = "graph.snapshot"
+
+    func Register(g *gate.Gate, reg *projection.Registry) error
+functions:
+  - name: graph.snapshot
+    pre: ["binding role is planner or launcher"]
+    post:
+      - "fields exactly id, git_commit, digest, indexers, files, symbols"
+      - "emits GraphSnapshotRecorded; the reducer creates a GraphSnapshot record with those fields"
+    errors: [invalid_op, forbidden, id_exists]
+    examples:
+      - {given: {op: {op: graph.snapshot, id: "G-1", git_commit: "4f2a9c1e0b7d", digest: "64 lowercase hex", indexers: [{name: scip-go, version: "0.1.x"}], files: 42, symbols: 900}}, then: {disposition: admitted}}
+      - {given: {binding: executor}, then: {code: forbidden}}
+      - {given: {op: "same id twice"}, then: {code: id_exists}}
+invariants:
+  - "the operator never reads the graph store; the digest is supplied by the caller and is evidence of what was indexed"
+errors:
+  invalid_op: "fields malformed"
+  forbidden: "role not allowed"
+  id_exists: "ID already used"
+non_goals:
+  - "No graph content in the kernel log"

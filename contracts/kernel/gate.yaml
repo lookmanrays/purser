@@ -1,0 +1,147 @@
+contract: kernel.gate
+kind: module
+version: 1
+status: draft
+package: internal/kernel/gate
+layer: kernel
+allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/store, internal/kernel/artifacts, internal/kernel/view, internal/kernel/impact]
+owner: P1-03
+summary: >
+  The only admission path. Checks binding and envelope, deduplicates by actor
+  and proposal ID, derives read dependencies from operators, detects stale
+  bases, and writes the receipt with any admitted events in one transaction.
+spec_refs:
+  - reference/python/docs/contracts/kernel-v1.md#admission-and-durable-outcomes
+  - reference/python/docs/contracts/kernel-v1.md#m1-operators-and-event-meanings
+  - reference/python/purser/kernel/gate.py
+  - reference/python/purser/kernel/rules.py
+vectors:
+  - testdata/vectors/purser-v1/wire-v1.json#proposals
+  - testdata/vectors/purser-v1/wire-v1.json#binding
+  - testdata/vectors/purser-v1/wire-v1.json#expected.admission_replies
+  - testdata/vectors/purser-v1/wire-v1.json#independent_case_branches
+interface:
+  go: |
+    // Binding comes only from trusted ingress, never from proposal JSON.
+    type Binding struct {
+        ActorID     string
+        Role        string // principal, planner, executor, observer, verifier, launcher
+        PrincipalID string
+        Commitment  *string
+        Assignment  *string
+        Witness     map[string][]byte // observer and verifier witness bytes, by name
+        Attachments map[string]any    // launcher-only trusted attachments
+    }
+
+    type Proposal struct {
+        V             int64
+        ProposalID    string
+        Commitment    string
+        BaseRevision  int64
+        Ops           []map[string]any
+        Justification []string
+    }
+
+    func ParseProposal(raw []byte) (Proposal, error)
+    func RequestDigest(b Binding, p Proposal) (string, error)
+
+    // ReadSet records what an operator read, so the gate can detect stale bases.
+    type ReadSet struct{ /* unexported */ }
+    func (r *ReadSet) Record(id string)
+    func (r *ReadSet) Absent(id string)
+    func (r *ReadSet) Collection(key string)
+
+    // Tentative is the state an operator sees: the committed snapshot plus
+    // the events earlier ops in the same proposal produced.
+    type Tentative struct {
+        Projection projection.Projection
+        Revision   int64
+        At         time.Time
+        Binding    Binding
+        Commitment string
+        Artifacts  *artifacts.Store
+    }
+
+    type Rejection struct {
+        Code    string
+        Details map[string]any
+    }
+
+    type Pending struct {
+        ApprovalID string
+        Events     []store.EventSpec
+    }
+
+    type Outcome struct {
+        Events    []store.EventSpec
+        Rejection *Rejection
+        Pending   *Pending
+    }
+
+    type Operator interface {
+        Name() string
+        Apply(t Tentative, op map[string]any, reads *ReadSet) (Outcome, error)
+    }
+
+    type Gate struct{ /* unexported */ }
+
+    type Options struct {
+        Store     *store.Store
+        Artifacts *artifacts.Store
+        Clock     store.Clock
+    }
+
+    func New(opts Options) *Gate
+    func (g *Gate) Register(op Operator) error
+    func (g *Gate) Admit(b Binding, raw []byte) (projection.Receipt, error)
+    func RegisterM1(g *Gate) error
+functions:
+  - name: ParseProposal
+    post: ["closed envelope fields; v == 1; ops non-empty; IDs valid"]
+    errors: [invalid_input]
+    examples:
+      - {vector: "wire-v1.json#proposals"}
+      - {given: {raw: "proposal with an extra top-level key"}, then: {error: invalid_input}}
+  - name: RequestDigest
+    post: ['codec.Hash(TagProposal, {"actor_id": b.ActorID, "proposal": p})']
+    examples:
+      - {vector: "wire-v1.json#request_digests"}
+  - name: Admit
+    pre: ["b was produced by trusted ingress"]
+    post:
+      - "order: identity and dedup, base validity, per-op syntax and authorization, read conflicts, lifecycle and time"
+      - "same (actor, proposal ID) and digest returns the latest receipt and appends nothing"
+      - "same pair with a different digest returns id_conflict and appends nothing"
+      - "a read dependency changed after base_revision gives stale_base with conflicts sorted by key"
+      - "ops apply in order to tentative state; a rejection discards all tentative events"
+      - "the receipt event and admitted events form one batch; a rejection is a one-event batch"
+      - "a pending outcome records the approval and a needs_principal receipt with the approval ID"
+    errors: [invalid_input, unauthenticated, unavailable, integrity_error]
+    examples:
+      - {vector: "wire-v1.json#expected.admission_replies"}
+      - {vector: "wire-v1.json#independent_case_branches"}
+invariants:
+  - "the gate never runs Git, models or network calls inside the transaction"
+  - "authorization and conflict errors never disclose another commitment's data to an unbound caller"
+  - "every domain event is appended through Admit"
+errors:
+  invalid_input: "malformed envelope or JSON; no receipt"
+  unauthenticated: "binding failed ingress checks; no receipt"
+  unavailable: "storage unavailable; no receipt"
+  integrity_error: "history failed verification; no receipt"
+  id_conflict: "receipted: same actor and proposal ID with a different digest"
+  stale_base: "receipted: a read dependency changed since base_revision"
+  bad_revision: "receipted: base_revision beyond the head or inside a batch"
+  unknown_op: "receipted: no operator with that name"
+  invalid_op: "receipted: operator fields malformed"
+  forbidden: "receipted: the binding may not perform this op"
+  invalid_transition: "receipted: lifecycle does not allow the op now"
+  id_exists: "receipted: a reserved ID is already used"
+  not_found: "receipted: a referenced record does not exist in scope"
+  digest_mismatch: "receipted: a supplied digest does not match"
+  already_decided: "receipted: the approval is already resolved"
+  approval_expired: "receipted: the approval's expiry has passed"
+  approval_denied: "receipted: the principal denied the approval"
+non_goals:
+  - "No identity or role taken from proposal JSON"
+  - "No retries or scheduling"
