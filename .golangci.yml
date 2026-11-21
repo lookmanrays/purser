@@ -71,6 +71,7 @@ linters:
         operators:
           list-mode: strict
           files:
+            - "${config-path}/internal/kernel/ops/*.go"
             - "${config-path}/internal/kernel/ops/**/*.go"
           allow:
             - $gostd
@@ -83,6 +84,7 @@ linters:
         effects:
           list-mode: strict
           files:
+            - "${config-path}/internal/effects/*.go"
             - "${config-path}/internal/effects/**/*.go"
           allow:
             - $gostd
@@ -90,6 +92,7 @@ linters:
         graph:
           list-mode: strict
           files:
+            - "${config-path}/internal/graph/*.go"
             - "${config-path}/internal/graph/**/*.go"
           allow:
             - $gostd
