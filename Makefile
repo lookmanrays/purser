@@ -1,0 +1,23 @@
+FUZZ_PACKAGE ?= ./internal/kernel/codec
+FUZZ_TARGET ?= .
+FUZZ_TIME ?= 30s
+
+.PHONY: check test fuzz bench briefcheck
+
+check:
+	go build ./...
+	go vet ./...
+	golangci-lint run
+	go test -race ./...
+
+test:
+	go test ./...
+
+fuzz:
+	go test -run '^$$' -fuzz '$(FUZZ_TARGET)' -fuzztime '$(FUZZ_TIME)' $(FUZZ_PACKAGE)
+
+bench:
+	go test -run '^$$' -bench . ./...
+
+briefcheck:
+	python3 tools/check_briefs.py

@@ -1,0 +1,116 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - depguard
+    - errcheck
+    - govet
+    - revive
+    - staticcheck
+  settings:
+    depguard:
+      rules:
+        codec:
+          list-mode: strict
+          files:
+            - "${config-path}/internal/kernel/codec/*.go"
+          allow:
+            - $gostd
+        projection:
+          list-mode: strict
+          files:
+            - "${config-path}/internal/kernel/projection/*.go"
+          allow:
+            - $gostd
+            - github.com/lookmanrays/purser/internal/kernel/codec$
+        store:
+          list-mode: strict
+          files:
+            - "${config-path}/internal/kernel/store/*.go"
+          allow:
+            - $gostd
+            - github.com/lookmanrays/purser/internal/kernel/codec$
+            - github.com/lookmanrays/purser/internal/kernel/projection$
+        artifacts:
+          list-mode: strict
+          files:
+            - "${config-path}/internal/kernel/artifacts/*.go"
+          allow:
+            - $gostd
+            - github.com/lookmanrays/purser/internal/kernel/codec$
+        view:
+          list-mode: strict
+          files:
+            - "${config-path}/internal/kernel/view/*.go"
+          allow:
+            - $gostd
+            - github.com/lookmanrays/purser/internal/kernel/codec$
+            - github.com/lookmanrays/purser/internal/kernel/projection$
+        impact:
+          list-mode: strict
+          files:
+            - "${config-path}/internal/kernel/impact/*.go"
+          allow:
+            - $gostd
+            - github.com/lookmanrays/purser/internal/kernel/codec$
+            - github.com/lookmanrays/purser/internal/kernel/projection$
+            - github.com/lookmanrays/purser/internal/kernel/view$
+        gate:
+          list-mode: strict
+          files:
+            - "${config-path}/internal/kernel/gate/*.go"
+          allow:
+            - $gostd
+            - github.com/lookmanrays/purser/internal/kernel/codec$
+            - github.com/lookmanrays/purser/internal/kernel/projection$
+            - github.com/lookmanrays/purser/internal/kernel/store$
+            - github.com/lookmanrays/purser/internal/kernel/artifacts$
+            - github.com/lookmanrays/purser/internal/kernel/view$
+            - github.com/lookmanrays/purser/internal/kernel/impact$
+        operators:
+          list-mode: strict
+          files:
+            - "${config-path}/internal/kernel/ops/**/*.go"
+          allow:
+            - $gostd
+            - github.com/lookmanrays/purser/internal/kernel/codec$
+            - github.com/lookmanrays/purser/internal/kernel/projection$
+            - github.com/lookmanrays/purser/internal/kernel/gate$
+            - github.com/lookmanrays/purser/internal/kernel/artifacts$
+            - github.com/lookmanrays/purser/internal/kernel/view$
+            - github.com/lookmanrays/purser/internal/kernel/impact$
+        effects:
+          list-mode: strict
+          files:
+            - "${config-path}/internal/effects/**/*.go"
+          allow:
+            - $gostd
+            - github.com/lookmanrays/purser/internal/kernel/codec$
+        graph:
+          list-mode: strict
+          files:
+            - "${config-path}/internal/graph/**/*.go"
+          allow:
+            - $gostd
+            - github.com/lookmanrays/purser/internal/graph$
+            - github.com/lookmanrays/purser/internal/graph/
+        cli:
+          list-mode: strict
+          files:
+            - "${config-path}/internal/cli/*.go"
+          allow:
+            - $gostd
+            - github.com/lookmanrays/purser/internal/
+        command:
+          list-mode: strict
+          files:
+            - "${config-path}/cmd/purser/*.go"
+          allow:
+            - $gostd
+            - github.com/lookmanrays/purser/internal/cli$
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

@@ -1,3 +1,4 @@
+// Command purser is the CLI entry point for Purser.
 package main
 
 import (
