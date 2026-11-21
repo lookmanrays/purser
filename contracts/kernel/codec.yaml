@@ -137,11 +137,12 @@ functions:
       - "each event's Hash equals ComputeHash()"
       - "revisions are contiguous from nextRevision"
       - "PrevHash links to the previous event, the first to prevHash"
-      - "batch_start and batch_size are equal across a batch, and the batch covers exactly batch_size events"
+      - "batch_start, batch_size, at, actor_id and proposal_id are equal across a batch (reference store _BATCH), the batch covers exactly batch_size events, and batch_start + batch_size - 1 <= 2^53-1"
     errors: [bad_hash, chain_gap, bad_link, bad_batch]
     examples:
       - {vector: "wire-v1.json#events with prevHash ZeroHash and nextRevision 1"}
       - {given: {mutation: "flip one byte of events[3].data"}, then: {error: bad_hash, revision: 4}}
+      - {given: {mutation: "events[6].at differs from its batch, chain re-hashed"}, then: {error: bad_batch, revision: 7}}
 invariants:
   - "Encode is deterministic and independent of Go map iteration order"
   - "no function performs I/O or reads the clock"
@@ -152,7 +153,7 @@ errors:
   duplicate_key: "an object with a repeated key"
   non_integer: "a number with a fraction or exponent"
   lone_surrogate: "an escaped surrogate without its pair"
-  trailing_data: "bytes after the top-level value"
+  trailing_data: "any non-whitespace byte after the top-level value, including a stray ] or }"
   invalid_json: "any other syntax error"
   bad_time: "a time string outside the grammar"
   bad_event: "an event with missing, extra or ill-typed fields"

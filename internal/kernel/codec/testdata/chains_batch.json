@@ -1,0 +1,606 @@
+{
+ "_comment": "Generated from reference/python wire.digest. Batches must agree on batch_start, batch_size, at, actor_id and proposal_id (reference store _BATCH), and must end within the integer range.",
+ "cases": [
+  {
+   "events": [
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:00.000000Z",
+     "batch_size": 2,
+     "batch_start": 1,
+     "data": {
+      "id": "C-notify",
+      "principal": "principal:local",
+      "root": "W-root",
+      "statement": "Add notification retries."
+     },
+     "event_version": 1,
+     "hash": "a2340401f025a4a653cf53750e86f8ff0a1c7e1668a1c212214e2b75e6db2870",
+     "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+     "proposal_id": "p-create",
+     "revision": 1,
+     "type": "CommitmentCreated",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:00.000000Z",
+     "batch_size": 2,
+     "batch_start": 1,
+     "data": {
+      "actor_id": "principal:local",
+      "code": "ok",
+      "details": {},
+      "digest": "8a2d48b9ab92187d2efb181cf42f18793652dc77322da826a7d5f494a0dd141c",
+      "disposition": "admitted",
+      "proposal_id": "p-create"
+     },
+     "event_version": 1,
+     "hash": "9afcd4fca372dfdb97e018f0868d898df0e43c5704ccefc309d241accfd002a6",
+     "prev_hash": "a2340401f025a4a653cf53750e86f8ff0a1c7e1668a1c212214e2b75e6db2870",
+     "proposal_id": "p-create",
+     "revision": 2,
+     "type": "ProposalReceipted",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:01.000000Z",
+     "batch_size": 2,
+     "batch_start": 3,
+     "data": {
+      "expires_at": "2026-11-19T12:00:00.000000Z",
+      "id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+      "read_versions": [
+       {
+        "changed": 1,
+        "key": "C-notify"
+       }
+      ],
+      "request": {
+       "base_revision": 2,
+       "commitment": "C-notify",
+       "justification": [],
+       "ops": [
+        {
+         "expires_at": "2026-11-19T12:00:00.000000Z",
+         "id": "C-notify",
+         "op": "commitment.request_acceptance"
+        }
+       ],
+       "proposal_id": "p-hold",
+       "v": 1
+      },
+      "request_digest": "19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+      "requester": "principal:local"
+     },
+     "event_version": 1,
+     "hash": "c5361fb0babb92bc9b9592b4331f17921e9b798b19c81fd804f9b4b0f38df7e3",
+     "prev_hash": "9afcd4fca372dfdb97e018f0868d898df0e43c5704ccefc309d241accfd002a6",
+     "proposal_id": "p-hold",
+     "revision": 3,
+     "type": "ApprovalRequested",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:01.000000Z",
+     "batch_size": 2,
+     "batch_start": 3,
+     "data": {
+      "actor_id": "principal:local",
+      "code": "needs_principal",
+      "details": {
+       "approval_id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884"
+      },
+      "digest": "19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+      "disposition": "pending",
+      "proposal_id": "p-hold"
+     },
+     "event_version": 1,
+     "hash": "f1b80d45ecbf87cc8ffd8b025c8da6210526987f72be9f038489b1549f0cf269",
+     "prev_hash": "c5361fb0babb92bc9b9592b4331f17921e9b798b19c81fd804f9b4b0f38df7e3",
+     "proposal_id": "p-hold",
+     "revision": 4,
+     "type": "ProposalReceipted",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:02.000000Z",
+     "batch_size": 4,
+     "batch_start": 5,
+     "data": {
+      "id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+      "state": "approved"
+     },
+     "event_version": 1,
+     "hash": "51dd051d3b461de95c2877e637481eb375f9a365bd104299632fcef0ccbe1d8d",
+     "prev_hash": "f1b80d45ecbf87cc8ffd8b025c8da6210526987f72be9f038489b1549f0cf269",
+     "proposal_id": "p-answer",
+     "revision": 5,
+     "type": "ApprovalResolved",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:02.000000Z",
+     "batch_size": 4,
+     "batch_start": 5,
+     "data": {
+      "id": "C-notify"
+     },
+     "event_version": 1,
+     "hash": "7fd6f7fcb27370ee7d4bff071ce4d73ffd72393184a6ad141dbd9bbc7682dc3c",
+     "prev_hash": "51dd051d3b461de95c2877e637481eb375f9a365bd104299632fcef0ccbe1d8d",
+     "proposal_id": "p-answer",
+     "revision": 6,
+     "type": "CommitmentActivated",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:01.000000Z",
+     "batch_size": 4,
+     "batch_start": 5,
+     "data": {
+      "actor_id": "principal:local",
+      "code": "ok",
+      "details": {
+       "approval_id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884"
+      },
+      "digest": "19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+      "disposition": "admitted",
+      "proposal_id": "p-hold"
+     },
+     "event_version": 1,
+     "hash": "07acda9c053875c2c32a767fe5cdb77a19c5b2dcb51a6b5e123a29e9a74c0675",
+     "prev_hash": "7fd6f7fcb27370ee7d4bff071ce4d73ffd72393184a6ad141dbd9bbc7682dc3c",
+     "proposal_id": "p-answer",
+     "revision": 7,
+     "type": "ProposalReceipted",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:02.000000Z",
+     "batch_size": 4,
+     "batch_start": 5,
+     "data": {
+      "actor_id": "principal:local",
+      "code": "ok",
+      "details": {
+       "approval_id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+       "state": "approved"
+      },
+      "digest": "52570f6be73a4c56653292dc7e22a224529242c75726a2d9d6b8a249d05fba2a",
+      "disposition": "admitted",
+      "proposal_id": "p-answer"
+     },
+     "event_version": 1,
+     "hash": "43632f1b48705bd282372999f7a868298ba0de8df51158b2ca49a639aad884e0",
+     "prev_hash": "07acda9c053875c2c32a767fe5cdb77a19c5b2dcb51a6b5e123a29e9a74c0675",
+     "proposal_id": "p-answer",
+     "revision": 8,
+     "type": "ProposalReceipted",
+     "v": 1
+    }
+   ],
+   "name": "at differs inside last batch",
+   "next_revision": 1,
+   "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+   "want_code": "bad_batch",
+   "want_revision": 7
+  },
+  {
+   "events": [
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:00.000000Z",
+     "batch_size": 2,
+     "batch_start": 1,
+     "data": {
+      "id": "C-notify",
+      "principal": "principal:local",
+      "root": "W-root",
+      "statement": "Add notification retries."
+     },
+     "event_version": 1,
+     "hash": "a2340401f025a4a653cf53750e86f8ff0a1c7e1668a1c212214e2b75e6db2870",
+     "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+     "proposal_id": "p-create",
+     "revision": 1,
+     "type": "CommitmentCreated",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:00.000000Z",
+     "batch_size": 2,
+     "batch_start": 1,
+     "data": {
+      "actor_id": "principal:local",
+      "code": "ok",
+      "details": {},
+      "digest": "8a2d48b9ab92187d2efb181cf42f18793652dc77322da826a7d5f494a0dd141c",
+      "disposition": "admitted",
+      "proposal_id": "p-create"
+     },
+     "event_version": 1,
+     "hash": "9afcd4fca372dfdb97e018f0868d898df0e43c5704ccefc309d241accfd002a6",
+     "prev_hash": "a2340401f025a4a653cf53750e86f8ff0a1c7e1668a1c212214e2b75e6db2870",
+     "proposal_id": "p-create",
+     "revision": 2,
+     "type": "ProposalReceipted",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:01.000000Z",
+     "batch_size": 2,
+     "batch_start": 3,
+     "data": {
+      "expires_at": "2026-11-19T12:00:00.000000Z",
+      "id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+      "read_versions": [
+       {
+        "changed": 1,
+        "key": "C-notify"
+       }
+      ],
+      "request": {
+       "base_revision": 2,
+       "commitment": "C-notify",
+       "justification": [],
+       "ops": [
+        {
+         "expires_at": "2026-11-19T12:00:00.000000Z",
+         "id": "C-notify",
+         "op": "commitment.request_acceptance"
+        }
+       ],
+       "proposal_id": "p-hold",
+       "v": 1
+      },
+      "request_digest": "19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+      "requester": "principal:local"
+     },
+     "event_version": 1,
+     "hash": "c5361fb0babb92bc9b9592b4331f17921e9b798b19c81fd804f9b4b0f38df7e3",
+     "prev_hash": "9afcd4fca372dfdb97e018f0868d898df0e43c5704ccefc309d241accfd002a6",
+     "proposal_id": "p-hold",
+     "revision": 3,
+     "type": "ApprovalRequested",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:01.000000Z",
+     "batch_size": 2,
+     "batch_start": 3,
+     "data": {
+      "actor_id": "principal:local",
+      "code": "needs_principal",
+      "details": {
+       "approval_id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884"
+      },
+      "digest": "19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+      "disposition": "pending",
+      "proposal_id": "p-hold"
+     },
+     "event_version": 1,
+     "hash": "f1b80d45ecbf87cc8ffd8b025c8da6210526987f72be9f038489b1549f0cf269",
+     "prev_hash": "c5361fb0babb92bc9b9592b4331f17921e9b798b19c81fd804f9b4b0f38df7e3",
+     "proposal_id": "p-hold",
+     "revision": 4,
+     "type": "ProposalReceipted",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:02.000000Z",
+     "batch_size": 4,
+     "batch_start": 5,
+     "data": {
+      "id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+      "state": "approved"
+     },
+     "event_version": 1,
+     "hash": "51dd051d3b461de95c2877e637481eb375f9a365bd104299632fcef0ccbe1d8d",
+     "prev_hash": "f1b80d45ecbf87cc8ffd8b025c8da6210526987f72be9f038489b1549f0cf269",
+     "proposal_id": "p-answer",
+     "revision": 5,
+     "type": "ApprovalResolved",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:02.000000Z",
+     "batch_size": 4,
+     "batch_start": 5,
+     "data": {
+      "id": "C-notify"
+     },
+     "event_version": 1,
+     "hash": "7fd6f7fcb27370ee7d4bff071ce4d73ffd72393184a6ad141dbd9bbc7682dc3c",
+     "prev_hash": "51dd051d3b461de95c2877e637481eb375f9a365bd104299632fcef0ccbe1d8d",
+     "proposal_id": "p-answer",
+     "revision": 6,
+     "type": "CommitmentActivated",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:other",
+     "at": "2026-11-18T12:00:02.000000Z",
+     "batch_size": 4,
+     "batch_start": 5,
+     "data": {
+      "actor_id": "principal:local",
+      "code": "ok",
+      "details": {
+       "approval_id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884"
+      },
+      "digest": "19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+      "disposition": "admitted",
+      "proposal_id": "p-hold"
+     },
+     "event_version": 1,
+     "hash": "f98e95e78058653758616004eb3c9390f94b57d7fe69e837c718b41980012c82",
+     "prev_hash": "7fd6f7fcb27370ee7d4bff071ce4d73ffd72393184a6ad141dbd9bbc7682dc3c",
+     "proposal_id": "p-answer",
+     "revision": 7,
+     "type": "ProposalReceipted",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:02.000000Z",
+     "batch_size": 4,
+     "batch_start": 5,
+     "data": {
+      "actor_id": "principal:local",
+      "code": "ok",
+      "details": {
+       "approval_id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+       "state": "approved"
+      },
+      "digest": "52570f6be73a4c56653292dc7e22a224529242c75726a2d9d6b8a249d05fba2a",
+      "disposition": "admitted",
+      "proposal_id": "p-answer"
+     },
+     "event_version": 1,
+     "hash": "77cebc973f436a2b2ea07a16caa5ca4b3964e783c145615f23c81e6ccf9fd006",
+     "prev_hash": "f98e95e78058653758616004eb3c9390f94b57d7fe69e837c718b41980012c82",
+     "proposal_id": "p-answer",
+     "revision": 8,
+     "type": "ProposalReceipted",
+     "v": 1
+    }
+   ],
+   "name": "actor_id differs inside last batch",
+   "next_revision": 1,
+   "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+   "want_code": "bad_batch",
+   "want_revision": 7
+  },
+  {
+   "events": [
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:00.000000Z",
+     "batch_size": 2,
+     "batch_start": 1,
+     "data": {
+      "id": "C-notify",
+      "principal": "principal:local",
+      "root": "W-root",
+      "statement": "Add notification retries."
+     },
+     "event_version": 1,
+     "hash": "a2340401f025a4a653cf53750e86f8ff0a1c7e1668a1c212214e2b75e6db2870",
+     "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+     "proposal_id": "p-create",
+     "revision": 1,
+     "type": "CommitmentCreated",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:00.000000Z",
+     "batch_size": 2,
+     "batch_start": 1,
+     "data": {
+      "actor_id": "principal:local",
+      "code": "ok",
+      "details": {},
+      "digest": "8a2d48b9ab92187d2efb181cf42f18793652dc77322da826a7d5f494a0dd141c",
+      "disposition": "admitted",
+      "proposal_id": "p-create"
+     },
+     "event_version": 1,
+     "hash": "9afcd4fca372dfdb97e018f0868d898df0e43c5704ccefc309d241accfd002a6",
+     "prev_hash": "a2340401f025a4a653cf53750e86f8ff0a1c7e1668a1c212214e2b75e6db2870",
+     "proposal_id": "p-create",
+     "revision": 2,
+     "type": "ProposalReceipted",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:01.000000Z",
+     "batch_size": 2,
+     "batch_start": 3,
+     "data": {
+      "expires_at": "2026-11-19T12:00:00.000000Z",
+      "id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+      "read_versions": [
+       {
+        "changed": 1,
+        "key": "C-notify"
+       }
+      ],
+      "request": {
+       "base_revision": 2,
+       "commitment": "C-notify",
+       "justification": [],
+       "ops": [
+        {
+         "expires_at": "2026-11-19T12:00:00.000000Z",
+         "id": "C-notify",
+         "op": "commitment.request_acceptance"
+        }
+       ],
+       "proposal_id": "p-hold",
+       "v": 1
+      },
+      "request_digest": "19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+      "requester": "principal:local"
+     },
+     "event_version": 1,
+     "hash": "c5361fb0babb92bc9b9592b4331f17921e9b798b19c81fd804f9b4b0f38df7e3",
+     "prev_hash": "9afcd4fca372dfdb97e018f0868d898df0e43c5704ccefc309d241accfd002a6",
+     "proposal_id": "p-hold",
+     "revision": 3,
+     "type": "ApprovalRequested",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:01.000000Z",
+     "batch_size": 2,
+     "batch_start": 3,
+     "data": {
+      "actor_id": "principal:local",
+      "code": "needs_principal",
+      "details": {
+       "approval_id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884"
+      },
+      "digest": "19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+      "disposition": "pending",
+      "proposal_id": "p-hold"
+     },
+     "event_version": 1,
+     "hash": "f1b80d45ecbf87cc8ffd8b025c8da6210526987f72be9f038489b1549f0cf269",
+     "prev_hash": "c5361fb0babb92bc9b9592b4331f17921e9b798b19c81fd804f9b4b0f38df7e3",
+     "proposal_id": "p-hold",
+     "revision": 4,
+     "type": "ProposalReceipted",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:02.000000Z",
+     "batch_size": 4,
+     "batch_start": 5,
+     "data": {
+      "id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+      "state": "approved"
+     },
+     "event_version": 1,
+     "hash": "51dd051d3b461de95c2877e637481eb375f9a365bd104299632fcef0ccbe1d8d",
+     "prev_hash": "f1b80d45ecbf87cc8ffd8b025c8da6210526987f72be9f038489b1549f0cf269",
+     "proposal_id": "p-answer",
+     "revision": 5,
+     "type": "ApprovalResolved",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:02.000000Z",
+     "batch_size": 4,
+     "batch_start": 5,
+     "data": {
+      "id": "C-notify"
+     },
+     "event_version": 1,
+     "hash": "7fd6f7fcb27370ee7d4bff071ce4d73ffd72393184a6ad141dbd9bbc7682dc3c",
+     "prev_hash": "51dd051d3b461de95c2877e637481eb375f9a365bd104299632fcef0ccbe1d8d",
+     "proposal_id": "p-answer",
+     "revision": 6,
+     "type": "CommitmentActivated",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:02.000000Z",
+     "batch_size": 4,
+     "batch_start": 5,
+     "data": {
+      "actor_id": "principal:local",
+      "code": "ok",
+      "details": {
+       "approval_id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884"
+      },
+      "digest": "19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+      "disposition": "admitted",
+      "proposal_id": "p-hold"
+     },
+     "event_version": 1,
+     "hash": "f103dc6a247c68dd3bb52d0ee60d4febee7ebd4512a45c5fef4b5d32946c5a3d",
+     "prev_hash": "7fd6f7fcb27370ee7d4bff071ce4d73ffd72393184a6ad141dbd9bbc7682dc3c",
+     "proposal_id": "p-other",
+     "revision": 7,
+     "type": "ProposalReceipted",
+     "v": 1
+    },
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:02.000000Z",
+     "batch_size": 4,
+     "batch_start": 5,
+     "data": {
+      "actor_id": "principal:local",
+      "code": "ok",
+      "details": {
+       "approval_id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884",
+       "state": "approved"
+      },
+      "digest": "52570f6be73a4c56653292dc7e22a224529242c75726a2d9d6b8a249d05fba2a",
+      "disposition": "admitted",
+      "proposal_id": "p-answer"
+     },
+     "event_version": 1,
+     "hash": "45e65e99c4c41799a3c4f84ffbc15d39a52a969c09353ec830bc4881c8705f60",
+     "prev_hash": "f103dc6a247c68dd3bb52d0ee60d4febee7ebd4512a45c5fef4b5d32946c5a3d",
+     "proposal_id": "p-answer",
+     "revision": 8,
+     "type": "ProposalReceipted",
+     "v": 1
+    }
+   ],
+   "name": "proposal_id differs inside last batch",
+   "next_revision": 1,
+   "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+   "want_code": "bad_batch",
+   "want_revision": 7
+  },
+  {
+   "events": [
+    {
+     "actor_id": "principal:local",
+     "at": "2026-11-18T12:00:00.000000Z",
+     "batch_size": 2,
+     "batch_start": 9007199254740991,
+     "data": {
+      "id": "C-notify",
+      "principal": "principal:local",
+      "root": "W-root",
+      "statement": "Add notification retries."
+     },
+     "event_version": 1,
+     "hash": "e7946d951a9e1d0f95301268cda01ea3a142168e9c81a25503a6f4233adaf237",
+     "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+     "proposal_id": "p-create",
+     "revision": 9007199254740991,
+     "type": "CommitmentCreated",
+     "v": 1
+    }
+   ],
+   "name": "batch would end beyond the integer range",
+   "next_revision": 9007199254740991,
+   "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+   "want_code": "bad_batch",
+   "want_revision": 9007199254740991
+  }
+ ]
+}
