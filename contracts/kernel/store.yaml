@@ -61,7 +61,7 @@ functions:
     examples:
       - {vector: "wire-v1.json#expected.init"}
   - name: Transact
-    pre: ["actorID and proposalID are valid IDs"]
+    pre: ["proposalID is a valid ID (codec.ValidID)", "actorID is a non-empty string from trusted ingress, such as principal:local; it is not a record ID"]
     post:
       - "takes write ownership with BEGIN IMMEDIATE before reading the snapshot"
       - "samples clock exactly once and passes the instant to decide"
