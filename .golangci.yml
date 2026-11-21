@@ -15,12 +15,14 @@ linters:
           list-mode: strict
           files:
             - "${config-path}/internal/kernel/codec/*.go"
+            - "!$test"
           allow:
             - $gostd
         projection:
           list-mode: strict
           files:
             - "${config-path}/internal/kernel/projection/*.go"
+            - "!$test"
           allow:
             - $gostd
             - github.com/lookmanrays/purser/internal/kernel/codec$
@@ -28,14 +30,17 @@ linters:
           list-mode: strict
           files:
             - "${config-path}/internal/kernel/store/*.go"
+            - "!$test"
           allow:
             - $gostd
             - github.com/lookmanrays/purser/internal/kernel/codec$
             - github.com/lookmanrays/purser/internal/kernel/projection$
+            - modernc.org/sqlite
         artifacts:
           list-mode: strict
           files:
             - "${config-path}/internal/kernel/artifacts/*.go"
+            - "!$test"
           allow:
             - $gostd
             - github.com/lookmanrays/purser/internal/kernel/codec$
@@ -43,6 +48,7 @@ linters:
           list-mode: strict
           files:
             - "${config-path}/internal/kernel/view/*.go"
+            - "!$test"
           allow:
             - $gostd
             - github.com/lookmanrays/purser/internal/kernel/codec$
@@ -51,6 +57,7 @@ linters:
           list-mode: strict
           files:
             - "${config-path}/internal/kernel/impact/*.go"
+            - "!$test"
           allow:
             - $gostd
             - github.com/lookmanrays/purser/internal/kernel/codec$
@@ -60,6 +67,7 @@ linters:
           list-mode: strict
           files:
             - "${config-path}/internal/kernel/gate/*.go"
+            - "!$test"
           allow:
             - $gostd
             - github.com/lookmanrays/purser/internal/kernel/codec$
@@ -73,6 +81,7 @@ linters:
           files:
             - "${config-path}/internal/kernel/ops/*.go"
             - "${config-path}/internal/kernel/ops/**/*.go"
+            - "!$test"
           allow:
             - $gostd
             - github.com/lookmanrays/purser/internal/kernel/codec$
@@ -86,6 +95,7 @@ linters:
           files:
             - "${config-path}/internal/effects/*.go"
             - "${config-path}/internal/effects/**/*.go"
+            - "!$test"
           allow:
             - $gostd
             - github.com/lookmanrays/purser/internal/kernel/codec$
@@ -94,21 +104,29 @@ linters:
           files:
             - "${config-path}/internal/graph/*.go"
             - "${config-path}/internal/graph/**/*.go"
+            - "!$test"
           allow:
             - $gostd
             - github.com/lookmanrays/purser/internal/graph$
             - github.com/lookmanrays/purser/internal/graph/
+            - modernc.org/sqlite
+            - github.com/sourcegraph/scip/bindings/go/scip
+            - google.golang.org/protobuf
+            - github.com/sourcegraph/jsonrpc2
         cli:
           list-mode: strict
           files:
             - "${config-path}/internal/cli/*.go"
+            - "!$test"
           allow:
             - $gostd
             - github.com/lookmanrays/purser/internal/
+            - github.com/spf13/cobra
         command:
           list-mode: strict
           files:
             - "${config-path}/cmd/purser/*.go"
+            - "!$test"
           allow:
             - $gostd
             - github.com/lookmanrays/purser/internal/cli$

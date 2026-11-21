@@ -36,10 +36,13 @@ interface:
         Revision    int64
     }
 
+    // Edge shape is {"kind","from_id","to_id","changed"} (kernel-v1.md);
+    // Changed is the last revision that changed the edge.
     type Edge struct {
-        Kind   string
-        FromID string
-        ToID   string
+        Kind    string
+        FromID  string
+        ToID    string
+        Changed int64
     }
 
     // Projection is immutable from the caller's view: Apply returns a new value.
