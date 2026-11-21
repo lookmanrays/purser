@@ -1,0 +1,43 @@
+name: CI
+
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require Git 2.45 or newer
+        run: |
+          git_version=$(git --version | cut -d ' ' -f 3)
+          if [[ -z "$git_version" || "$(printf '%s\n' 2.45 "$git_version" | sort -V | head -n 1)" != 2.45 ]]; then
+            echo "::error::Git 2.45 or newer is required for reftable; found ${git_version:-no Git}."
+            exit 1
+          fi
+          git --version
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Install PyYAML
+        run: python3 -m pip install PyYAML
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15.0
+          install-only: true
+      - name: Check Go
+        run: make check
+      - name: Check package briefs
+        run: make briefcheck
+      - name: Check Python reference vectors
+        run: python3 reference/python/docs/contracts/check_vectors.py
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
