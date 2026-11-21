@@ -1,0 +1,8 @@
+contract: test/missing_interface
+kind: module
+version: "1"
+status: draft
+owner: P0-91
+summary: Missing interface and package
+layer: internal
+allowed_imports: []

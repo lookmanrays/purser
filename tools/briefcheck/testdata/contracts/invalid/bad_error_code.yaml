@@ -1,0 +1,8 @@
+contract: test/bad_error_code
+kind: data
+version: "1"
+status: draft
+owner: P0-91
+summary: Bad error code
+errors:
+  BadCamelCase: Not snake case

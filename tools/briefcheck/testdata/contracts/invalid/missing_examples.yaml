@@ -1,0 +1,14 @@
+contract: test/missing_examples
+kind: module
+version: "1"
+status: draft
+owner: P0-91
+summary: Function missing examples
+package: internal/test/fn
+interface: Fn
+layer: internal
+allowed_imports: []
+functions:
+  - name: NoExampleFunc
+    summary: No examples
+    signature: func() error

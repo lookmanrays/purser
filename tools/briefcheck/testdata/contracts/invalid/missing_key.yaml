@@ -1,0 +1,10 @@
+contract: test/missing_key
+kind: module
+version: "1"
+status: draft
+summary: Missing owner key
+package: internal/test/missing
+interface: Missing
+layer: internal
+allowed_imports: []
+functions: []
