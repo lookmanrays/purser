@@ -1,0 +1,6 @@
+contract: test/bad_owner
+kind: data
+version: "1"
+status: draft
+owner: P9-99
+summary: Bad owner

@@ -1,0 +1,17 @@
+contract: test/module
+kind: module
+version: "1"
+status: draft
+owner: P0-91
+summary: Fixture module contract
+package: tools/p091
+interface: P091
+layer: internal
+allowed_imports: []
+functions:
+  - name: Example
+    summary: An example function
+    signature: func() error
+    examples:
+      - input: none
+        output: nil
