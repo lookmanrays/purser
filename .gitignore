@@ -227,3 +227,6 @@ __marimo__/
 /purser.exe
 *.test
 *.prof
+
+# Agent worktrees (see docs/agents/README.md)
+/.worktrees/
