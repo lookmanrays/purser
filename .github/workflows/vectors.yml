@@ -1,0 +1,35 @@
+name: Conformance Vectors
+
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  vectors:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require Git 2.45 or newer
+        run: |
+          git_version=$(git --version | cut -d ' ' -f 3)
+          if [[ -z "$git_version" || "$(printf '%s\n' 2.45 "$git_version" | sort -V | head -n 1)" != 2.45 ]]; then
+            echo "::error::Git 2.45 or newer is required for reftable; found ${git_version:-no Git}."
+            exit 1
+          fi
+          git --version
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Verify vector manifest matches disk
+        run: go test -v -run 'TestAC6_' ./internal/testvectors/...
+      - name: Verify golden logs regeneration determinism
+        run: PURSER_GOLDEN=1 go test -v -run 'TestAC5_' ./internal/testvectors/...
+      - name: Check for uncommitted vector drift
+        run: git diff --exit-code testdata/vectors
