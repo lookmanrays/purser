@@ -105,8 +105,8 @@ func TestAC2_WireTopLevelSections(t *testing.T) {
 	}
 
 	// 9. legacy
-	if w.Legacy.Source != "purser-main/v0.1" {
-		t.Errorf("w.Legacy.Source = %q, want %q", w.Legacy.Source, "purser-main/v0.1")
+	if w.Legacy.Source != "synthetic first batch, CommitmentCreated event_version 0" {
+		t.Errorf("w.Legacy.Source = %q, want %q", w.Legacy.Source, "synthetic first batch, CommitmentCreated event_version 0")
 	}
 	if len(w.Legacy.Events) != 2 {
 		t.Errorf("len(w.Legacy.Events) = %d, want 2", len(w.Legacy.Events))

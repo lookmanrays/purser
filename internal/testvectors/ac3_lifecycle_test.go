@@ -73,8 +73,8 @@ func TestAC3_LifecycleSections(t *testing.T) {
 	if lc.Contract != "purser.kernel/v1" {
 		t.Errorf("lc.Contract = %q, want %q", lc.Contract, "purser.kernel/v1")
 	}
-	if lc.Fixture != "M3-LIFECYCLE-TRACE-v1" {
-		t.Errorf("lc.Fixture = %q, want %q", lc.Fixture, "M3-LIFECYCLE-TRACE-v1")
+	if lc.Fixture != "notification retries" {
+		t.Errorf("lc.Fixture = %q, want %q", lc.Fixture, "notification retries")
 	}
 	if len(lc.Subjects) != 4 {
 		t.Errorf("len(lc.Subjects) = %d, want 4", len(lc.Subjects))
