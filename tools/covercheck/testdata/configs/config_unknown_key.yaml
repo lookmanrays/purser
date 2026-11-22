@@ -1,0 +1,4 @@
+kernel_floor: 85.0
+default_floor: 70.0
+overides:
+  github.com/lookmanrays/purser/internal/kernel/codec: 90.0
