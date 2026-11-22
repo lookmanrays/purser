@@ -24,6 +24,7 @@ Then read `docs/packages/<ID>.md`, every contract it names, and the frozen tests
 6. Changed lines are within the brief's budget; no TODO without a linked issue or brief.
 7. **Reference parity.** When `scope.read` names files under `reference/python/`, compare the implementation with the reference's validation code branch by branch, and run the edge cases through both, for example `python3 -I` with `reference/python` on `sys.path`. Any input the two treat differently is a required change unless the contract says otherwise.
 8. Declarations match the contract verbatim, including struct field order.
+9. When reviewing tests before freezing, check every literal expected value against the vector or reference file it claims to come from.
 
 ## 3. Report
 
