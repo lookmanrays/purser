@@ -185,8 +185,15 @@ func TestAC3_FaultAfterInsertLeavesStateUnchanged(t *testing.T) {
 		{"ProposalReceipted", 1},
 	} {
 		et, v := entry.eventType, entry.version
-		_ = customReg.Register(et, v, func(p projection.Projection, data map[string]any, rev, _ int64) (projection.Projection, projection.Changes, error) {
-			ev := codec.Event{Type: et, EventVersion: v, Data: data, Revision: rev}
+		_ = customReg.Register(et, v, func(p projection.Projection, data map[string]any, rev, batchEnd int64) (projection.Projection, projection.Changes, error) {
+			ev := codec.Event{
+				Type:         et,
+				EventVersion: v,
+				Data:         data,
+				Revision:     rev,
+				BatchStart:   rev,
+				BatchSize:    batchEnd - rev + 1,
+			}
 			return baseReg.Apply(p, ev)
 		})
 	}
@@ -452,7 +459,7 @@ func TestTransact_Validation(t *testing.T) {
 		if clockCount != 1 {
 			t.Errorf("clock called %d times, want exactly 1", clockCount)
 		}
-		if sampledAt != clockInstant {
+		if !sampledAt.Equal(clockInstant) {
 			t.Errorf("sampled instant = %v, want %v", sampledAt, clockInstant)
 		}
 	})
