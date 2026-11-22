@@ -1,0 +1,6 @@
+mode: set
+github.com/lookmanrays/purser/cmd/purser/main.go:1.1,10.1 10 0
+github.com/lookmanrays/purser/internal/kernel/store/store.go:10.1,20.1 18 1
+github.com/lookmanrays/purser/internal/kernel/store/store.go:21.1,22.1 2 0
+github.com/lookmanrays/purser/tools/covercheck/main.go:10.1,20.1 15 1
+github.com/lookmanrays/purser/tools/covercheck/main.go:21.1,22.1 5 0
