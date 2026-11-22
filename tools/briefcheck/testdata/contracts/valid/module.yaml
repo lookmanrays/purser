@@ -1,0 +1,20 @@
+contract: test/module
+kind: module
+version: "1"
+status: draft
+owner: P0-91
+summary: Valid module contract
+package: internal/test/module
+interface: Module
+layer: internal
+allowed_imports:
+  - internal/kernel/codec
+functions:
+  - name: DoWork
+    summary: Does work
+    signature: func() error
+    examples:
+      - input: none
+        output: nil
+errors:
+  valid_error_code: A valid error description
