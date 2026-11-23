@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,9 +20,10 @@ import (
 )
 
 var (
-	reAC      = regexp.MustCompile(`(?m)^- AC-(\d+) `)
-	reErrCode = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
-	reTest    = regexp.MustCompile(`func\s+TestAC(\d+)_`)
+	reAC         = regexp.MustCompile(`(?m)^- AC-(\d+) `)
+	reErrCode    = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+	reACBaseline = regexp.MustCompile(`(?m)^- AC-(\d+) \(baseline\) `)
+	reTestName   = regexp.MustCompile(`func\s+(TestAC(\d+)_\w*)\s*\(`)
 )
 
 // Brief holds parsed brief fields.
@@ -386,13 +388,32 @@ func Contracts(repoRoot, id, branch string) (violations []string, err error) {
 	if err != nil {
 		out, err = runGitInDir(repoRoot, "diff", "--name-only", "main", "HEAD", "--", "contracts/")
 	}
+	// A build branch merges main, so it inherits contract changes approved on
+	// main after the freeze. Report only files that also differ from main.
+	var differsFromMain map[string]bool
+	if base != mainRef(repoRoot) {
+		if onMain, mainErr := runGitInDir(repoRoot, "diff", "--name-only", mainRef(repoRoot), "HEAD", "--", "contracts/"); mainErr == nil {
+			differsFromMain = make(map[string]bool)
+			for _, f := range strings.Fields(onMain) {
+				differsFromMain[f] = true
+			}
+		}
+	}
 	for _, f := range strings.Fields(out) {
+		if differsFromMain != nil && !differsFromMain[f] {
+			continue
+		}
 		violations = append(violations, "contracts/ changed when contract_change is false: "+f)
 	}
 	return violations, err
 }
 
-// Red lists TestACn_ functions, verifies all ACs are covered, runs them, and passes only if all fail.
+// Red checks the brief's own frozen tests on the tests branch. Every AC needs a
+// TestACn_ function in the brief's tests_frozen files (testdata excluded), and
+// exactly those functions are run, so tests that earlier packages left in the
+// same directory are ignored. Each must fail, except tests of ACs marked
+// "(baseline)": invariants the existing code already holds, which must pass.
+// At least one AC must not be a baseline AC.
 func Red(repoRoot, id string) error {
 	b, err := findBrief(repoRoot, id)
 	if err != nil {
@@ -402,16 +423,30 @@ func Red(repoRoot, id string) error {
 	if len(acMatches) == 0 {
 		return fmt.Errorf("no acceptance criteria in brief %s", id)
 	}
-	testACMap, pkgDirs := make(map[string]bool), make(map[string]bool)
+	baseline := make(map[string]bool)
+	for _, m := range reACBaseline.FindAllStringSubmatch(b.Body, -1) {
+		baseline[m[1]] = true
+	}
+	if len(baseline) == len(acMatches) {
+		return fmt.Errorf("brief %s marks every AC as baseline; at least one must fail before the build", id)
+	}
+	testACMap := make(map[string]bool)
+	testsByDir := make(map[string]map[string]string)
 	_ = filepath.Walk(repoRoot, func(path string, info os.FileInfo, err error) error {
-		if err == nil && !info.IsDir() && strings.HasSuffix(path, "_test.go") {
-			if rel, _ := filepath.Rel(repoRoot, path); matchesAny(rel, b.TestsFrozen) {
-				pkgDirs[filepath.Dir(path)] = true
-				data, _ := os.ReadFile(path)
-				for _, m := range reTest.FindAllStringSubmatch(string(data), -1) {
-					testACMap[m[1]] = true
-				}
+		if err != nil || info.IsDir() || !strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		rel, _ := filepath.Rel(repoRoot, path)
+		if !matchesAny(rel, b.TestsFrozen) || slices.Contains(strings.Split(filepath.ToSlash(rel), "/"), "testdata") {
+			return nil
+		}
+		data, _ := os.ReadFile(path)
+		for _, m := range reTestName.FindAllStringSubmatch(string(data), -1) {
+			dir := filepath.Dir(path)
+			if testsByDir[dir] == nil {
+				testsByDir[dir] = make(map[string]string)
 			}
+			testsByDir[dir][m[1]], testACMap[m[2]] = m[2], true
 		}
 		return nil
 	})
@@ -420,24 +455,36 @@ func Red(repoRoot, id string) error {
 			return fmt.Errorf("missing TestAC%s_ test for AC-%s", m[1], m[1])
 		}
 	}
-	for pkgDir := range pkgDirs {
+	for _, pkgDir := range slices.Sorted(maps.Keys(testsByDir)) {
+		tests := testsByDir[pkgDir]
+		names := slices.Sorted(maps.Keys(tests))
+		quoted := make([]string, len(names))
+		for i, n := range names {
+			quoted[i] = regexp.QuoteMeta(n)
+		}
 		relPkg, _ := filepath.Rel(repoRoot, pkgDir)
-		cmd := exec.Command("go", "test", "-json", "-run", `^TestAC[0-9]+_`, "./"+relPkg)
+		cmd := exec.Command("go", "test", "-count=1", "-json", "-run", "^("+strings.Join(quoted, "|")+")$", "./"+relPkg)
 		cmd.Dir = repoRoot
 		out, _ := cmd.CombinedOutput()
 
 		topLevel := make(map[string]string)
 		for _, line := range strings.Split(string(out), "\n") {
 			var ev struct{ Action, Test string }
-			if json.Unmarshal([]byte(strings.TrimSpace(line)), &ev) == nil && ev.Test != "" && !strings.Contains(ev.Test, "/") && strings.HasPrefix(ev.Test, "TestAC") && (ev.Action == "pass" || ev.Action == "fail" || ev.Action == "skip") {
+			if json.Unmarshal([]byte(strings.TrimSpace(line)), &ev) == nil && tests[ev.Test] != "" && (ev.Action == "pass" || ev.Action == "fail" || ev.Action == "skip") {
 				topLevel[ev.Test] = ev.Action
 			}
 		}
 		if len(topLevel) == 0 {
 			return fmt.Errorf("package failed to compile or build:\n%s", string(out))
 		}
-		for name, act := range topLevel {
-			if act != "fail" {
+		for _, name := range names {
+			act, ac := topLevel[name], tests[name]
+			switch {
+			case act == "":
+				return fmt.Errorf("test %s did not run", name)
+			case baseline[ac] && act != "pass":
+				return fmt.Errorf("test %s for baseline AC-%s must pass before the build (action: %s)", name, ac, act)
+			case !baseline[ac] && act != "fail":
 				return fmt.Errorf("test %s passed on stubs unexpectedly (action: %s)", name, act)
 			}
 		}

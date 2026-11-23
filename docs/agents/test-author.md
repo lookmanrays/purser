@@ -45,8 +45,13 @@ Do not read or write any implementation of this package. If you find one, ignore
   // first line of each test and subtest: defer guard(t)
   ```
 
+- **A package that extends existing code** (its directory already holds an earlier package's implementation and frozen tests, as P1-02b extends the store):
+  - Stub only declarations that do not exist yet; never redeclare existing ones.
+  - Name your tests so they do not collide with the earlier package's `TestACn_` functions in the same Go package (for example `TestAC1_MaterializedSnapshotEqualsFold`).
+  - Tests for ACs the brief marks `(baseline)` state invariants the current code already holds; they must pass now and keep passing.
+  - Every other AC test must fail against the current code, through new API or observable new behaviour such as timing. `make red` runs only your brief's tests.
 - Prefer table-driven tests. Read vectors through `internal/testvectors` once it exists, or directly from `reference/python/docs/contracts/` with the standard library.
-- Assert exact values from the contract and the vectors, not just "no error". **Never type an expected value from memory:** copy it from the vector or reference file, or compute it from that file in the test. (P0-06 froze two invented strings that had to be re-frozen.)
+- Assert exact values from the contract and the vectors, not just "no error". **Never type an expected value from memory:** copy it from the vector or reference file, or compute it from that file in the test. (P0-06 froze two invented strings and P1-02a an invented approval ID; all had to be re-frozen.) Before pushing, run `python3 -I tools/check_literals.py <your test files>` and resolve every `SUSPECT` line.
 - **Derive negative cases from the reference implementation** when one exists under `reference/python/`: read its validation code and turn every rejection branch into a test. Generate fixtures by running the reference (`python3 -I`, with `reference/python` on `sys.path`), and record how they were generated in the fixture's `_comment`.
 - For a package that encodes, decodes or verifies data, add a **parity fixture**: inputs generated from the reference with its exact outputs, plus edge-case probes it accepts or rejects (stray or trailing characters, duplicates, overflow, inconsistent fields inside a group).
 
@@ -56,7 +61,7 @@ Do not read or write any implementation of this package. If you find one, ignore
 gofmt -l .                     # must print nothing
 go vet ./...
 golangci-lint run              # must pass
-go test ./<package path>/...   # every TestACn_ test must FAIL, and only by "unimplemented"
+make red ID=<ID>               # your TestACn_ tests fail (only by "unimplemented" when stubbed); (baseline) ACs pass
 ```
 
 ## 5. Deliver
