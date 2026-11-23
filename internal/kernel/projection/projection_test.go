@@ -140,7 +140,7 @@ func TestAC2_ProjectionChecksumAndSnapshotParity(t *testing.T) {
 			}
 		}
 
-		aRecord, ok := p4.Record("a:0998f5963f45ca09ae54848d7990117a7a583e765502b665fa7e4663aeae4589")
+		aRecord, ok := p4.Record("a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884") // ApprovalRequested.data.id in wire-v1.json
 		if !ok {
 			t.Error("p4.Record(approvalID) not found")
 		} else if aRecord.Kind != "Approval" {
