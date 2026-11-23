@@ -309,8 +309,8 @@ func Scope(repoRoot, id, branch string) (violations []string, err error) {
 	}
 	base := "frozen/" + id
 	if !strings.HasPrefix(branch, "build/") {
-		if base, _ = runGitInDir(repoRoot, "merge-base", "main", "HEAD"); base == "" {
-			base = "main"
+		if base, _ = runGitInDir(repoRoot, "merge-base", mainRef(repoRoot), "HEAD"); base == "" {
+			base = mainRef(repoRoot)
 		}
 	}
 	out, err := runGitInDir(repoRoot, "diff", "--name-status", "-M", base, "HEAD")
@@ -386,7 +386,7 @@ func Contracts(repoRoot, id, branch string) (violations []string, err error) {
 	}
 	out, err := runGitInDir(repoRoot, "diff", "--name-only", base, "HEAD", "--", "contracts/")
 	if err != nil {
-		out, err = runGitInDir(repoRoot, "diff", "--name-only", "main", "HEAD", "--", "contracts/")
+		out, err = runGitInDir(repoRoot, "diff", "--name-only", mainRef(repoRoot), "HEAD", "--", "contracts/")
 	}
 	// A build branch merges main, so it inherits contract changes approved on
 	// main after the freeze. Report only files that also differ from main.
