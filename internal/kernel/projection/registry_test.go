@@ -29,9 +29,9 @@ func hasCode(err error, want string) bool {
 	return strings.Contains(err.Error(), want)
 }
 
-// AC-6: An unregistered event type or version fails with unsupported_version,
+// AC-2: An unregistered event type or version fails with unsupported_version,
 // and the projection stays as it was.
-func TestAC6_UnregisteredEventTypeOrVersionFails(t *testing.T) {
+func TestAC2_UnregisteredEventTypeOrVersionFails(t *testing.T) {
 	defer guard(t)
 
 	reg := Base()
@@ -144,9 +144,9 @@ func TestAC6_UnregisteredEventTypeOrVersionFails(t *testing.T) {
 	})
 }
 
-// AC-8: Folding each golden log from tests/test_gate.py scenarios through
+// AC-4: Folding each golden log from tests/test_gate.py scenarios through
 // projection.Base() reproduces every recorded snapshot.
-func TestAC8_FoldGoldenLogsReproducesSnapshots(t *testing.T) {
+func TestAC4_FoldGoldenLogsReproducesSnapshots(t *testing.T) {
 	defer guard(t)
 
 	reg := Base()
@@ -276,8 +276,7 @@ func TestRegistry_ParityNegativeCases(t *testing.T) {
 		t.Fatal("runtime.Caller failed")
 	}
 	projDir := filepath.Dir(currentFile)
-	kernelDir := filepath.Dir(projDir)
-	parityPath := filepath.Join(kernelDir, "store", "testdata", "parity.json")
+	parityPath := filepath.Join(projDir, "testdata", "parity.json")
 
 	raw, err := os.ReadFile(parityPath)
 	if err != nil {

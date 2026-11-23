@@ -14,9 +14,9 @@ func guard(t *testing.T) {
 	}
 }
 
-// AC-7: A fresh store has revision 0, an empty projection and a head of 64 zeroes.
-// Projection.Empty() returns an empty projection matching the specification.
-func TestAC7_EmptyProjectionShape(t *testing.T) {
+// AC-3: Empty() has no records, receipts or edges, its map form holds empty
+// lists, and its checksum is the hash of that map.
+func TestAC3_EmptyProjectionShape(t *testing.T) {
 	defer guard(t)
 
 	p := Empty()
@@ -73,10 +73,11 @@ func TestAC7_EmptyProjectionShape(t *testing.T) {
 	}
 }
 
-// AC-2: The snapshots at revisions 4 and 8 equal snapshot_at_4 and snapshot_at_8
-// exactly, and Hash("projection", …) at each revision listed in status_by_revision
-// equals its projection_hash.
-func TestAC2_ProjectionChecksumAndSnapshotParity(t *testing.T) {
+// AC-1: FromMap of snapshot_at_4 and snapshot_at_8 yields projections whose
+// checksums equal the projection_hash recorded at those revisions, whose
+// lookups return the snapshot's records and receipts, and whose lists keep
+// the specification's sort order.
+func TestAC1_ProjectionChecksumAndSnapshotParity(t *testing.T) {
 	defer guard(t)
 
 	w := testvectors.Wire()
