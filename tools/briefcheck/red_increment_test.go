@@ -20,9 +20,9 @@ func writeIncrementBrief(t *testing.T, repo, criteria, newTests string) {
 	text = strings.Replace(text, "tests_frozen: [tools/p091/*_test.go]", "tests_frozen: [tools/p091/new_test.go]", 1)
 	text = strings.Replace(text, "- AC-1 First criterion.\n- AC-2 Second criterion.\n", criteria, 1)
 	files := map[string]string{
-		filepath.Join(repo, "docs", "packages", "P0-93.md"): text,
-		filepath.Join(repo, "tools", "p091", "p091_test.go"): "package p091\n\nimport \"testing\"\n\nfunc TestAC1_AncestorPasses(t *testing.T) {}\n",
-		filepath.Join(repo, "tools", "p091", "new_test.go"):  "package p091\n\nimport \"testing\"\n\n" + newTests,
+		filepath.Join(repo, "docs", "packages", "P0-93.md"):                 text,
+		filepath.Join(repo, "tools", "p091", "p091_test.go"):                "package p091\n\nimport \"testing\"\n\nfunc TestAC1_AncestorPasses(t *testing.T) {}\n",
+		filepath.Join(repo, "tools", "p091", "new_test.go"):                 "package p091\n\nimport \"testing\"\n\n" + newTests,
 		filepath.Join(repo, "tools", "p091", "testdata", "fixture_test.go"): "package fixture\n\nimport \"testing\"\n\nfunc TestAC2_InTestdata(t *testing.T) {}\n",
 	}
 	for path, body := range files {
