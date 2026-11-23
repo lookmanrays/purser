@@ -276,8 +276,7 @@ func TestRegistry_ParityNegativeCases(t *testing.T) {
 		t.Fatal("runtime.Caller failed")
 	}
 	projDir := filepath.Dir(currentFile)
-	kernelDir := filepath.Dir(projDir)
-	parityPath := filepath.Join(kernelDir, "store", "testdata", "parity.json")
+	parityPath := filepath.Join(projDir, "testdata", "parity.json")
 
 	raw, err := os.ReadFile(parityPath)
 	if err != nil {

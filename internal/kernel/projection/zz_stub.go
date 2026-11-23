@@ -1,11 +1,11 @@
 package projection
 
-// Stubs for P1-02a, from contracts/kernel/projection.yaml (parameter names
+// Stubs for P1-02p, from contracts/kernel/projection.yaml (parameter names
 // blanked for the linter). The builder replaces this file with the implementation.
 
 import "github.com/lookmanrays/purser/internal/kernel/codec"
 
-var unimplemented = func() { panic("unimplemented: P1-02a") }
+var unimplemented = func() { panic("unimplemented: P1-02p") }
 
 // Record is a projected entity record.
 type Record struct {
