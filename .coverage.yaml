@@ -1,0 +1,5 @@
+kernel_floor: 85.0
+default_floor: 70.0
+exclusions:
+  - package: github.com/lookmanrays/purser/cmd/purser
+    reason: two-line entry point main without tests
