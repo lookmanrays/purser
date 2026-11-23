@@ -5,7 +5,7 @@ status: draft
 package: internal/kernel/projection
 layer: kernel
 allowed_imports: [internal/kernel/codec]
-owner: P1-02a
+owner: P1-02p
 summary: >
   The projection data model and a registry of pure reducers keyed by event type
   and version. The store and the gate share these reducers.

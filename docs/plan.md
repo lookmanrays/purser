@@ -168,7 +168,8 @@ P1 ports purser-main's kernel semantics to Go with the fast read path. Antigravi
 | ID | Package | Output | Builds | Tests and review | Size | After |
 | --- | --- | --- | --- | --- | --- | --- |
 | P1-01 | Event codec and hash chain | Canonical encoding, digests, `VerifyChain` | Codex | Antigravity | S | P0-03, P0-06 |
-| P1-02a | Store: schema and transactions | SQLite WAL; one transaction writes receipt, events and projections; reducer registry | Codex | Antigravity, with interrupted-write tests | M | P1-01 |
+| P1-02p | Projection: records and reducers | Projection model, sort order, checksums; pure reducer registry with the M1 events | Codex | Antigravity | M | P1-01 |
+| P1-02a | Store: schema and transactions | SQLite WAL; one transaction writes receipt, events and projections | Codex | Antigravity, with interrupted-write tests | M | P1-01, P1-02p |
 | P1-02b | Store: projection reads | Snapshot served from materialized projections plus a head-hash check | Codex | Antigravity | M | P1-02a |
 | P1-02c | Store: replay and verification | `replay`, chain verification, read benchmark to 100k events | Codex | Antigravity | S | P1-02b |
 | P1-03 | Gate | Identity binding, admission, idempotent redelivery, id conflicts, stale bases, receipts; M1 operators including approvals | Codex | Antigravity | M | P1-02a |
