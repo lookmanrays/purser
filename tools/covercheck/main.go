@@ -113,7 +113,7 @@ func ParseCoverprofile(coverprofilePath string) (map[string]*PackageCoverage, er
 	if err != nil {
 		return nil, fmt.Errorf("opening coverprofile %s: %w", coverprofilePath, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	scanner := bufio.NewScanner(f)
 	if !scanner.Scan() {
@@ -296,17 +296,17 @@ func Run(args []string, stdout io.Writer, stderr io.Writer) int {
 		}
 		targets, err := FuzzTargets(moduleDir)
 		if err != nil {
-			fmt.Fprintln(stderr, err)
+			_, _ = fmt.Fprintln(stderr, err)
 			return 1
 		}
 		if *runTargets {
 			for _, t := range targets {
-				fmt.Fprintf(stdout, "fuzzing %s/%s for %s\n", t.Package, t.Name, *fuzzTime)
+				_, _ = fmt.Fprintf(stdout, "fuzzing %s/%s for %s\n", t.Package, t.Name, *fuzzTime)
 				cmd := exec.Command("go", "test", "-run", "^$", "-fuzz", fmt.Sprintf("^%s$", t.Name), "-fuzztime", *fuzzTime, t.Package)
 				cmd.Stdout = stdout
 				cmd.Stderr = stderr
 				if err := cmd.Run(); err != nil {
-					fmt.Fprintf(stderr, "fuzz target %s/%s failed: %v\n", t.Package, t.Name, err)
+					_, _ = fmt.Fprintf(stderr, "fuzz target %s/%s failed: %v\n", t.Package, t.Name, err)
 					return 1
 				}
 			}
@@ -315,7 +315,7 @@ func Run(args []string, stdout io.Writer, stderr io.Writer) int {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(targets); err != nil {
-			fmt.Fprintln(stderr, err)
+			_, _ = fmt.Fprintln(stderr, err)
 			return 1
 		}
 		return 0
@@ -329,18 +329,18 @@ func Run(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 	if *coverprofile == "" {
-		fmt.Fprintln(stderr, "missing required --coverprofile flag")
+		_, _ = fmt.Fprintln(stderr, "missing required --coverprofile flag")
 		return 1
 	}
 
 	violations, err := Check(*coverprofile, *config)
 	if err != nil {
-		fmt.Fprintln(stderr, err)
+		_, _ = fmt.Fprintln(stderr, err)
 		return 1
 	}
 	if len(violations) > 0 {
 		for _, v := range violations {
-			fmt.Fprintln(stdout, v)
+			_, _ = fmt.Fprintln(stdout, v)
 		}
 		return 1
 	}

@@ -259,7 +259,8 @@ func CheckFiles(benchPath string, sourcePath string) ([]string, error) {
 	if st.IsDir() {
 		rules, err = ParseRulesFromDir(sourcePath)
 	} else {
-		srcData, err := os.ReadFile(sourcePath)
+		var srcData []byte
+		srcData, err = os.ReadFile(sourcePath)
 		if err != nil {
 			return nil, fmt.Errorf("reading source file %s: %w", sourcePath, err)
 		}
@@ -282,18 +283,18 @@ func Run(args []string, stdout io.Writer, stderr io.Writer) int {
 		return 1
 	}
 	if *bench == "" || *source == "" {
-		fmt.Fprintln(stderr, "missing required --bench or --source flag")
+		_, _ = fmt.Fprintln(stderr, "missing required --bench or --source flag")
 		return 1
 	}
 
 	violations, err := CheckFiles(*bench, *source)
 	if err != nil {
-		fmt.Fprintln(stderr, err)
+		_, _ = fmt.Fprintln(stderr, err)
 		return 1
 	}
 	if len(violations) > 0 {
 		for _, v := range violations {
-			fmt.Fprintln(stdout, v)
+			_, _ = fmt.Fprintln(stdout, v)
 		}
 		return 1
 	}

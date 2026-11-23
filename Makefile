@@ -1,4 +1,4 @@
-FUZZ_PACKAGE ?= ./internal/kernel/codec
+FUZZ_PACKAGE ?= .
 FUZZ_TARGET ?= .
 FUZZ_TIME ?= 30s
 
@@ -8,13 +8,14 @@ check:
 	go build ./...
 	go vet ./...
 	golangci-lint run
-	go test -race ./...
+	go test -race -coverprofile=.coverage.out ./...
+	go run ./tools/covercheck --coverprofile=.coverage.out
 
 test:
 	go test ./...
 
 fuzz:
-	go test -run '^$$' -fuzz '$(FUZZ_TARGET)' -fuzztime '$(FUZZ_TIME)' $(FUZZ_PACKAGE)
+	go run ./tools/covercheck fuzz-targets -fuzztime $(FUZZ_TIME) -run $(FUZZ_PACKAGE)
 
 bench:
 	go test -run '^$$' -bench . ./...
