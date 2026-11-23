@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"sort"
 	"strings"
@@ -183,12 +184,59 @@ func decodeNumbers(val any) any {
 	}
 }
 
+// decodeInts decodes b into v and converts every JSON number held in a
+// dynamic field (any, map[string]any or a slice of them) to int64, so kernel
+// tests see the same integers the canonical codec accepts, never float64.
+func decodeInts(b []byte, v any) error {
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.UseNumber()
+	if err := dec.Decode(v); err != nil {
+		return err
+	}
+	normalizeNumbers(reflect.ValueOf(v))
+	return nil
+}
+
+// normalizeNumbers walks typed values and applies decodeNumbers to every
+// dynamic value it reaches.
+func normalizeNumbers(v reflect.Value) {
+	switch v.Kind() {
+	case reflect.Pointer:
+		if !v.IsNil() {
+			normalizeNumbers(v.Elem())
+		}
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			if f := v.Field(i); f.CanSet() {
+				normalizeNumbers(f)
+			}
+		}
+	case reflect.Slice, reflect.Array:
+		for i := 0; i < v.Len(); i++ {
+			normalizeNumbers(v.Index(i))
+		}
+	case reflect.Map:
+		if v.Type().Elem().Kind() != reflect.Interface {
+			return
+		}
+		for _, k := range v.MapKeys() {
+			if child := v.MapIndex(k).Interface(); child != nil {
+				v.SetMapIndex(k, reflect.ValueOf(decodeNumbers(child)))
+			}
+		}
+	case reflect.Interface:
+		if !v.IsNil() && v.CanSet() {
+			v.Set(reflect.ValueOf(decodeNumbers(v.Interface())))
+		}
+	}
+}
+
 // Wire returns the typed wire-v1 vector sections.
 // If wire-v1.json is missing or corrupted, Wire panics.
 func Wire() *WireVector {
 	b := Raw("purser-v1/wire-v1.json")
 	var w WireVector
-	if err := json.Unmarshal(b, &w); err != nil {
+	if err := decodeInts(b, &w); err != nil {
 		panic(err)
 	}
 	return &w
@@ -199,7 +247,7 @@ func Wire() *WireVector {
 func Lifecycle() *LifecycleVector {
 	b := Raw("purser-v1/lifecycle-v1.json")
 	var lc LifecycleVector
-	if err := json.Unmarshal(b, &lc); err != nil {
+	if err := decodeInts(b, &lc); err != nil {
 		panic(err)
 	}
 	return &lc
@@ -210,7 +258,7 @@ func Lifecycle() *LifecycleVector {
 func LegacyStatus() []LegacyStatusCheckpoint {
 	b := Raw("purser-v1/m2-legacy-status-v1.json")
 	var checkpoints []LegacyStatusCheckpoint
-	if err := json.Unmarshal(b, &checkpoints); err != nil {
+	if err := decodeInts(b, &checkpoints); err != nil {
 		panic(err)
 	}
 	return checkpoints
