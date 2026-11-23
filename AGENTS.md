@@ -17,8 +17,8 @@ Your task is exactly one package brief, `docs/packages/<id>.md`. Read all of it 
 
 ## Branches and freezing
 
-1. Tests: the brief's `test_author` opens a PR from `tests/<id>`, written from the contract and acceptance criteria only. It may also add `zz_stub.go` files in the package directories of `scope.write`, holding exactly the contract's Go declarations with bodies that `panic("unimplemented: <id>")`.
-2. CI on a tests branch runs `go vet ./...`, `make briefcheck ID=<id>` and `make red ID=<id>`. `red` passes only when every AC has a `TestACn_` test and every one of them fails on the stubs.
+1. Tests: the brief's `test_author` opens a PR from `tests/<id>`, written from the contract and acceptance criteria only. It may also add `zz_stub.go` files in the package directories of `scope.write`, holding exactly the contract's Go declarations that do not exist yet, with bodies that `panic("unimplemented: <id>")`.
+2. CI on a tests branch runs `go vet ./...`, `make briefcheck ID=<id>` and `make red ID=<id>`. `red` runs only the `TestACn_` tests in the brief's own `tests_frozen` files and passes only when every AC has one and every one of them fails, except tests of ACs the brief marks `(baseline)`: invariants the existing code already holds, which must pass. At least one AC must not be baseline.
 3. Freeze: for size S, CI tags the tests branch head `frozen/<id>` once those checks pass. For size M and L, you approve the tests PR first, as part of the phase's planning batch. The tests PR is closed, not merged, so `main` stays green.
 4. Build: the brief's `builder` branches `build/<id>` from the tag `frozen/<id>`, replaces the stubs, and opens one PR into `main` that carries the frozen tests and the implementation together.
 5. CI on a build branch checks scope against `frozen/<id>`, checks that the package's frozen files are byte-identical to the tag, and checks that no other package's frozen files changed against `main`.
