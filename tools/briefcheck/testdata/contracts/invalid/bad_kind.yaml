@@ -1,0 +1,6 @@
+contract: test/bad_kind
+kind: invalid_kind
+version: "1"
+status: draft
+owner: P0-91
+summary: Bad kind

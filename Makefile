@@ -20,4 +20,7 @@ bench:
 	go test -run '^$$' -bench . ./...
 
 briefcheck:
-	python3 tools/check_briefs.py
+	go run ./tools/briefcheck $(if $(ID),--id $(ID),)
+
+red:
+	go run ./tools/briefcheck red $(if $(ID),--id $(ID),)

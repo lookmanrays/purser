@@ -1,0 +1,23 @@
+name: freeze
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - 'tests/*'
+
+jobs:
+  freeze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Vet
+        run: go vet ./...
+      - name: Briefcheck
+        run: make briefcheck
+      - name: Red
+        run: make red
+      - name: Tag frozen
+        run: |
+          git tag frozen/$ID
+          git push origin frozen/$ID

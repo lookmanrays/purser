@@ -8,7 +8,7 @@ Your task is exactly one package brief, `docs/packages/<id>.md`. Read all of it 
 1. Work only inside the brief's `scope.write`, never on paths in `tests_frozen` (frozen wins where both match). In a tests PR, work only inside `tests_frozen` plus stubs. CI rejects anything else.
 2. Never edit frozen tests or anything under `contracts/`. If either looks wrong, stop and escalate.
 3. To escalate, write `docs/packages/<id>.contradiction.md` (what is wrong, the evidence, your proposed fix), push it, open or update the pull request with it, and stop. The pull request is the escalation channel; do not use a task tracker or a browser.
-4. Reuse what the brief lists under `reuse`. Add no third-party module unless it is listed in `deps_allowed`.
+4. Reuse what the brief lists under `reuse`. Add no third-party module unless it is listed in `deps_allowed`. Adding a listed module may change the root `go.mod` and `go.sum` even though they are not in `scope.write`; those lines do not count toward the budget.
 5. Done means the brief's Definition of done, including the evidence note in the PR body.
 6. Over the brief's budget of changed lines (tests excluded)? Stop and propose a split.
 7. For a size M or L package, start the PR description with an execution plan and keep it current.
