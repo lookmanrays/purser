@@ -15,7 +15,7 @@ import (
 
 var reFuzzAnchored = regexp.MustCompile(`-fuzz[ =]['"]?\^\$\{\{\s*matrix\.[^}]+?\}\}\$['"]?`)
 
-func TestAC4_FuzzTargetsList(t *testing.T) {
+func TestAC3_FuzzTargetsList(t *testing.T) {
 	defer guard(t)
 
 	moduleDir := setupFuzzModule(t)
@@ -69,7 +69,7 @@ func TestAC4_FuzzTargetsList(t *testing.T) {
 	}
 }
 
-func TestAC4_CheckedInNightlyWorkflow(t *testing.T) {
+func TestAC3_CheckedInNightlyWorkflow(t *testing.T) {
 	defer guard(t)
 
 	workflowPath := filepath.Join(findRepoRoot(t), ".github", "workflows", "nightly.yml")
