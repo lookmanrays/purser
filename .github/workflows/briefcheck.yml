@@ -1,12 +1,21 @@
 name: briefcheck
 on:
   pull_request:
-    branches: ['build/*', 'tests/*']
 jobs:
   check:
+    # Package branches are named tests/<id> and build/<id>; pull requests target main.
+    if: startsWith(github.head_ref, 'tests/') || startsWith(github.head_ref, 'build/')
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - run: git fetch --force --tags origin
       - uses: actions/setup-go@v5
         with: {go-version-file: go.mod}
-      - run: make briefcheck
+      - name: Package ID
+        run: echo "ID=${GITHUB_HEAD_REF#*/}" >> "$GITHUB_ENV"
+      - run: make briefcheck ID="$ID"
+      - if: startsWith(github.head_ref, 'tests/')
+        run: make red ID="$ID"
