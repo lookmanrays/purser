@@ -159,71 +159,228 @@ func TestAC2_RandomBatchesChecksumEqualsFold(t *testing.T) {
 	clock := func() time.Time { return clockTime }
 
 	rng := rand.New(rand.NewSource(42))
-	var commitmentIDs []string
 
+	var (
+		commitments         []string
+		proposedCommitments []string
+		pendingApprovals    []string
+		pendingReceipts     [][2]string
+		nextCommitment      int
+		nextApproval        int
+		nextReceipt         int
+	)
+
+	approvalStates := []string{"approved", "denied", "expired", "stale"}
+	finalDispositions := []string{"admitted", "rejected"}
+
+	fold := projection.Empty()
 	const totalBatches = 1000
-	for i := 0; i < totalBatches; i++ {
-		cid := "C-" + strconv.Itoa(i)
-		wid := "W-" + strconv.Itoa(i)
-		pid := "p-" + strconv.Itoa(i)
 
-		var spec codec.EventSpec
-		if len(commitmentIDs) == 0 || rng.Intn(2) == 0 {
-			spec = codec.EventSpec{
+	for batchIdx := 0; batchIdx < totalBatches; batchIdx++ {
+		batchSize := 1 + rng.Intn(5)
+		proposalID := "p-batch-" + strconv.Itoa(batchIdx)
+
+		specs := make([]codec.EventSpec, 0, batchSize)
+
+		// Include batches that create a commitment and edit or activate it in the same batch
+		if len(commitments) == 0 || (batchSize >= 2 && rng.Intn(3) == 0) {
+			cid := "C-" + strconv.Itoa(nextCommitment)
+			wid := "W-" + strconv.Itoa(nextCommitment)
+			nextCommitment++
+
+			specs = append(specs, codec.EventSpec{
 				Type:         "CommitmentCreated",
 				EventVersion: 1,
 				Data: map[string]any{
 					"id":        cid,
 					"root":      wid,
 					"principal": "principal:local",
-					"statement": "statement-" + strconv.Itoa(i),
+					"statement": "statement-" + strconv.Itoa(batchIdx) + "-0",
 				},
+			})
+			commitments = append(commitments, cid)
+
+			// Same-batch edit
+			if len(specs) < batchSize {
+				specs = append(specs, codec.EventSpec{
+					Type:         "CommitmentEdited",
+					EventVersion: 1,
+					Data: map[string]any{
+						"id":        cid,
+						"statement": "statement-" + strconv.Itoa(batchIdx) + "-edit",
+					},
+				})
 			}
-			commitmentIDs = append(commitmentIDs, cid)
-		} else {
-			target := commitmentIDs[rng.Intn(len(commitmentIDs))]
-			spec = codec.EventSpec{
-				Type:         "CommitmentEdited",
-				EventVersion: 1,
-				Data: map[string]any{
-					"id":        target,
-					"statement": "edited-" + strconv.Itoa(i),
-				},
+
+			// Same-batch activation or approval
+			if len(specs) < batchSize && rng.Intn(2) == 0 {
+				specs = append(specs, codec.EventSpec{
+					Type:         "CommitmentActivated",
+					EventVersion: 1,
+					Data: map[string]any{
+						"id": cid,
+					},
+				})
+			} else {
+				proposedCommitments = append(proposedCommitments, cid)
 			}
 		}
 
-		_, _, err := s.Transact("principal:local", pid, clock, func(Snapshot, time.Time) ([]codec.EventSpec, error) {
-			return []codec.EventSpec{spec}, nil
+		// Fill remaining slots in batch with valid M1 events
+		for len(specs) < batchSize {
+			actionChoices := []int{0}
+			if len(commitments) > 0 {
+				actionChoices = append(actionChoices, 1) // edit commitment
+				actionChoices = append(actionChoices, 3) // request approval
+			}
+			if len(proposedCommitments) > 0 {
+				actionChoices = append(actionChoices, 2) // activate commitment
+			}
+			if len(pendingApprovals) > 0 {
+				actionChoices = append(actionChoices, 4) // resolve approval
+			}
+			actionChoices = append(actionChoices, 5) // create pending receipt
+			if len(pendingReceipts) > 0 {
+				actionChoices = append(actionChoices, 6) // resolve receipt
+			}
+
+			action := actionChoices[rng.Intn(len(actionChoices))]
+			switch action {
+			case 0: // CommitmentCreated
+				cid := "C-" + strconv.Itoa(nextCommitment)
+				wid := "W-" + strconv.Itoa(nextCommitment)
+				nextCommitment++
+				specs = append(specs, codec.EventSpec{
+					Type:         "CommitmentCreated",
+					EventVersion: 1,
+					Data: map[string]any{
+						"id":        cid,
+						"root":      wid,
+						"principal": "principal:local",
+						"statement": "statement-" + strconv.Itoa(batchIdx) + "-" + strconv.Itoa(len(specs)),
+					},
+				})
+				commitments = append(commitments, cid)
+				proposedCommitments = append(proposedCommitments, cid)
+
+			case 1: // CommitmentEdited
+				cid := commitments[rng.Intn(len(commitments))]
+				specs = append(specs, codec.EventSpec{
+					Type:         "CommitmentEdited",
+					EventVersion: 1,
+					Data: map[string]any{
+						"id":        cid,
+						"statement": "statement-" + strconv.Itoa(batchIdx) + "-" + strconv.Itoa(len(specs)),
+					},
+				})
+
+			case 2: // CommitmentActivated
+				idx := rng.Intn(len(proposedCommitments))
+				cid := proposedCommitments[idx]
+				proposedCommitments = slices.Delete(proposedCommitments, idx, idx+1)
+				specs = append(specs, codec.EventSpec{
+					Type:         "CommitmentActivated",
+					EventVersion: 1,
+					Data: map[string]any{
+						"id": cid,
+					},
+				})
+
+			case 3: // ApprovalRequested
+				cid := commitments[rng.Intn(len(commitments))]
+				aid := "A-" + strconv.Itoa(nextApproval)
+				nextApproval++
+				expiry := clockTime.Add(24 * time.Hour)
+				specs = append(specs, codec.EventSpec{
+					Type:         "ApprovalRequested",
+					EventVersion: 1,
+					Data: map[string]any{
+						"id":             aid,
+						"requester":      "principal:local",
+						"request":        map[string]any{"commitment": cid},
+						"request_digest": codec.ZeroHash,
+						"read_versions":  []any{map[string]any{"key": cid, "changed": int64(0)}},
+						"expires_at":     codec.FormatTime(expiry),
+					},
+				})
+				pendingApprovals = append(pendingApprovals, aid)
+
+			case 4: // ApprovalResolved
+				idx := rng.Intn(len(pendingApprovals))
+				aid := pendingApprovals[idx]
+				pendingApprovals = slices.Delete(pendingApprovals, idx, idx+1)
+				st := approvalStates[rng.Intn(len(approvalStates))]
+				specs = append(specs, codec.EventSpec{
+					Type:         "ApprovalResolved",
+					EventVersion: 1,
+					Data: map[string]any{
+						"id":    aid,
+						"state": st,
+					},
+				})
+
+			case 5: // ProposalReceipted (pending)
+				pid := "p-rcpt-" + strconv.Itoa(nextReceipt)
+				nextReceipt++
+				specs = append(specs, codec.EventSpec{
+					Type:         "ProposalReceipted",
+					EventVersion: 1,
+					Data: map[string]any{
+						"actor_id":    "principal:local",
+						"proposal_id": pid,
+						"digest":      codec.ZeroHash,
+						"disposition": "pending",
+						"code":        "ok",
+						"details":     map[string]any{},
+					},
+				})
+				pendingReceipts = append(pendingReceipts, [2]string{"principal:local", pid})
+
+			case 6: // ProposalReceipted (final disposition)
+				idx := rng.Intn(len(pendingReceipts))
+				rcpt := pendingReceipts[idx]
+				pendingReceipts = slices.Delete(pendingReceipts, idx, idx+1)
+				disp := finalDispositions[rng.Intn(len(finalDispositions))]
+				specs = append(specs, codec.EventSpec{
+					Type:         "ProposalReceipted",
+					EventVersion: 1,
+					Data: map[string]any{
+						"actor_id":    rcpt[0],
+						"proposal_id": rcpt[1],
+						"digest":      codec.ZeroHash,
+						"disposition": disp,
+						"code":        "ok",
+						"details":     map[string]any{},
+					},
+				})
+			}
+		}
+
+		snap, events, err := s.Transact("principal:local", proposalID, clock, func(Snapshot, time.Time) ([]codec.EventSpec, error) {
+			return specs, nil
 		})
 		if err != nil {
-			t.Fatalf("batch %d Transact: %v", i, err)
+			t.Fatalf("batch %d Transact: %v", batchIdx, err)
 		}
-	}
 
-	headSnap, err := s.Snapshot(nil)
-	if err != nil {
-		t.Fatalf("Snapshot(nil): %v", err)
-	}
+		for _, ev := range events {
+			fold, _, err = reg.Apply(fold, ev)
+			if err != nil {
+				t.Fatalf("batch %d Apply event rev %d: %v", batchIdx, ev.Revision, err)
+			}
+		}
 
-	allEvents, err := s.Events(1, headSnap.Revision)
-	if err != nil {
-		t.Fatalf("Events: %v", err)
-	}
-	if int64(len(allEvents)) != headSnap.Revision {
-		t.Fatalf("expected %d events, got %d", headSnap.Revision, len(allEvents))
-	}
-
-	fold := projection.Empty()
-	for _, ev := range allEvents {
-		fold, _, err = reg.Apply(fold, ev)
+		headSnap, err := s.Snapshot(nil)
 		if err != nil {
-			t.Fatalf("Apply event rev %d: %v", ev.Revision, err)
+			t.Fatalf("batch %d Snapshot(nil): %v", batchIdx, err)
 		}
-	}
-
-	if mustChecksum(t, headSnap.Projection) != mustChecksum(t, fold) {
-		t.Fatalf("projection checksum mismatch after %d batches: snap=%q, fold=%q",
-			totalBatches, mustChecksum(t, headSnap.Projection), mustChecksum(t, fold))
+		if headSnap.Revision != snap.Revision {
+			t.Fatalf("batch %d Snapshot revision %d != snap revision %d", batchIdx, headSnap.Revision, snap.Revision)
+		}
+		if mustChecksum(t, headSnap.Projection) != mustChecksum(t, fold) {
+			t.Fatalf("batch %d projection checksum mismatch: snap=%q, fold=%q",
+				batchIdx, mustChecksum(t, headSnap.Projection), mustChecksum(t, fold))
+		}
 	}
 }
 
@@ -297,20 +454,26 @@ func TestAC4_HeadSnapshotTimingRatio(t *testing.T) {
 	}
 
 	// Measure repeated head reads across multiple samples
-	const samples = 7
+	// Time a loop of 25 reads per sample and take the median of 9 samples.
+	const samples = 9
+	const readsPerSample = 25
 	times1k := make([]time.Duration, samples)
 	times10k := make([]time.Duration, samples)
 
 	for i := 0; i < samples; i++ {
 		start := time.Now()
-		if _, err := s1k.Snapshot(nil); err != nil {
-			t.Fatalf("sample %d s1k.Snapshot: %v", i, err)
+		for r := 0; r < readsPerSample; r++ {
+			if _, err := s1k.Snapshot(nil); err != nil {
+				t.Fatalf("sample %d read %d s1k.Snapshot: %v", i, r, err)
+			}
 		}
 		times1k[i] = time.Since(start)
 
 		start = time.Now()
-		if _, err := s10k.Snapshot(nil); err != nil {
-			t.Fatalf("sample %d s10k.Snapshot: %v", i, err)
+		for r := 0; r < readsPerSample; r++ {
+			if _, err := s10k.Snapshot(nil); err != nil {
+				t.Fatalf("sample %d read %d s10k.Snapshot: %v", i, r, err)
+			}
 		}
 		times10k[i] = time.Since(start)
 	}
