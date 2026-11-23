@@ -386,7 +386,21 @@ func Contracts(repoRoot, id, branch string) (violations []string, err error) {
 	if err != nil {
 		out, err = runGitInDir(repoRoot, "diff", "--name-only", "main", "HEAD", "--", "contracts/")
 	}
+	// A build branch merges main, so it inherits contract changes approved on
+	// main after the freeze. Report only files that also differ from main.
+	var differsFromMain map[string]bool
+	if base != mainRef(repoRoot) {
+		if onMain, mainErr := runGitInDir(repoRoot, "diff", "--name-only", mainRef(repoRoot), "HEAD", "--", "contracts/"); mainErr == nil {
+			differsFromMain = make(map[string]bool)
+			for _, f := range strings.Fields(onMain) {
+				differsFromMain[f] = true
+			}
+		}
+	}
 	for _, f := range strings.Fields(out) {
+		if differsFromMain != nil && !differsFromMain[f] {
+			continue
+		}
 		violations = append(violations, "contracts/ changed when contract_change is false: "+f)
 	}
 	return violations, err
