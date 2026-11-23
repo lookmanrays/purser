@@ -157,7 +157,8 @@ P0 turns the design into machine-checkable contracts and a repository that enfor
 | P0-04 | Contract schema v1 | `contract.v1` for data types, functions, modules, endpoints, events and UI components, plus a validator | Codex | Antigravity, from the design's examples | M | P0-03 |
 | P0-05 | Tool and CLI schemas | Tool contract schema; JSON output schema for every CLI command; exit codes | Antigravity | Codex | S | P0-03 |
 | P0-06 | Conformance vectors and golden logs | purser-main vectors copied byte for byte, plus golden event logs recorded from its own test scenarios | Antigravity | Codex, checked against purser-main's own checker | M | P0-01 |
-| P0-07 | Quality harness | Coverage floors, fuzzing and benchmark-ratio checks in CI | Codex | Antigravity | S | P0-01 |
+| P0-07 | Quality harness: coverage and fuzzing | Coverage floors and per-target fuzzing in CI and nightly | Antigravity | Antigravity | M | P0-01 |
+| P0-07b | Quality harness: benchmark ratios | Benchmark-ratio rules checked by `make bench` | Antigravity | Antigravity | M | P0-01 |
 
 **Gate:** schemas validate every example in the design, vectors are translated and cross-checked against purser-main, and CI rejects out-of-scope edits and changed frozen tests.
 
