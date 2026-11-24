@@ -18,7 +18,7 @@ func (s *Store) Transact(actorID, proposalID string, clock Clock, decide Decide)
 		return Snapshot{}, nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	snap, err := s.fold(tx, nil)
+	snap, err := headSnapshot(tx)
 	if err != nil {
 		return Snapshot{}, nil, err
 	}
