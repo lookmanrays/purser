@@ -22,6 +22,7 @@ jobs:
 
   fuzz:
     needs: list
+    if: needs.list.outputs.targets != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -35,9 +36,12 @@ jobs:
           go-version-file: go.mod
       - name: Run fuzz target
         run: go test -run '^$' -fuzz '^${{ matrix.target.name }}$' -fuzztime 1h ${{ matrix.target.package }}
+      - name: Resolve package directory
+        id: dir
+        run: echo "dir=$(go list -f '{{.Dir}}' ${{ matrix.target.package }})" >> "$GITHUB_OUTPUT"
       - name: Upload crasher
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: crasher-${{ matrix.target.name }}
-          path: ${{ matrix.target.package }}/testdata/fuzz
+          path: ${{ steps.dir.outputs.dir }}/testdata/fuzz

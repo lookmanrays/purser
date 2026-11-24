@@ -1,5 +1,3 @@
-FUZZ_PACKAGE ?= .
-FUZZ_TARGET ?= .
 FUZZ_TIME ?= 30s
 
 .PHONY: check test fuzz bench briefcheck
@@ -15,7 +13,7 @@ test:
 	go test ./...
 
 fuzz:
-	go run ./tools/covercheck fuzz-targets -fuzztime $(FUZZ_TIME) -run $(FUZZ_PACKAGE)
+	go run ./tools/covercheck fuzz-targets -run -fuzztime $(FUZZ_TIME) .
 
 bench:
 	go test -run '^$$' -bench . ./...

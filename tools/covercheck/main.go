@@ -48,7 +48,8 @@ type FuzzTarget struct {
 }
 
 func isKernel(pkg string) bool {
-	return strings.Contains(pkg, "internal/kernel")
+	return pkg == "internal/kernel" || strings.HasPrefix(pkg, "internal/kernel/") ||
+		strings.HasSuffix(pkg, "/internal/kernel") || strings.Contains(pkg, "/internal/kernel/")
 }
 
 func baseFloor(pkg string, cfg *Config) float64 {
@@ -211,7 +212,7 @@ func Check(coverprofilePath string, configPath string) ([]string, error) {
 
 	isExcluded := func(pkg string) bool {
 		for _, exc := range cfg.Exclusions {
-			if exc.Package == pkg || strings.HasSuffix(pkg, "/"+exc.Package) || strings.HasSuffix(pkg, exc.Package) {
+			if exc.Package == pkg {
 				return true
 			}
 		}
@@ -219,10 +220,8 @@ func Check(coverprofilePath string, configPath string) ([]string, error) {
 	}
 
 	pkgFloor := func(pkg string) float64 {
-		for overridePkg, floor := range cfg.Overrides {
-			if overridePkg == pkg || strings.HasSuffix(pkg, "/"+overridePkg) || strings.HasSuffix(pkg, overridePkg) {
-				return floor
-			}
+		if floor, ok := cfg.Overrides[pkg]; ok {
+			return floor
 		}
 		return baseFloor(pkg, cfg)
 	}
@@ -313,7 +312,6 @@ func Run(args []string, stdout io.Writer, stderr io.Writer) int {
 			return 0
 		}
 		enc := json.NewEncoder(stdout)
-		enc.SetIndent("", "  ")
 		if err := enc.Encode(targets); err != nil {
 			_, _ = fmt.Fprintln(stderr, err)
 			return 1
