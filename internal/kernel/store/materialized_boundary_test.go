@@ -1,10 +1,12 @@
 package store
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/lookmanrays/purser/internal/kernel/codec"
+	"github.com/lookmanrays/purser/internal/kernel/projection"
 )
 
 func TestBatchWritesRepeatedRecordChangeOnce(t *testing.T) {
@@ -63,4 +65,39 @@ func TestHistoricalSnapshotsIsolateCallersAndRecheckCachedBoundary(t *testing.T)
 	rewriteRawEvent(t, s, revision, func(raw []byte) []byte { return append(raw, '\n') })
 	_, err := s.Snapshot(&revision)
 	requireStoreError(t, err, "integrity_error", revision)
+}
+
+func TestHistoricalCachePreservesReducerValues(t *testing.T) {
+	reg := projection.NewRegistry()
+	err := reg.Register("TestRecordCreated", 1, func(p projection.Projection, _ map[string]any, revision, _ int64) (projection.Projection, projection.Changes, error) {
+		p.Records = []projection.Record{{
+			ID: "R-1", Kind: "TestRecord", Changed: revision,
+			Fields: map[string]any{"nested": []any{map[string]any{"count": 1}}},
+		}}
+		return p, projection.Changes{Records: []string{"R-1"}}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := openStoreForTest(t, filepath.Join(t.TempDir(), "typed.db"), Options{Registry: reg})
+	if _, err := s.Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	snap, _, err := s.Transact("principal:local", "p-create", fixedClock, func(Snapshot, time.Time) ([]codec.EventSpec, error) {
+		return []codec.EventSpec{{Type: "TestRecordCreated", EventVersion: 1, Data: map[string]any{}}}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		historical, err := s.Snapshot(&snap.Revision)
+		if err != nil {
+			t.Fatal(err)
+		}
+		nested := historical.Projection.Records[0].Fields["nested"].([]any)[0].(map[string]any)
+		if nested["count"] != 1 {
+			t.Fatalf("count = %v (%T), want int(1)", nested["count"], nested["count"])
+		}
+		nested["count"] = 2
+	}
 }
