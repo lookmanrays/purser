@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/lookmanrays/purser/internal/kernel/codec"
@@ -154,18 +155,70 @@ func (table projectionTable) read(tx *sql.Tx, revision int64, visit func(rowIden
 	return databaseError(rows.Err())
 }
 
-func publish(tx *sql.Tx, previous projection.Projection, snap Snapshot) error {
-	before, after := previous.Map(), snap.Projection.Map()
-	for _, table := range projectionTables {
-		old, err := table.encode(before, snap.Revision)
+type batchChanges struct {
+	records  map[string]struct{}
+	receipts map[[2]string]struct{}
+	edges    map[rowIdentity]struct{}
+}
+
+func (c batchChanges) add(delta projection.Changes) {
+	for _, id := range delta.Records {
+		c.records[id] = struct{}{}
+	}
+	for _, key := range delta.Receipts {
+		c.receipts[key] = struct{}{}
+	}
+	for _, edge := range delta.Edges {
+		c.edges[edgeIdentity(edge)] = struct{}{}
+	}
+	for _, edge := range delta.Removed {
+		c.edges[edgeIdentity(edge)] = struct{}{}
+	}
+}
+
+func edgeIdentity(edge projection.Edge) rowIdentity {
+	return rowIdentity{edge.Kind, edge.FromID, edge.ToID}
+}
+
+func (c batchChanges) publish(tx *sql.Tx, snap Snapshot) error {
+	// Resolve touched keys against the final projection, so a row changed by
+	// several events is written once and a removed edge can be reinserted.
+	p := snap.Projection
+	var changed projection.Projection
+	var removedRecords, removedReceipts, removedEdges []rowIdentity
+	for id := range c.records {
+		if record, ok := p.Record(id); ok {
+			changed.Records = append(changed.Records, record)
+		} else {
+			removedRecords = append(removedRecords, rowIdentity{id})
+		}
+	}
+	for key := range c.receipts {
+		if receipt, ok := p.Receipt(key[0], key[1]); ok {
+			changed.Receipts = append(changed.Receipts, receipt)
+		} else {
+			removedReceipts = append(removedReceipts, rowIdentity{key[0], key[1]})
+		}
+	}
+	for key := range c.edges {
+		i, ok := slices.BinarySearchFunc(p.Edges, key, func(edge projection.Edge, key rowIdentity) int {
+			candidate := edgeIdentity(edge)
+			return slices.Compare(candidate[:], key[:])
+		})
+		if ok {
+			changed.Edges = append(changed.Edges, p.Edges[i])
+		} else {
+			removedEdges = append(removedEdges, key)
+		}
+	}
+	view := changed.Map()
+	removed := [...][]rowIdentity{removedRecords, removedReceipts, removedEdges}
+	for i, table := range projectionTables {
+		next, err := table.encode(view, snap.Revision)
 		if err != nil {
 			return err
 		}
-		next, err := table.encode(after, snap.Revision)
-		if err != nil {
-			return err
-		}
-		if err := table.write(tx, old, next); err != nil {
+		if err := table.write(tx, removed[i], next); err != nil {
 			return err
 		}
 	}
@@ -173,25 +226,20 @@ func publish(tx *sql.Tx, previous projection.Projection, snap Snapshot) error {
 	return databaseError(err)
 }
 
-func (table projectionTable) write(tx *sql.Tx, old, next map[rowIdentity][]byte) error {
+func (table projectionTable) write(tx *sql.Tx, removed []rowIdentity, next map[rowIdentity][]byte) error {
 	args := make([]any, len(table.keys)+1)
 	remove := "DELETE FROM " + table.name + " WHERE " + strings.Join(table.keys, "=? AND ") + "=?"
 	upsert := "INSERT INTO " + table.name + " VALUES (" + strings.Repeat("?,", len(table.keys)) +
-		"?) ON CONFLICT DO UPDATE SET body=excluded.body"
-	for key := range old {
-		if _, remains := next[key]; !remains {
-			for i := range table.keys {
-				args[i] = key[i]
-			}
-			if _, err := tx.Exec(remove, args[:len(table.keys)]...); err != nil {
-				return databaseError(err)
-			}
+		"?) ON CONFLICT DO UPDATE SET body=excluded.body WHERE " + table.name + ".body<>excluded.body"
+	for _, key := range removed {
+		for i := range table.keys {
+			args[i] = key[i]
+		}
+		if _, err := tx.Exec(remove, args[:len(table.keys)]...); err != nil {
+			return databaseError(err)
 		}
 	}
 	for key, body := range next {
-		if bytes.Equal(body, old[key]) {
-			continue
-		}
 		for i := range table.keys {
 			args[i] = key[i]
 		}

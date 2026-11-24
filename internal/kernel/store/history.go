@@ -133,7 +133,7 @@ func (s *Store) fold(tx *sql.Tx, revision *int64) (Snapshot, error) {
 		}
 		state.Revision, state.HeadHash = event.Revision, event.Hash
 		for _, e := range batch {
-			state.Projection, err = s.apply(state.Projection, e)
+			state.Projection, _, err = s.apply(state.Projection, e)
 			if err != nil {
 				return Snapshot{}, err
 			}
@@ -220,12 +220,11 @@ func decodeEvent(raw []byte, revision int64) (codec.Event, error) {
 	return event, nil
 }
 
-func (s *Store) apply(p projection.Projection, event codec.Event) (projection.Projection, error) {
+func (s *Store) apply(p projection.Projection, event codec.Event) (projection.Projection, projection.Changes, error) {
 	if event.V != 1 {
-		return p, storeError("unsupported_version", event.Revision, fmt.Sprintf("wire v%d", event.V))
+		return p, projection.Changes{}, storeError("unsupported_version", event.Revision, fmt.Sprintf("wire v%d", event.V))
 	}
-	next, _, err := s.registry.Apply(p, event)
-	return next, err
+	return s.registry.Apply(p, event)
 }
 
 // RawEvents reads original canonical bytes in the inclusive revision range.
