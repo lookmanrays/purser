@@ -16,7 +16,8 @@ fuzz:
 	go run ./tools/covercheck fuzz-targets -run -fuzztime $(FUZZ_TIME) .
 
 bench:
-	go test -run '^$$' -bench . ./...
+	go test -run '^$$' -bench . -benchmem -count 5 ./... > .bench.out
+	go run ./tools/benchcheck --bench .bench.out --source .
 
 briefcheck:
 	go run ./tools/briefcheck $(if $(ID),--id $(ID),)
