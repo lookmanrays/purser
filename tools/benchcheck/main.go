@@ -121,8 +121,11 @@ func ParseRule(comment string) (*Rule, error) {
 	}
 
 	ratio, err := strconv.ParseFloat(matches[3], 64)
-	if err != nil || ratio <= 0 {
+	if err != nil {
 		return nil, fmt.Errorf("invalid benchcheck ratio in %q: %w", comment, err)
+	}
+	if ratio <= 0 {
+		return nil, fmt.Errorf("invalid benchcheck ratio in %q: ratio must be positive, got %v", comment, ratio)
 	}
 
 	return &Rule{
@@ -137,10 +140,7 @@ func ParseRulesFromSource(source string) ([]Rule, error) {
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, "", source, parser.ParseComments)
 	if err != nil {
-		node, err = parser.ParseFile(fset, "", "package p\n"+source, parser.ParseComments)
-		if err != nil {
-			return nil, fmt.Errorf("parsing source: %w", err)
-		}
+		return nil, fmt.Errorf("parsing source: %w", err)
 	}
 
 	var rules []Rule
