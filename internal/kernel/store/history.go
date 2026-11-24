@@ -18,7 +18,65 @@ func (s *Store) Snapshot(revision *int64) (Snapshot, error) {
 		return Snapshot{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if revision == nil {
+		return headSnapshot(tx)
+	}
 	return s.fold(tx, revision)
+}
+
+func headSnapshot(tx *sql.Tx) (Snapshot, error) {
+	revision, hash, err := checkpoint(tx)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	// The INTEGER PRIMARY KEY lets SQLite find the tail without scanning the log.
+	last, err := scanBoundary(tx.QueryRow("SELECT revision, body FROM events ORDER BY revision DESC LIMIT 1"))
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		if revision != 0 {
+			return Snapshot{}, storeError("integrity_error", 1, "head checkpoint has no events")
+		}
+	case err != nil:
+		return Snapshot{}, err
+	case last.Revision != revision:
+		return Snapshot{}, storeError("integrity_error", min(revision, last.Revision+1), "head revision differs from the log")
+	case last.BatchStart+last.BatchSize-1 != revision:
+		return Snapshot{}, storeError("integrity_error", revision, "last event does not end its batch")
+	case last.Hash != hash:
+		return Snapshot{}, storeError("integrity_error", revision, "head hash differs from the last event")
+	}
+	p, err := readProjection(tx, revision)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	return Snapshot{revision, hash, p}, nil
+}
+
+func scanBoundary(row *sql.Row) (codec.Event, error) {
+	var revision int64
+	var body any
+	if err := row.Scan(&revision, &body); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return codec.Event{}, err
+		}
+		return codec.Event{}, databaseError(err)
+	}
+	raw, ok := body.([]byte)
+	if !ok {
+		return codec.Event{}, storeError("integrity_error", revision, "invalid boundary event body")
+	}
+	event, err := decodeEvent(raw, revision)
+	if err != nil {
+		return codec.Event{}, err
+	}
+	hash, err := event.ComputeHash()
+	if err != nil {
+		return codec.Event{}, fmt.Errorf("%w: %w", storeError("integrity_error", revision, "hash boundary event"), err)
+	}
+	if hash != event.Hash {
+		return codec.Event{}, storeError("integrity_error", revision, "invalid boundary event hash")
+	}
+	return event, nil
 }
 
 func (s *Store) fold(tx *sql.Tx, revision *int64) (Snapshot, error) {
@@ -26,19 +84,17 @@ func (s *Store) fold(tx *sql.Tx, revision *int64) (Snapshot, error) {
 	if revision != nil && (*revision < 0 || *revision > maxWireInteger) {
 		return Snapshot{}, storeError("bad_revision", *revision, "outside the wire range")
 	}
-	exists, err := identify(tx)
-	if err != nil {
-		return Snapshot{}, err
-	}
-	if !exists {
-		return Snapshot{}, storeError("unavailable", 0, "uninitialized store")
-	}
 	head, hash, err := checkpoint(tx)
 	if err != nil {
 		return Snapshot{}, err
 	}
 	if revision != nil && *revision == 0 {
 		return state, nil
+	}
+	if revision != nil && *revision <= head {
+		if saved, ok := s.history.load(tx, *revision, head, hash); ok {
+			return saved, nil
+		}
 	}
 	rows, err := tx.Query("SELECT revision, body FROM events ORDER BY revision")
 	if err != nil {
@@ -68,7 +124,7 @@ func (s *Store) fold(tx *sql.Tx, revision *int64) (Snapshot, error) {
 		}
 		state.Revision, state.HeadHash = event.Revision, event.Hash
 		for _, e := range batch {
-			state.Projection, err = s.apply(state.Projection, e)
+			state.Projection, _, err = s.apply(state.Projection, e)
 			if err != nil {
 				return Snapshot{}, err
 			}
@@ -77,6 +133,7 @@ func (s *Store) fold(tx *sql.Tx, revision *int64) (Snapshot, error) {
 			if *revision != state.Revision {
 				return Snapshot{}, storeError("bad_revision", *revision, "inside a batch")
 			}
+			s.history.save(state)
 			return state, nil
 		}
 		batch = batch[:0]
@@ -97,9 +154,16 @@ func (s *Store) fold(tx *sql.Tx, revision *int64) (Snapshot, error) {
 }
 
 func checkpoint(tx *sql.Tx) (int64, string, error) {
+	exists, err := identify(tx)
+	if err != nil {
+		return 0, "", err
+	}
+	if !exists {
+		return 0, "", storeError("unavailable", 0, "uninitialized store")
+	}
 	var revision int64
 	var hash string
-	err := tx.QueryRow(`SELECT head_revision, head_hash FROM meta WHERE id=1 AND (SELECT count(*) FROM meta)=1
+	err = tx.QueryRow(`SELECT head_revision, head_hash FROM meta WHERE id=1 AND (SELECT count(*) FROM meta)=1
 		AND EXISTS (SELECT 1 FROM pragma_table_list('meta') WHERE schema='main' AND type='table' AND ncol=3 AND strict=1)`).Scan(&revision, &hash)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, "", storeError("integrity_error", 0, "missing head checkpoint")
@@ -155,12 +219,11 @@ func decodeEvent(raw []byte, revision int64) (codec.Event, error) {
 	return event, nil
 }
 
-func (s *Store) apply(p projection.Projection, event codec.Event) (projection.Projection, error) {
+func (s *Store) apply(p projection.Projection, event codec.Event) (projection.Projection, projection.Changes, error) {
 	if event.V != 1 {
-		return p, storeError("unsupported_version", event.Revision, fmt.Sprintf("wire v%d", event.V))
+		return p, projection.Changes{}, storeError("unsupported_version", event.Revision, fmt.Sprintf("wire v%d", event.V))
 	}
-	next, _, err := s.registry.Apply(p, event)
-	return next, err
+	return s.registry.Apply(p, event)
 }
 
 // RawEvents reads original canonical bytes in the inclusive revision range.

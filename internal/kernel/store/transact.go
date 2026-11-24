@@ -18,7 +18,7 @@ func (s *Store) Transact(actorID, proposalID string, clock Clock, decide Decide)
 		return Snapshot{}, nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	snap, err := s.fold(tx, nil)
+	snap, err := headSnapshot(tx)
 	if err != nil {
 		return Snapshot{}, nil, err
 	}
@@ -43,12 +43,8 @@ func (s *Store) Transact(actorID, proposalID string, clock Clock, decide Decide)
 	if len(specs) == 0 {
 		return snap, nil, nil
 	}
-	previous := snap.Projection
 	events, err := s.append(tx, &snap, actorID, proposalID, codec.FormatTime(at), specs)
 	if err != nil {
-		return Snapshot{}, nil, err
-	}
-	if err := publish(tx, previous, snap); err != nil {
 		return Snapshot{}, nil, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -63,6 +59,11 @@ func (s *Store) append(tx *sql.Tx, snap *Snapshot, actorID, proposalID, at strin
 		return nil, storeError("integrity_error", start, "batch exceeds the wire revision range")
 	}
 	events := make([]codec.Event, size)
+	changes := batchChanges{
+		records:  make(map[string]struct{}),
+		receipts: make(map[[2]string]struct{}),
+		edges:    make(map[rowIdentity]struct{}),
+	}
 	for i, spec := range specs {
 		e := codec.Event{V: 1, EventVersion: spec.EventVersion, Revision: start + int64(i), BatchStart: start,
 			BatchSize: size, ActorID: actorID, ProposalID: proposalID, At: at, Type: spec.Type, Data: spec.Data, PrevHash: snap.HeadHash}
@@ -81,11 +82,16 @@ func (s *Store) append(tx *sql.Tx, snap *Snapshot, actorID, proposalID, at strin
 		if _, err := tx.Exec("INSERT INTO events VALUES (?, ?)", e.Revision, raw); err != nil {
 			return nil, databaseError(err)
 		}
-		snap.Projection, err = s.apply(snap.Projection, e)
+		next, delta, err := s.apply(snap.Projection, e)
 		if err != nil {
 			return nil, err
 		}
+		changes.add(delta)
+		snap.Projection = next
 		events[i], snap.Revision, snap.HeadHash = e, e.Revision, e.Hash
+	}
+	if err := changes.publish(tx, *snap); err != nil {
+		return nil, err
 	}
 	return events, nil
 }
