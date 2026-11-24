@@ -35,7 +35,12 @@ func (s *Store) Transact(actorID, proposalID string, clock Clock, decide Decide)
 	if err != nil {
 		return Snapshot{}, nil, err
 	}
-	at := clock()
+	// decide sees the instant the events will record, so a decision at the edge
+	// of an expiry agrees with what replay shows.
+	at, err := codec.ParseTime(codec.FormatTime(clock()))
+	if err != nil {
+		return Snapshot{}, nil, err
+	}
 	specs, err := decide(Snapshot{snap.Revision, snap.HeadHash, copyProjection}, at)
 	if err != nil {
 		return Snapshot{}, nil, err

@@ -64,7 +64,7 @@ functions:
     pre: ["proposalID is a valid ID (codec.ValidID)", "actorID is a non-empty string from trusted ingress, such as principal:local; it is not a record ID"]
     post:
       - "takes write ownership with BEGIN IMMEDIATE before reading the snapshot"
-      - "samples clock exactly once and passes the instant to decide"
+      - "samples clock exactly once and passes decide the instant it records: codec.ParseTime(codec.FormatTime(sample)), in UTC at microsecond precision, so a decision and the stored at agree"
       - "events get contiguous revisions, shared batch_start and batch_size, at = FormatTime(sample), actor_id and proposal_id from the arguments"
       - "events, receipts, records, edges and head are written in the same transaction"
       - "an empty event list commits nothing and returns the unchanged snapshot"
