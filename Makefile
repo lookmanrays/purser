@@ -1,5 +1,3 @@
-FUZZ_PACKAGE ?= ./internal/kernel/codec
-FUZZ_TARGET ?= .
 FUZZ_TIME ?= 30s
 
 .PHONY: check test fuzz bench briefcheck
@@ -8,13 +6,14 @@ check:
 	go build ./...
 	go vet ./...
 	golangci-lint run
-	go test -race ./...
+	go test -race -coverprofile=.coverage.out ./...
+	go run ./tools/covercheck --coverprofile=.coverage.out
 
 test:
 	go test ./...
 
 fuzz:
-	go test -run '^$$' -fuzz '$(FUZZ_TARGET)' -fuzztime '$(FUZZ_TIME)' $(FUZZ_PACKAGE)
+	go run ./tools/covercheck fuzz-targets -run -fuzztime $(FUZZ_TIME) .
 
 bench:
 	go test -run '^$$' -bench . -benchmem -count 5 ./... > .bench.out

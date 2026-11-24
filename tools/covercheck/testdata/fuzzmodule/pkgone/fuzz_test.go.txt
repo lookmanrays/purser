@@ -1,0 +1,14 @@
+package pkgone
+
+import "testing"
+
+func FuzzTargetA(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {})
+}
+
+func FuzzTargetB(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {})
+}
+
+// Fuzzy is a helper function, not a fuzz target.
+func Fuzzy() {}
