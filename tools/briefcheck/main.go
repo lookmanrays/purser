@@ -302,6 +302,22 @@ func diffPaths(root, base string) (res []string) {
 }
 
 // Scope checks changes on branch against its base.
+// inScopeDir reports whether p lies in a package directory of scope.write: a
+// pattern matches p itself, or a pattern names a file in p's directory, as when
+// a brief that adds files to an existing package lists them one by one.
+func inScopeDir(p string, patterns []string) bool {
+	if matchesAny(p, patterns) {
+		return true
+	}
+	dir := filepath.ToSlash(filepath.Dir(p))
+	for _, w := range patterns {
+		if !strings.ContainsAny(w, "*?[{") && filepath.ToSlash(filepath.Dir(w)) == dir {
+			return true
+		}
+	}
+	return false
+}
+
 func Scope(repoRoot, id, branch string) (violations []string, err error) {
 	b, err := findBrief(repoRoot, id)
 	if err != nil {
@@ -336,7 +352,7 @@ func Scope(repoRoot, id, branch string) (violations []string, err error) {
 				} else if !isBriefDoc && (!isStub || parts[0] != "D") && !isDeps && !matchesAny(p, b.Scope.Write) {
 					violations = append(violations, "path outside scope.write: "+p)
 				}
-			} else if !isBriefDoc && !matchesAny(p, b.TestsFrozen) && (!isStub || !matchesAny(p, b.Scope.Write)) {
+			} else if !isBriefDoc && !matchesAny(p, b.TestsFrozen) && (!isStub || !inScopeDir(p, b.Scope.Write)) {
 				violations = append(violations, "path outside tests scope: "+p)
 			}
 		}
