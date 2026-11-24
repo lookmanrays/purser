@@ -73,7 +73,6 @@ linters:
             - github.com/lookmanrays/purser/internal/kernel/codec$
             - github.com/lookmanrays/purser/internal/kernel/projection$
             - github.com/lookmanrays/purser/internal/kernel/store$
-            - github.com/lookmanrays/purser/internal/kernel/artifacts$
             - github.com/lookmanrays/purser/internal/kernel/view$
             - github.com/lookmanrays/purser/internal/kernel/impact$
         operators:
