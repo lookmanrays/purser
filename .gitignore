@@ -230,3 +230,7 @@ __marimo__/
 
 # Agent worktrees (see docs/agents/README.md)
 /.worktrees/
+
+# make check and make bench outputs
+/.coverage.out
+/.bench.out
