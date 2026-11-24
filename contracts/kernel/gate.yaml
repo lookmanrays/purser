@@ -4,7 +4,7 @@ version: 1
 status: draft
 package: internal/kernel/gate
 layer: kernel
-allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/store, internal/kernel/artifacts, internal/kernel/view, internal/kernel/impact]
+allowed_imports: [internal/kernel/codec, internal/kernel/projection, internal/kernel/store, internal/kernel/view, internal/kernel/impact]
 owner: P1-03
 summary: >
   The only admission path. Checks binding and envelope, deduplicates by actor
@@ -51,6 +51,15 @@ interface:
     func (r *ReadSet) Absent(id string)
     func (r *ReadSet) Collection(key string)
 
+    // ArtifactStore is the content-addressed byte store operators use to stage
+    // witness bytes. *artifacts.Store (P1-04) implements it; the gate does not
+    // import that package, so it can be built and tested before P1-04.
+    type ArtifactStore interface {
+        Put(data []byte) (digest string, err error)
+        Get(digest string) ([]byte, error)
+        Has(digest string) (bool, error)
+    }
+
     // Tentative is the state an operator sees: the committed snapshot plus
     // the events earlier ops in the same proposal produced.
     type Tentative struct {
@@ -59,7 +68,7 @@ interface:
         At         time.Time
         Binding    Binding
         Commitment string
-        Artifacts  *artifacts.Store
+        Artifacts  ArtifactStore
     }
 
     type Rejection struct {
@@ -87,7 +96,7 @@ interface:
 
     type Options struct {
         Store     *store.Store
-        Artifacts *artifacts.Store
+        Artifacts ArtifactStore
         Clock     store.Clock
     }
 
