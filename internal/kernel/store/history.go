@@ -25,13 +25,6 @@ func (s *Store) Snapshot(revision *int64) (Snapshot, error) {
 }
 
 func headSnapshot(tx *sql.Tx) (Snapshot, error) {
-	exists, err := identify(tx)
-	if err != nil {
-		return Snapshot{}, err
-	}
-	if !exists {
-		return Snapshot{}, storeError("unavailable", 0, "uninitialized store")
-	}
 	revision, hash, err := checkpoint(tx)
 	if err != nil {
 		return Snapshot{}, err
@@ -91,19 +84,17 @@ func (s *Store) fold(tx *sql.Tx, revision *int64) (Snapshot, error) {
 	if revision != nil && (*revision < 0 || *revision > maxWireInteger) {
 		return Snapshot{}, storeError("bad_revision", *revision, "outside the wire range")
 	}
-	exists, err := identify(tx)
-	if err != nil {
-		return Snapshot{}, err
-	}
-	if !exists {
-		return Snapshot{}, storeError("unavailable", 0, "uninitialized store")
-	}
 	head, hash, err := checkpoint(tx)
 	if err != nil {
 		return Snapshot{}, err
 	}
 	if revision != nil && *revision == 0 {
 		return state, nil
+	}
+	if revision != nil && *revision <= head {
+		if saved, ok := s.history.load(tx, *revision, head, hash); ok {
+			return saved, nil
+		}
 	}
 	rows, err := tx.Query("SELECT revision, body FROM events ORDER BY revision")
 	if err != nil {
@@ -142,6 +133,7 @@ func (s *Store) fold(tx *sql.Tx, revision *int64) (Snapshot, error) {
 			if *revision != state.Revision {
 				return Snapshot{}, storeError("bad_revision", *revision, "inside a batch")
 			}
+			s.history.save(state)
 			return state, nil
 		}
 		batch = batch[:0]
@@ -162,9 +154,16 @@ func (s *Store) fold(tx *sql.Tx, revision *int64) (Snapshot, error) {
 }
 
 func checkpoint(tx *sql.Tx) (int64, string, error) {
+	exists, err := identify(tx)
+	if err != nil {
+		return 0, "", err
+	}
+	if !exists {
+		return 0, "", storeError("unavailable", 0, "uninitialized store")
+	}
 	var revision int64
 	var hash string
-	err := tx.QueryRow(`SELECT head_revision, head_hash FROM meta WHERE id=1 AND (SELECT count(*) FROM meta)=1
+	err = tx.QueryRow(`SELECT head_revision, head_hash FROM meta WHERE id=1 AND (SELECT count(*) FROM meta)=1
 		AND EXISTS (SELECT 1 FROM pragma_table_list('meta') WHERE schema='main' AND type='table' AND ncol=3 AND strict=1)`).Scan(&revision, &hash)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, "", storeError("integrity_error", 0, "missing head checkpoint")

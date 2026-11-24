@@ -39,6 +39,7 @@ type Store struct {
 	db       *sql.DB
 	path     string
 	registry *projection.Registry
+	history  historicalCache
 }
 
 // Open prepares a store handle. Initialize creates or checks its database.
@@ -59,7 +60,7 @@ func Open(path string, opts Options) (*Store, error) {
 	if err != nil {
 		return nil, databaseError(err)
 	}
-	return &Store{db, absolute, opts.Registry}, nil
+	return &Store{db: db, path: absolute, registry: opts.Registry}, nil
 }
 
 // Close releases the database handle.
