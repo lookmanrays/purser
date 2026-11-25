@@ -87,3 +87,50 @@ v2_kinds:
     output_tokens: {type: integer}
     cached_tokens: {type: integer}
     usd_micros: {type: integer}
+
+# Validation boundaries (P0-03 escalation, PR #45)
+boundaries:
+  proposal: >
+    Validates the v1 ingress envelope only: closed top-level fields, v == 1,
+    IDs in the grammar, ops a non-empty array. Each ops entry may be any JSON
+    value. The gate validates ops, and a malformed op inside a valid envelope
+    gets a rejected invalid_op receipt (kernel-v1.md, admission). P0-03 defines
+    no per-op schemas.
+  snapshot: >
+    The three-key wire shape {revision, head_hash, projection}. A golden dump
+    row from P0-06 adds projection_checksum; that row is not a snapshot and
+    has no schema. AC-2 validates the records under projection.records in both
+    sources.
+  unknown_fields: >
+    Every object a schema defines is closed (additionalProperties: false) at
+    every depth. Proposal ops entries are not schema-defined objects.
+
+# Go API of internal/schema. Declarations are exact; stubs and the builder use them verbatim.
+interface:
+  go: |
+    package schema
+
+    // ErrUnknownSchema is wrapped by the error Validate returns for a schema
+    // name that is not embedded.
+    var ErrUnknownSchema = errors.New("schema: unknown schema name")
+
+    // ValidationError reports one violation of a schema.
+    type ValidationError struct {
+        Schema  string // the name passed to Validate
+        Pointer string // RFC 6901 pointer into the value; see pointer rules below
+        Message string // human-readable reason; tests must not assert its text
+    }
+
+    func (e *ValidationError) Error() string
+
+    // Validate checks value against the named schema. value is a JSON value as
+    // codec.Decode produces it: map[string]any, []any, string, int64, bool or nil.
+    // schemaName is the schema's file name in contracts/records without
+    // ".schema.json", for example "proposal", "fields.Commitment" or "graph.node".
+    // It returns nil, a *ValidationError, or an error wrapping ErrUnknownSchema.
+    func Validate(schemaName string, value any) error
+  pointer_rules:
+    - "a missing required property: the pointer of that property, e.g. /data/statement for an event whose data lacks statement"
+    - "a property that is not allowed: the pointer of that property, e.g. /data/extra"
+    - "any other violation: the pointer of the value that fails, e.g. /base_revision; the whole value is the empty pointer \"\""
+    - "with several violations, which one is reported is unspecified; tests use values with exactly one violation"
