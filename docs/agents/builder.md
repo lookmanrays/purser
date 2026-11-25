@@ -46,7 +46,8 @@ These come from the P1-01 bake-off, where a build passed every frozen test and s
 
 1. For size M or L, write an execution plan first: files, order, and the command that proves each AC.
 2. Implement in small commits.
-3. Keep going until every frozen test passes and `make check` is green. Do not stop early and do not report partial work as done. If something truly blocks you, name the AC and the reason.
+3. If your launch prompt allows delegation to Antigravity, follow [delegation.md](delegation.md); otherwise do all the work yourself.
+4. Keep going until every frozen test passes and `make check` is green. Do not stop early and do not report partial work as done. If something truly blocks you, name the AC and the reason.
 
 ## 6. Check
 

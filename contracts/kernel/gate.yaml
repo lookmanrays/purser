@@ -38,7 +38,7 @@ interface:
         ProposalID    string
         Commitment    string
         BaseRevision  int64
-        Ops           []map[string]any
+        Ops           []any // each entry exactly as decoded; a non-object entry is rejected with invalid_op
         Justification []string
     }
 
@@ -106,7 +106,7 @@ interface:
     func RegisterM1(g *Gate) error
 functions:
   - name: ParseProposal
-    post: ["closed envelope fields; v == 1; ops non-empty; IDs valid"]
+    post: ["closed envelope fields; v == 1; ops non-empty; IDs valid", "op entries are kept exactly as decoded, whatever their JSON type, so RequestDigest covers them; operators validate them later"]
     errors: [invalid_input]
     examples:
       - {vector: "wire-v1.json#proposals"}
@@ -120,12 +120,13 @@ functions:
     post:
       - "order: identity and dedup, base validity, per-op syntax and authorization, read conflicts, lifecycle and time"
       - "same (actor, proposal ID) and digest returns the latest receipt and appends nothing"
-      - "same pair with a different digest returns id_conflict and appends nothing"
+      - "same pair with a different digest returns the typed error id_conflict: no receipt, the earlier receipt stays, nothing is appended"
+      - "a non-object op entry fails per-op syntax with invalid_op, in its place in the order (after base validity and scope)"
       - "a read dependency changed after base_revision gives stale_base with conflicts sorted by key"
       - "ops apply in order to tentative state; a rejection discards all tentative events"
       - "the receipt event and admitted events form one batch; a rejection is a one-event batch"
       - "a pending outcome records the approval and a needs_principal receipt with the approval ID"
-    errors: [invalid_input, unauthenticated, unavailable, integrity_error]
+    errors: [invalid_input, unauthenticated, id_conflict, unavailable, integrity_error]
     examples:
       - {vector: "wire-v1.json#expected.admission_replies"}
       - {vector: "wire-v1.json#independent_case_branches"}
@@ -138,7 +139,7 @@ errors:
   unauthenticated: "binding failed ingress checks; no receipt"
   unavailable: "storage unavailable; no receipt"
   integrity_error: "history failed verification; no receipt"
-  id_conflict: "receipted: same actor and proposal ID with a different digest"
+  id_conflict: "no receipt: same actor and proposal ID with a different digest; the earlier receipt stays and nothing is appended"
   stale_base: "receipted: a read dependency changed since base_revision"
   bad_revision: "receipted: base_revision beyond the head or inside a batch"
   unknown_op: "receipted: no operator with that name"
