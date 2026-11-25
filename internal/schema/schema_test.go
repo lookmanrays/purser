@@ -29,7 +29,7 @@ func TestAC3_V2Fields(t *testing.T) {
 	commitment := wire.Proposals[0]["commitment"]
 	work := wire.Events[0]["data"].(map[string]any)["root"]
 	digest := wire.RequestDigests[0]
-	commit := testvectors.Lifecycle().Subjects["B"].(map[string]any)["digest"]
+	commit := testvectors.Lifecycle().Subjects["B"].(map[string]any)
 	tests := []struct {
 		kind, required string
 		fields         map[string]any
@@ -92,6 +92,14 @@ func TestAC3_V2Fields(t *testing.T) {
 				value["extra"] = true
 				_ = requireViolation(t, name, value)
 			})
+			if test.kind == "GraphSnapshot" {
+				t.Run("bare_git_commit_digest", func(t *testing.T) {
+					defer guard(t)
+					value := maps.Clone(test.fields)
+					value["git_commit"] = commit["digest"]
+					_ = requireViolation(t, name, value)
+				})
+			}
 		})
 	}
 }
