@@ -1,0 +1,184 @@
+{
+  "_comment": [
+  "Generated with python3.11 -I and reference/python on sys.path. Copy the proposal, binding, event and legacy event inputs from wire-v1.json. Apply the mutations named in each case and call gate.envelope, gate.authenticate, or store._event and projector.apply_event. Recompute the event hash after mutating an event.",
+  "Use an empty projection for CommitmentCreated parity and fold the first two wire events before ApprovalRequested parity. Check the six keys of each proposal envelope and leave ops entries to gate.admit. For each opaque-op case admit into a fresh store with the first wire clock and retain the exact durable receipt.",
+  "Use the first Result in the sorted golden snapshots for candidate probes and evaluate rules.candidate. Use queries.status on the same snapshot rows at the first wire clock, taking the first nonempty answer row for each question. Run wire.decode and wire.canonical on the raw inputs. Raw decode errors delimit codec input and are not schema errors."
+],
+  "validation": [
+    {"name": "reference_proposal", "schema": "proposal", "valid": true, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": 1}},
+    {"name": "missing_v", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create"}},
+    {"name": "missing_proposal_id", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "v": 1}},
+    {"name": "missing_commitment", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": 1}},
+    {"name": "missing_base_revision", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"commitment": "C-notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": 1}},
+    {"name": "missing_ops", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "proposal_id": "p-create", "v": 1}},
+    {"name": "missing_justification", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": 1}},
+    {"name": "not_an_object", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": []},
+    {"name": "unknown_version", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": 2}},
+    {"name": "boolean_version", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": true}},
+    {"name": "wrong_revision_type", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": "0", "commitment": "C-notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": 1}},
+    {"name": "empty_ops", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [], "proposal_id": "p-create", "v": 1}},
+    {"name": "ops_not_array", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": {}, "proposal_id": "p-create", "v": 1}},
+    {"name": "justification_not_array", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "justification": {}, "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": 1}},
+    {"name": "empty_justification_entry", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [""], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": 1}},
+    {"name": "non_string_justification_entry", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [false], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": 1}},
+    {"name": "extra_proposal_field", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "extra": true, "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": 1}},
+    {"name": "space_in_id", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p create", "v": 1}},
+    {"name": "leading_digit_in_id", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "1create", "v": 1}},
+    {"name": "trailing_newline_in_id", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create\n", "v": 1}},
+    {"name": "id_over_length_limit", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "v": 1}},
+    {"name": "invalid_commitment_id", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C:notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": 1}},
+    {"name": "approval_id_in_commitment", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": 1}},
+    {"name": "approval_id_in_proposal", "reference_code": "invalid_input", "schema": "proposal", "valid": false, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884", "v": 1}},
+    {"name": "id_at_length_limit", "schema": "proposal", "valid": true, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "v": 1}},
+    {"name": "negative_base_revision_is_shape_valid", "schema": "proposal", "valid": true, "value": {"base_revision": -1, "commitment": "C-notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": 1}},
+    {"name": "largest_wire_integer", "schema": "proposal", "valid": true, "value": {"base_revision": 9007199254740991, "commitment": "C-notify", "justification": [], "ops": [{"id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": 1}},
+    {"name": "op_with_extra_field", "reference_receipt": {"actor_id": "principal:local", "code": "invalid_op", "details": {}, "digest": "7b17599f13f65829683cd35c2f852b30e991f6266794d62278d740ca48d44a08", "disposition": "rejected", "proposal_id": "p-create", "revision": 1}, "schema": "proposal", "valid": true, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [{"extra": true, "id": "C-notify", "op": "commitment.create", "root": "W-root", "statement": "Add notification retries."}], "proposal_id": "p-create", "v": 1}},
+    {"name": "op_without_name", "reference_receipt": {"actor_id": "principal:local", "code": "invalid_op", "details": {}, "digest": "89a4be2eaefdac3526a0eb9905feebb86ed93c9888b2aeb684581ab5357e9531", "disposition": "rejected", "proposal_id": "p-create", "revision": 1}, "schema": "proposal", "valid": true, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [{}], "proposal_id": "p-create", "v": 1}},
+    {"name": "unknown_op_name", "reference_receipt": {"actor_id": "principal:local", "code": "unknown_op", "details": {}, "digest": "c67b4f86add1adad905fb25f0cb6a16d5ea80eac6050597f60d5d2aa56f4e8fe", "disposition": "rejected", "proposal_id": "p-create", "revision": 1}, "schema": "proposal", "valid": true, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [{"op": "fixture.unknown"}], "proposal_id": "p-create", "v": 1}},
+    {"name": "null_op", "reference_receipt": {"actor_id": "principal:local", "code": "invalid_op", "details": {}, "digest": "72b43d1433a04f12b67b3288c2ddc72b98b58d04ae68bae4ddd29326c15bd1fd", "disposition": "rejected", "proposal_id": "p-create", "revision": 1}, "schema": "proposal", "valid": true, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [null], "proposal_id": "p-create", "v": 1}},
+    {"name": "array_op", "reference_receipt": {"actor_id": "principal:local", "code": "invalid_op", "details": {}, "digest": "a6a4469a0e66601383fa007c52d7c64dd6094adb80382d833435de3418a50cbf", "disposition": "rejected", "proposal_id": "p-create", "revision": 1}, "schema": "proposal", "valid": true, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [[]], "proposal_id": "p-create", "v": 1}},
+    {"name": "integer_op", "reference_receipt": {"actor_id": "principal:local", "code": "invalid_op", "details": {}, "digest": "a3fbd79e47993589e6d80d8ba8d73bc8cc8862ce833539835905fb210207236c", "disposition": "rejected", "proposal_id": "p-create", "revision": 1}, "schema": "proposal", "valid": true, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [3], "proposal_id": "p-create", "v": 1}},
+    {"name": "boolean_op", "reference_receipt": {"actor_id": "principal:local", "code": "invalid_op", "details": {}, "digest": "cb5949097ae8763d93a1dc6c2b0be11c5e7a66c992906c19bf0f0cf2937ca7a7", "disposition": "rejected", "proposal_id": "p-create", "revision": 1}, "schema": "proposal", "valid": true, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": [true], "proposal_id": "p-create", "v": 1}},
+    {"name": "string_op", "reference_receipt": {"actor_id": "principal:local", "code": "invalid_op", "details": {}, "digest": "b5161862fb556f0b5461907057310f30b784b6e934f6b1bb4a7cf2e81091c3f3", "disposition": "rejected", "proposal_id": "p-create", "revision": 1}, "schema": "proposal", "valid": true, "value": {"base_revision": 0, "commitment": "C-notify", "justification": [], "ops": ["commitment.create"], "proposal_id": "p-create", "v": 1}},
+    {"name": "reference_event", "schema": "event", "valid": true, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:00.000000Z", "batch_size": 2, "batch_start": 1, "data": {"id": "C-notify", "principal": "principal:local", "root": "W-root", "statement": "Add notification retries."}, "event_version": 1, "hash": "a2340401f025a4a653cf53750e86f8ff0a1c7e1668a1c212214e2b75e6db2870", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "p-create", "revision": 1, "type": "CommitmentCreated", "v": 1}},
+    {"name": "reference_legacy_event", "schema": "event", "valid": true, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:00.000000Z", "batch_size": 2, "batch_start": 1, "data": {"id": "C-notify", "principal": "principal:local", "root": "W-root", "text": "Add notification retries."}, "event_version": 0, "hash": "880fbc81f79b61d83ab01f274a94e5d4e60c2a4fe8ec976129bdd05c3a643874", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "p-create", "revision": 1, "type": "CommitmentCreated", "v": 1}},
+    {"name": "unknown_event_kind", "reference_code": "unsupported_version", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:00.000000Z", "batch_size": 2, "batch_start": 1, "data": {"id": "C-notify", "principal": "principal:local", "root": "W-root", "statement": "Add notification retries."}, "event_version": 1, "hash": "b0921f97d9f8747d2f26ae20074a4da17dece0a0e846436cc3bd0953182ad125", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "p-create", "revision": 1, "type": "FixtureUnknown", "v": 1}},
+    {"name": "unknown_event_version", "reference_code": "unsupported_version", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:00.000000Z", "batch_size": 2, "batch_start": 1, "data": {"id": "C-notify", "principal": "principal:local", "root": "W-root", "statement": "Add notification retries."}, "event_version": 9, "hash": "122161162ec627ff8c1e8440861fe54d36045cf5d43a8ff63e2ef697b9aef134", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "p-create", "revision": 1, "type": "CommitmentCreated", "v": 1}},
+    {"name": "unknown_wire_version", "reference_code": "unsupported_version", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:00.000000Z", "batch_size": 2, "batch_start": 1, "data": {"id": "C-notify", "principal": "principal:local", "root": "W-root", "statement": "Add notification retries."}, "event_version": 1, "hash": "28ca8b4f67fb0c51bf6657128fd501ace238a6443748b8d2b83749ddfe4b1e4f", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "p-create", "revision": 1, "type": "CommitmentCreated", "v": 2}},
+    {"name": "legacy_payload_in_current_event", "reference_code": "integrity_error", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:00.000000Z", "batch_size": 2, "batch_start": 1, "data": {"id": "C-notify", "principal": "principal:local", "root": "W-root", "text": "Add notification retries."}, "event_version": 1, "hash": "9bd7d58567f2effa632ea45e2c6333ef684a4294dca52adf713bf846ceb67bfa", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "p-create", "revision": 1, "type": "CommitmentCreated", "v": 1}},
+    {"name": "current_payload_in_legacy_event", "reference_code": "integrity_error", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:00.000000Z", "batch_size": 2, "batch_start": 1, "data": {"id": "C-notify", "principal": "principal:local", "root": "W-root", "statement": "Add notification retries."}, "event_version": 0, "hash": "bfb616d3ddfbdbbd95aa0910db4bc31fccdb4ebe5d97f547cd3a9d8d2eb38895", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "p-create", "revision": 1, "type": "CommitmentCreated", "v": 1}},
+    {"name": "missing_payload_property", "reference_code": "integrity_error", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:00.000000Z", "batch_size": 2, "batch_start": 1, "data": {"id": "C-notify", "principal": "principal:local", "root": "W-root"}, "event_version": 1, "hash": "b01a19d8d7cd743549425eff4e4c08a238d88e93630a7872a67c40fca6b2bdb4", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "p-create", "revision": 1, "type": "CommitmentCreated", "v": 1}},
+    {"name": "extra_payload_property", "reference_code": "integrity_error", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:00.000000Z", "batch_size": 2, "batch_start": 1, "data": {"extra": true, "id": "C-notify", "principal": "principal:local", "root": "W-root", "statement": "Add notification retries."}, "event_version": 1, "hash": "5807b9a93aa8d72385eb3b29a4c5d2c78c2772f3f19fdc0d9a27fec6e923a971", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "p-create", "revision": 1, "type": "CommitmentCreated", "v": 1}},
+    {"name": "wrong_payload_property_type", "reference_code": "integrity_error", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:00.000000Z", "batch_size": 2, "batch_start": 1, "data": {"id": "C-notify", "principal": "principal:local", "root": "W-root", "statement": false}, "event_version": 1, "hash": "eca160b20bb28a89f244967e78382ee7ce8de88a2f078b41289cab186c5946e9", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "p-create", "revision": 1, "type": "CommitmentCreated", "v": 1}},
+    {"name": "wrong_payload_type", "reference_code": "integrity_error", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:00.000000Z", "batch_size": 2, "batch_start": 1, "data": [], "event_version": 1, "hash": "766b403439c3c0a7b15833251ab79a269cb149afda17775bb573234339480c88", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "p-create", "revision": 1, "type": "CommitmentCreated", "v": 1}},
+    {"name": "unknown_event_envelope_property", "reference_code": "integrity_error", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:00.000000Z", "batch_size": 2, "batch_start": 1, "data": {"id": "C-notify", "principal": "principal:local", "root": "W-root", "statement": "Add notification retries."}, "event_version": 1, "extra": true, "hash": "67840ed98488d242c3ece4b2e4c58438dc2c80c754a5d2c1bd9054514e0713de", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "p-create", "revision": 1, "type": "CommitmentCreated", "v": 1}},
+    {"name": "wrong_event_integer_type", "reference_code": "integrity_error", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:00.000000Z", "batch_size": true, "batch_start": 1, "data": {"id": "C-notify", "principal": "principal:local", "root": "W-root", "statement": "Add notification retries."}, "event_version": 1, "hash": "b76e5f4bd26c48853fef819fea83da46658e07accd2713f8f5005e7e140e43a7", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "p-create", "revision": 1, "type": "CommitmentCreated", "v": 1}},
+    {"name": "zero_batch_size", "reference_code": "integrity_error", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:00.000000Z", "batch_size": 0, "batch_start": 1, "data": {"id": "C-notify", "principal": "principal:local", "root": "W-root", "statement": "Add notification retries."}, "event_version": 1, "hash": "53de7886681e7859123a43e4182a08467e364ac9fc327cd00b6234a005b046ac", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "p-create", "revision": 1, "type": "CommitmentCreated", "v": 1}},
+    {"name": "noncanonical_event_time", "reference_code": "integrity_error", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:00.000000Z ", "batch_size": 2, "batch_start": 1, "data": {"id": "C-notify", "principal": "principal:local", "root": "W-root", "statement": "Add notification retries."}, "event_version": 1, "hash": "0e3cd0969a356335697b7e03a4c73fb9a2db3a70522d52857a54a6616aa54e7e", "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000", "proposal_id": "p-create", "revision": 1, "type": "CommitmentCreated", "v": 1}},
+    {"name": "reference_approval_request", "schema": "event", "valid": true, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:01.000000Z", "batch_size": 2, "batch_start": 3, "data": {"expires_at": "2026-11-19T12:00:00.000000Z", "id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884", "read_versions": [{"changed": 1, "key": "C-notify"}], "request": {"base_revision": 2, "commitment": "C-notify", "justification": [], "ops": [{"expires_at": "2026-11-19T12:00:00.000000Z", "id": "C-notify", "op": "commitment.request_acceptance"}], "proposal_id": "p-hold", "v": 1}, "request_digest": "19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884", "requester": "principal:local"}, "event_version": 1, "hash": "c5361fb0babb92bc9b9592b4331f17921e9b798b19c81fd804f9b4b0f38df7e3", "prev_hash": "9afcd4fca372dfdb97e018f0868d898df0e43c5704ccefc309d241accfd002a6", "proposal_id": "p-hold", "revision": 3, "type": "ApprovalRequested", "v": 1}},
+    {"name": "missing_read_version_property", "reference_code": "integrity_error", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:01.000000Z", "batch_size": 2, "batch_start": 3, "data": {"expires_at": "2026-11-19T12:00:00.000000Z", "id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884", "read_versions": [{"key": "C-notify"}], "request": {"base_revision": 2, "commitment": "C-notify", "justification": [], "ops": [{"expires_at": "2026-11-19T12:00:00.000000Z", "id": "C-notify", "op": "commitment.request_acceptance"}], "proposal_id": "p-hold", "v": 1}, "request_digest": "19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884", "requester": "principal:local"}, "event_version": 1, "hash": "cbe4b0f797735f74c1a2fb77bcc4861c3f97e3162b0f4afdde67c77bd54000ed", "prev_hash": "9afcd4fca372dfdb97e018f0868d898df0e43c5704ccefc309d241accfd002a6", "proposal_id": "p-hold", "revision": 3, "type": "ApprovalRequested", "v": 1}},
+    {"name": "extra_read_version_property", "reference_code": "integrity_error", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:01.000000Z", "batch_size": 2, "batch_start": 3, "data": {"expires_at": "2026-11-19T12:00:00.000000Z", "id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884", "read_versions": [{"changed": 1, "extra": true, "key": "C-notify"}], "request": {"base_revision": 2, "commitment": "C-notify", "justification": [], "ops": [{"expires_at": "2026-11-19T12:00:00.000000Z", "id": "C-notify", "op": "commitment.request_acceptance"}], "proposal_id": "p-hold", "v": 1}, "request_digest": "19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884", "requester": "principal:local"}, "event_version": 1, "hash": "b81844ef7be67d088f4a19733e9be4b37a0ba1b76a12b5e0f03479c298b7bbe7", "prev_hash": "9afcd4fca372dfdb97e018f0868d898df0e43c5704ccefc309d241accfd002a6", "proposal_id": "p-hold", "revision": 3, "type": "ApprovalRequested", "v": 1}},
+    {"name": "wrong_read_version_type", "reference_code": "integrity_error", "schema": "event", "valid": false, "value": {"actor_id": "principal:local", "at": "2026-11-18T12:00:01.000000Z", "batch_size": 2, "batch_start": 3, "data": {"expires_at": "2026-11-19T12:00:00.000000Z", "id": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884", "read_versions": [{"changed": false, "key": "C-notify"}], "request": {"base_revision": 2, "commitment": "C-notify", "justification": [], "ops": [{"expires_at": "2026-11-19T12:00:00.000000Z", "id": "C-notify", "op": "commitment.request_acceptance"}], "proposal_id": "p-hold", "v": 1}, "request_digest": "19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884", "requester": "principal:local"}, "event_version": 1, "hash": "feac31a1e58a05588ceb391c781b3fb135fe24fa66844f3b0fac1f888aedc50a", "prev_hash": "9afcd4fca372dfdb97e018f0868d898df0e43c5704ccefc309d241accfd002a6", "proposal_id": "p-hold", "revision": 3, "type": "ApprovalRequested", "v": 1}},
+    {"name": "reference_binding", "schema": "binding", "valid": true, "value": {"actor_id": "principal:local", "assignment": null, "commitment": null, "principal_id": "principal:local", "role": "principal"}},
+    {"name": "binding_missing_actor_id", "reference_code": "unauthenticated", "schema": "binding", "valid": false, "value": {"assignment": null, "commitment": null, "principal_id": "principal:local", "role": "principal"}},
+    {"name": "binding_missing_role", "reference_code": "unauthenticated", "schema": "binding", "valid": false, "value": {"actor_id": "principal:local", "assignment": null, "commitment": null, "principal_id": "principal:local"}},
+    {"name": "binding_missing_principal_id", "reference_code": "unauthenticated", "schema": "binding", "valid": false, "value": {"actor_id": "principal:local", "assignment": null, "commitment": null, "role": "principal"}},
+    {"name": "binding_missing_commitment", "reference_code": "unauthenticated", "schema": "binding", "valid": false, "value": {"actor_id": "principal:local", "assignment": null, "principal_id": "principal:local", "role": "principal"}},
+    {"name": "binding_missing_assignment", "reference_code": "unauthenticated", "schema": "binding", "valid": false, "value": {"actor_id": "principal:local", "commitment": null, "principal_id": "principal:local", "role": "principal"}},
+    {"name": "binding_actor_wrong_type", "reference_code": "unauthenticated", "schema": "binding", "valid": false, "value": {"actor_id": 1, "assignment": null, "commitment": null, "principal_id": "principal:local", "role": "principal"}},
+    {"name": "binding_role_wrong_type", "reference_code": "unauthenticated", "schema": "binding", "valid": false, "value": {"actor_id": "principal:local", "assignment": null, "commitment": null, "principal_id": "principal:local", "role": 1}},
+    {"name": "binding_commitment_wrong_type", "reference_code": "unauthenticated", "schema": "binding", "valid": false, "value": {"actor_id": "principal:local", "assignment": null, "commitment": true, "principal_id": "principal:local", "role": "principal"}},
+    {"name": "binding_assignment_wrong_type", "reference_code": "unauthenticated", "schema": "binding", "valid": false, "value": {"actor_id": "principal:local", "assignment": true, "commitment": null, "principal_id": "principal:local", "role": "principal"}},
+    {"name": "extra_binding_field", "reference_code": "unauthenticated", "schema": "binding", "valid": false, "value": {"actor_id": "principal:local", "assignment": null, "commitment": null, "extra": true, "principal_id": "principal:local", "role": "principal"}},
+    {"name": "reference_result_candidate", "schema": "fields.Result", "valid": true, "value": {"assignment": "AS-W1", "candidate": {"algorithm": "sha1", "digest": "1111111111111111111111111111111111111111", "kind": "git.commit"}, "generation": 1, "producer": "executor:test", "work": "W1"}},
+    {"name": "candidate_missing_algorithm", "reference_code": "integrity_error", "schema": "fields.Result", "valid": false, "value": {"assignment": "AS-W1", "candidate": {"digest": "1111111111111111111111111111111111111111", "kind": "git.commit"}, "generation": 1, "producer": "executor:test", "work": "W1"}},
+    {"name": "candidate_extra_key", "reference_code": "integrity_error", "schema": "fields.Result", "valid": false, "value": {"assignment": "AS-W1", "candidate": {"algorithm": "sha1", "digest": "1111111111111111111111111111111111111111", "extra": true, "kind": "git.commit"}, "generation": 1, "producer": "executor:test", "work": "W1"}},
+    {"name": "candidate_wrong_digest_type", "reference_code": "integrity_error", "schema": "fields.Result", "valid": false, "value": {"assignment": "AS-W1", "candidate": {"algorithm": "sha1", "digest": 17, "kind": "git.commit"}, "generation": 1, "producer": "executor:test", "work": "W1"}},
+    {"name": "candidate_wrong_kind_algorithm_pair", "reference_code": "integrity_error", "schema": "fields.Result", "valid": false, "value": {"assignment": "AS-W1", "candidate": {"algorithm": "sha1", "digest": "1111111111111111111111111111111111111111", "kind": "artifact.bytes"}, "generation": 1, "producer": "executor:test", "work": "W1"}},
+    {"name": "candidate_wrong_digest_length", "reference_code": "integrity_error", "schema": "fields.Result", "valid": false, "value": {"assignment": "AS-W1", "candidate": {"algorithm": "sha1", "digest": "111111111111111111111111111111111111111", "kind": "git.commit"}, "generation": 1, "producer": "executor:test", "work": "W1"}},
+    {"name": "candidate_non_hex_digest", "reference_code": "integrity_error", "schema": "fields.Result", "valid": false, "value": {"assignment": "AS-W1", "candidate": {"algorithm": "sha1", "digest": "g111111111111111111111111111111111111111", "kind": "git.commit"}, "generation": 1, "producer": "executor:test", "work": "W1"}}
+  ],
+  "decode": [
+    {"canonical": "{\"base_revision\":0,\"commitment\":\"C-notify\",\"justification\":[],\"ops\":[{\"id\":\"C-notify\",\"op\":\"commitment.create\",\"root\":\"W-root\",\"statement\":\"Add notification retries.\"}],\"proposal_id\":\"p-create\",\"v\":1}", "name": "canonical_proposal", "raw": "{\"base_revision\":0,\"commitment\":\"C-notify\",\"justification\":[],\"ops\":[{\"id\":\"C-notify\",\"op\":\"commitment.create\",\"root\":\"W-root\",\"statement\":\"Add notification retries.\"}],\"proposal_id\":\"p-create\",\"v\":1}"},
+    {"canonical": "{\"base_revision\":0,\"commitment\":\"C-notify\",\"justification\":[],\"ops\":[{\"id\":\"C-notify\",\"op\":\"commitment.create\",\"root\":\"W-root\",\"statement\":\"Add notification retries.\"}],\"proposal_id\":\"p-create\",\"v\":1}", "name": "trailing_json_whitespace", "raw": "{\"base_revision\":0,\"commitment\":\"C-notify\",\"justification\":[],\"ops\":[{\"id\":\"C-notify\",\"op\":\"commitment.create\",\"root\":\"W-root\",\"statement\":\"Add notification retries.\"}],\"proposal_id\":\"p-create\",\"v\":1}\n\t "},
+    {"name": "stray_character", "raw": "!{\"base_revision\":0,\"commitment\":\"C-notify\",\"justification\":[],\"ops\":[{\"id\":\"C-notify\",\"op\":\"commitment.create\",\"root\":\"W-root\",\"statement\":\"Add notification retries.\"}],\"proposal_id\":\"p-create\",\"v\":1}", "reference_code": "invalid_input"},
+    {"name": "trailing_value", "raw": "{\"base_revision\":0,\"commitment\":\"C-notify\",\"justification\":[],\"ops\":[{\"id\":\"C-notify\",\"op\":\"commitment.create\",\"root\":\"W-root\",\"statement\":\"Add notification retries.\"}],\"proposal_id\":\"p-create\",\"v\":1}{}", "reference_code": "invalid_input"},
+    {"name": "duplicate_key", "raw": "{\"ops\":[],\"base_revision\":0,\"commitment\":\"C-notify\",\"justification\":[],\"ops\":[{\"id\":\"C-notify\",\"op\":\"commitment.create\",\"root\":\"W-root\",\"statement\":\"Add notification retries.\"}],\"proposal_id\":\"p-create\",\"v\":1}", "reference_code": "invalid_input"},
+    {"name": "integer_overflow", "raw": "{\"base_revision\":9007199254740992,\"commitment\":\"C-notify\",\"justification\":[],\"ops\":[{\"id\":\"C-notify\",\"op\":\"commitment.create\",\"root\":\"W-root\",\"statement\":\"Add notification retries.\"}],\"proposal_id\":\"p-create\",\"v\":1}", "reference_code": "invalid_input"},
+    {"name": "non_integer", "raw": "{\"base_revision\":0.5,\"commitment\":\"C-notify\",\"justification\":[],\"ops\":[{\"id\":\"C-notify\",\"op\":\"commitment.create\",\"root\":\"W-root\",\"statement\":\"Add notification retries.\"}],\"proposal_id\":\"p-create\",\"v\":1}", "reference_code": "invalid_input"},
+    {"name": "non_finite", "raw": "{\"base_revision\":NaN,\"commitment\":\"C-notify\",\"justification\":[],\"ops\":[{\"id\":\"C-notify\",\"op\":\"commitment.create\",\"root\":\"W-root\",\"statement\":\"Add notification retries.\"}],\"proposal_id\":\"p-create\",\"v\":1}", "reference_code": "invalid_input"},
+    {"name": "lone_surrogate", "raw": "{\"base_revision\":0,\"commitment\":\"C-notify\",\"justification\":[],\"ops\":[{\"id\":\"C-notify\",\"op\":\"commitment.create\",\"root\":\"W-root\",\"statement\":\"Add notification retries.\"}],\"proposal_id\":\"\\uD800\",\"v\":1}", "reference_code": "invalid_input"}
+  ],
+  "answers": {
+  "q01": [
+    {
+      "commitment": "C-notify",
+      "principal": "principal:local"
+    }
+  ],
+  "q02": [
+    {
+      "candidate": null,
+      "generation": 1,
+      "state": "open",
+      "work": "W-root"
+    }
+  ],
+  "q03": [
+    {
+      "decision": "D-old",
+      "state": "effective",
+      "support": [
+        "A-other",
+        "A1"
+      ]
+    }
+  ],
+  "q04": [
+    {
+      "affected": [],
+      "assumption": "A-other"
+    }
+  ],
+  "q05": [
+    {
+      "capability": "git.commit",
+      "commitment": "C-notify",
+      "expires_at": "2026-11-18T14:00:00.000000Z",
+      "grant": "G-publish",
+      "grantee": "executor:beta",
+      "resource": "refs/heads/purser-demo",
+      "state": "active"
+    }
+  ],
+  "q06": [
+    {
+      "attempt": "T1",
+      "effect": "F-publish",
+      "state": "dispatching"
+    }
+  ],
+  "q07": [
+    {
+      "evidence": [],
+      "obligation": "O-W1",
+      "state": "open",
+      "version": 1,
+      "work": "W1"
+    }
+  ],
+  "q08": [
+    {
+      "reasons": [
+        {
+          "code": "awaiting_activation",
+          "refs": [
+            "C-notify"
+          ]
+        }
+      ],
+      "work": "W-root"
+    }
+  ],
+  "q09": [
+    {
+      "commitment": "C-notify",
+      "missing": [
+        {
+          "code": "awaiting_activation",
+          "refs": [
+            "C-notify"
+          ]
+        }
+      ],
+      "root": "W-root"
+    }
+  ],
+  "q10": [
+    {
+      "action": "principal_approve",
+      "subject": "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884"
+    }
+  ]
+}
+}
