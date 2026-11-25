@@ -32,5 +32,5 @@ The agent needs network access for `git push` and `gh`. If its sandbox blocks th
 ## What stays with the human
 
 - Merging pull requests that change `contracts/`, and every size M or L build.
-- Freezing: for size M and L, approve the tests pull request; then the tag `frozen/<ID>` is pushed and the tests pull request is closed without merging.
+- Freezing, for every size: after a review comment that starts with `APPROVE` on the tests pull request, push the tag `frozen/<ID>` at the reviewed commit and close the pull request without merging.
 - Removing finished worktrees: `git worktree remove .worktrees/<name>`.

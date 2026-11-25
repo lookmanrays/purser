@@ -51,6 +51,8 @@ Do not read or write any implementation of this package. If you find one, ignore
   - Tests for ACs the brief marks `(baseline)` state invariants the current code already holds; they must pass now and keep passing.
   - Every other AC test must fail against the current code, through new API or observable new behaviour such as timing. `make red` runs only your brief's tests.
 - Prefer table-driven tests. Read vectors through `internal/testvectors` once it exists, or directly from `reference/python/docs/contracts/` with the standard library.
+- **Decode JSON fixtures with `codec.Decode` or `codec.DecodeObject`, or through `internal/testvectors`.** `encoding/json` turns every number inside `any` into `float64`: `codec.Encode` rejects it and `.(int64)` never matches. Typed struct fields (`string`, `int64`) are fine. (P1-03 froze negative tests that could never pass for this reason.)
+- Tests not named `TestACn_` are not run by `make red`, and under stubs they usually fail at the first stub call. Nothing checks them before the build, so read their setup against the reference line by line.
 - Assert exact values from the contract and the vectors, not just "no error". **Never type an expected value from memory:** copy it from the vector or reference file, or compute it from that file in the test. (P0-06 froze two invented strings and P1-02a an invented approval ID; all had to be re-frozen.) Before pushing, run `python3 -I tools/check_literals.py <your test files>` and resolve every `SUSPECT` line.
 - **Derive negative cases from the reference implementation** when one exists under `reference/python/`: read its validation code and turn every rejection branch into a test. Generate fixtures by running the reference (`python3 -I`, with `reference/python` on `sys.path`), and record how they were generated in the fixture's `_comment`.
 - For a package that encodes, decodes or verifies data, add a **parity fixture**: inputs generated from the reference with its exact outputs, plus edge-case probes it accepts or rejects (stray or trailing characters, duplicates, overflow, inconsistent fields inside a group).
@@ -78,7 +80,7 @@ The pull request body contains:
 - the failing `go test` output, trimmed to the FAIL lines;
 - anything in the contract or brief you found unclear.
 
-CI on a tests pull request is red by design until P0-02 adds `make red`: the new tests fail. Lint, vet and briefcheck must still pass.
+On a tests pull request the `CI` workflow fails by design: the new tests hit the stubs. The `briefcheck` workflow (briefcheck and red), lint and vet must pass. The tests freeze only after review.
 
 Report the pull request URL and stop.
 
