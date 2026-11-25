@@ -25,6 +25,7 @@ Then read `docs/packages/<ID>.md`, every contract it names, and the frozen tests
 7. **Reference parity.** When `scope.read` names files under `reference/python/`, compare the implementation with the reference's validation code branch by branch, and run the edge cases through both, for example `python3 -I` with `reference/python` on `sys.path`. Any input the two treat differently is a required change unless the contract says otherwise.
 8. Declarations match the contract verbatim, including struct field order.
 9. When reviewing tests before freezing, run `python3 -I tools/check_literals.py <test files>`. Every `SUSPECT` line is a data-like literal (digest, prefixed ID, timestamp) found in no vector, fixture or contract: request changes. Read the `review` lines too, and check every literal expected value, including arguments such as lookup IDs, against the file it claims to come from.
+10. When reviewing tests before freezing, read every test that is not named `TestACn_` line by line: `make red` does not run them, and under stubs they fail at the first stub call whatever their setup does. Check how fixtures are decoded: numbers decoded by `encoding/json` into `any` are `float64`, which `codec` rejects.
 
 ## 3. Report
 
