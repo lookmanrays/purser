@@ -1,0 +1,229 @@
+{
+  "_comment": "Generated with python3 -I using reference/python/purser/kernel/gate.py (gate.admit) and wire.py (wire.digest) for AC-9 non-object op entries.",
+  "cases": [
+    {
+      "name": "number",
+      "proposal": {
+        "v": 1,
+        "proposal_id": "p-ac9-number",
+        "commitment": "C-notify",
+        "base_revision": 0,
+        "ops": [
+          1
+        ],
+        "justification": []
+      },
+      "expected_receipt": {
+        "actor_id": "principal:local",
+        "proposal_id": "p-ac9-number",
+        "digest": "ed1a5eef583c21435f77e6d4563b2e34806b85b90936e3eb19561aeb3c9b52bb",
+        "disposition": "rejected",
+        "code": "invalid_op",
+        "details": {},
+        "revision": 1
+      },
+      "expected_head_revision": 1
+    },
+    {
+      "name": "string",
+      "proposal": {
+        "v": 1,
+        "proposal_id": "p-ac9-string",
+        "commitment": "C-notify",
+        "base_revision": 0,
+        "ops": [
+          "x"
+        ],
+        "justification": []
+      },
+      "expected_receipt": {
+        "actor_id": "principal:local",
+        "proposal_id": "p-ac9-string",
+        "digest": "c528eab2a08c7716ba4d21a42af7f3f987cce13013548048cf978efc1976ebf6",
+        "disposition": "rejected",
+        "code": "invalid_op",
+        "details": {},
+        "revision": 1
+      },
+      "expected_head_revision": 1
+    },
+    {
+      "name": "null",
+      "proposal": {
+        "v": 1,
+        "proposal_id": "p-ac9-null",
+        "commitment": "C-notify",
+        "base_revision": 0,
+        "ops": [
+          null
+        ],
+        "justification": []
+      },
+      "expected_receipt": {
+        "actor_id": "principal:local",
+        "proposal_id": "p-ac9-null",
+        "digest": "a3208864cc438db8503e9e7beb565917c3fe135b0bca1236ff4287770cc5863a",
+        "disposition": "rejected",
+        "code": "invalid_op",
+        "details": {},
+        "revision": 1
+      },
+      "expected_head_revision": 1
+    },
+    {
+      "name": "boolean",
+      "proposal": {
+        "v": 1,
+        "proposal_id": "p-ac9-boolean",
+        "commitment": "C-notify",
+        "base_revision": 0,
+        "ops": [
+          true
+        ],
+        "justification": []
+      },
+      "expected_receipt": {
+        "actor_id": "principal:local",
+        "proposal_id": "p-ac9-boolean",
+        "digest": "4aec80fe1fb4ff7448c87abb5bfdb214b3ce57fbfa2d3b050704225ea3f582a0",
+        "disposition": "rejected",
+        "code": "invalid_op",
+        "details": {},
+        "revision": 1
+      },
+      "expected_head_revision": 1
+    },
+    {
+      "name": "array",
+      "proposal": {
+        "v": 1,
+        "proposal_id": "p-ac9-array",
+        "commitment": "C-notify",
+        "base_revision": 0,
+        "ops": [
+          []
+        ],
+        "justification": []
+      },
+      "expected_receipt": {
+        "actor_id": "principal:local",
+        "proposal_id": "p-ac9-array",
+        "digest": "e9d3891b9ade588353074c82c64778d0dbc4e80a141735e5a7f07b98f85ea2ac",
+        "disposition": "rejected",
+        "code": "invalid_op",
+        "details": {},
+        "revision": 1
+      },
+      "expected_head_revision": 1
+    }
+  ],
+  "multi_op": {
+    "proposal": {
+      "v": 1,
+      "proposal_id": "p-ac9-multi",
+      "commitment": "C-notify",
+      "base_revision": 2,
+      "ops": [
+        {
+          "op": "commitment.edit",
+          "id": "C-notify",
+          "statement": "Should roll back."
+        },
+        1
+      ],
+      "justification": []
+    },
+    "expected_receipt": {
+      "actor_id": "principal:local",
+      "proposal_id": "p-ac9-multi",
+      "digest": "9c495954107694b75541d51675c84c8800e83b826d9fc8b78b98848033b174fe",
+      "disposition": "rejected",
+      "code": "invalid_op",
+      "details": {},
+      "revision": 3
+    },
+    "expected_head_revision": 3
+  },
+  "precedence_bad_revision": {
+    "proposal": {
+      "v": 1,
+      "proposal_id": "p-ac9-badrev",
+      "commitment": "C-notify",
+      "base_revision": 999,
+      "ops": [
+        1
+      ],
+      "justification": []
+    },
+    "expected_receipt": {
+      "actor_id": "principal:local",
+      "proposal_id": "p-ac9-badrev",
+      "digest": "4b6fdbc9bab75925b78603b2ce9e638de79c81c9e3bb0a3d0d331b1f6eb74552",
+      "disposition": "rejected",
+      "code": "bad_revision",
+      "details": {},
+      "revision": 1
+    }
+  },
+  "precedence_forbidden": {
+    "binding": {
+      "actor_id": "planner-1",
+      "role": "planner",
+      "principal_id": "principal:local",
+      "commitment": "C-other",
+      "assignment": null
+    },
+    "proposal": {
+      "v": 1,
+      "proposal_id": "p-ac9-scope",
+      "commitment": "C-notify",
+      "base_revision": 0,
+      "ops": [
+        1
+      ],
+      "justification": []
+    },
+    "expected_receipt": {
+      "actor_id": "planner-1",
+      "proposal_id": "p-ac9-scope",
+      "digest": "d59c9b730dbb5c43e9f011ffbf2433c738a8b7d4fe24c06f51fc2b1467535e94",
+      "disposition": "rejected",
+      "code": "forbidden",
+      "details": {},
+      "revision": 1
+    }
+  },
+  "conflict": {
+    "first": {
+      "v": 1,
+      "proposal_id": "p-ac9-conflict",
+      "commitment": "C-notify",
+      "base_revision": 0,
+      "ops": [
+        1
+      ],
+      "justification": []
+    },
+    "changed": {
+      "v": 1,
+      "proposal_id": "p-ac9-conflict",
+      "commitment": "C-notify",
+      "base_revision": 0,
+      "ops": [
+        "x"
+      ],
+      "justification": []
+    },
+    "expected_receipt": {
+      "actor_id": "principal:local",
+      "proposal_id": "p-ac9-conflict",
+      "digest": "e58d308da05488e2e72210dcc4b179b3f96b04d7209b065c720e3949da8ae747",
+      "disposition": "rejected",
+      "code": "invalid_op",
+      "details": {},
+      "revision": 1
+    },
+    "expected_conflict_error": "id_conflict",
+    "changed_digest": "33777367e4240b5f80cbf69cd3b07d2e9badc0033f2b47a2c60e3c68ec891da5"
+  }
+}
