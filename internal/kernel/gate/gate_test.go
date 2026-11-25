@@ -1,6 +1,7 @@
 package gate
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 	"time"
@@ -77,16 +78,26 @@ func TestAC1_WireAdmissionReplies(t *testing.T) {
 			t.Errorf("batch %d: receipt.Revision = %d, want %d", i, receipt.Revision, wantReceiptMap["revision"].(int64))
 		}
 		wantDetails := wantReceiptMap["details"].(map[string]any)
-		if len(wantDetails) == 0 && len(receipt.Details) != 0 {
-			t.Errorf("batch %d: receipt.Details = %v, want empty map", i, receipt.Details)
+		if !reflect.DeepEqual(receipt.Details, wantDetails) {
+			t.Errorf("batch %d: receipt.Details = %v, want %v", i, receipt.Details, wantDetails)
 		}
-		for k, wantV := range wantDetails {
-			gotV, ok := receipt.Details[k]
-			if !ok {
-				t.Errorf("batch %d: receipt.Details missing key %s", i, k)
-			} else if gotV != wantV {
-				t.Errorf("batch %d: receipt.Details[%s] = %v, want %v", i, k, gotV, wantV)
-			}
+	}
+
+	// Verify that the stored raw events match the wire events byte for byte
+	rawEvents, err := s.RawEvents(1, 8)
+	if err != nil {
+		t.Fatalf("s.RawEvents(1, 8) failed: %v", err)
+	}
+	if len(rawEvents) != 8 {
+		t.Fatalf("len(rawEvents) = %d, want 8", len(rawEvents))
+	}
+	for j := 0; j < 8; j++ {
+		wantRaw, err := codec.Encode(w.Events[j])
+		if err != nil {
+			t.Fatalf("codec.Encode w.Events[%d] failed: %v", j, err)
+		}
+		if !bytes.Equal(rawEvents[j], wantRaw) {
+			t.Errorf("event %d raw bytes mismatch:\ngot  %s\nwant %s", j+1, string(rawEvents[j]), string(wantRaw))
 		}
 	}
 }
@@ -196,9 +207,8 @@ func TestAC2_IndependentCaseBranches(t *testing.T) {
 			"justification": []any{},
 		}
 		_, err := g.Admit(b, encodeProposal(t, modified))
-		if err == nil {
-			t.Fatal("expected id_conflict error, got nil")
-		}
+		requireErrorCode(t, err, "id_conflict")
+
 		snap, _ := s.Snapshot(nil)
 		if snap.Revision != 8 {
 			t.Errorf("head revision = %d, want 8 (append 0)", snap.Revision)
@@ -209,6 +219,10 @@ func TestAC2_IndependentCaseBranches(t *testing.T) {
 		defer guard(t)
 		case3 := w.IndependentCaseBranches[3]
 		props := toMapSlice(case3["ordered_proposals"])
+		expects := case3["expect"].([]any)
+		exp0 := expects[0].(map[string]any)
+		exp1 := expects[1].(map[string]any)
+		exp2 := expects[2].(map[string]any)
 
 		_, g := playToHead(t, 2)
 
@@ -216,32 +230,27 @@ func TestAC2_IndependentCaseBranches(t *testing.T) {
 		if err != nil {
 			t.Fatalf("p-other failed: %v", err)
 		}
-		if r0.Disposition != "admitted" || r0.Revision != 4 {
-			t.Errorf("p-other = (%s, rev %d), want (admitted, rev 4)", r0.Disposition, r0.Revision)
+		if r0.Disposition != exp0["disposition"].(string) || r0.Revision != exp0["revision"].(int64) {
+			t.Errorf("p-other = (%s, rev %d), want (%s, rev %d)", r0.Disposition, r0.Revision, exp0["disposition"], exp0["revision"])
 		}
 
 		r1, err := g.Admit(b, encodeProposal(t, props[1]))
 		if err != nil {
 			t.Fatalf("p-edit failed: %v", err)
 		}
-		if r1.Disposition != "admitted" || r1.Revision != 6 {
-			t.Errorf("p-edit = (%s, rev %d), want (admitted, rev 6)", r1.Disposition, r1.Revision)
+		if r1.Disposition != exp1["disposition"].(string) || r1.Revision != exp1["revision"].(int64) {
+			t.Errorf("p-edit = (%s, rev %d), want (%s, rev %d)", r1.Disposition, r1.Revision, exp1["disposition"], exp1["revision"])
 		}
 
 		r2, err := g.Admit(b, encodeProposal(t, props[2]))
 		if err != nil {
 			t.Fatalf("p-late failed: %v", err)
 		}
-		if r2.Disposition != "rejected" || r2.Code != "stale_base" || r2.Revision != 7 {
-			t.Errorf("p-late = (%s, code %s, rev %d), want (rejected, stale_base, rev 7)", r2.Disposition, r2.Code, r2.Revision)
+		if r2.Disposition != exp2["disposition"].(string) || r2.Code != exp2["code"].(string) || r2.Revision != exp2["revision"].(int64) {
+			t.Errorf("p-late = (%s, code %s, rev %d), want (%s, %s, rev %d)", r2.Disposition, r2.Code, r2.Revision, exp2["disposition"], exp2["code"], exp2["revision"])
 		}
-		conflicts, ok := r2.Details["conflicts"].([]any)
-		if !ok || len(conflicts) != 1 {
-			t.Fatalf("conflicts = %v, want 1 conflict", r2.Details["conflicts"])
-		}
-		c0 := conflicts[0].(map[string]any)
-		if c0["key"] != "C-notify" || c0["changed"].(int64) != 5 {
-			t.Errorf("conflict = %v, want {key: C-notify, changed: 5}", c0)
+		if !reflect.DeepEqual(r2.Details, exp2["details"].(map[string]any)) {
+			t.Errorf("p-late details = %v, want %v", r2.Details, exp2["details"])
 		}
 	})
 
@@ -249,14 +258,16 @@ func TestAC2_IndependentCaseBranches(t *testing.T) {
 		defer guard(t)
 		case4 := w.IndependentCaseBranches[4]
 		props := toMapSlice(case4["ordered_proposals"])
+		expects := case4["expect"].([]any)
+		exp := expects[0].(map[string]any)
 
 		s, g := playToHead(t, 2)
 		r, err := g.Admit(b, encodeProposal(t, props[0]))
 		if err != nil {
 			t.Fatalf("p-batch failed: %v", err)
 		}
-		if r.Disposition != "rejected" || r.Code != "id_exists" || r.Revision != 3 {
-			t.Errorf("p-batch = (%s, code %s, rev %d), want (rejected, id_exists, rev 3)", r.Disposition, r.Code, r.Revision)
+		if r.Disposition != exp["disposition"].(string) || r.Code != exp["code"].(string) || r.Revision != exp["revision"].(int64) {
+			t.Errorf("p-batch = (%s, code %s, rev %d), want (%s, %s, rev %d)", r.Disposition, r.Code, r.Revision, exp["disposition"], exp["code"], exp["revision"])
 		}
 
 		snap, _ := s.Snapshot(nil)
@@ -265,7 +276,7 @@ func TestAC2_IndependentCaseBranches(t *testing.T) {
 			t.Fatal("C-notify not found in projection")
 		}
 		stmt := cRec.Fields["statement"].(string)
-		wantStmt := "Add notification retries."
+		wantStmt := exp["unchanged_statement"].(string)
 		if stmt != wantStmt {
 			t.Errorf("statement = %q, want %q", stmt, wantStmt)
 		}
@@ -275,7 +286,8 @@ func TestAC2_IndependentCaseBranches(t *testing.T) {
 		defer guard(t)
 		s, _ := playToHead(t, 4)
 
-		exactExpiry, err := codec.ParseTime("2026-11-19T12:00:00.000000Z")
+		expiresAtStr := w.Proposals[1]["ops"].([]any)[0].(map[string]any)["expires_at"].(string)
+		exactExpiry, err := codec.ParseTime(expiresAtStr)
 		if err != nil {
 			t.Fatalf("parse expiry: %v", err)
 		}
@@ -315,6 +327,15 @@ func TestAC2_IndependentCaseBranches(t *testing.T) {
 		}
 		if holdReceipt.Disposition != "rejected" || holdReceipt.Code != "approval_expired" {
 			t.Errorf("p-hold origin receipt = (%s, %s), want (rejected, approval_expired)", holdReceipt.Disposition, holdReceipt.Code)
+		}
+
+		appID := "a:19181b8d8107854127291b7431d56405d165271426f0ca411d19e61e7c542884"
+		appRec, ok := snap.Projection.Record(appID)
+		if !ok {
+			t.Fatalf("approval record %s not found", appID)
+		}
+		if appRec.Fields["state"] != "expired" {
+			t.Errorf("approval record state = %v, want expired", appRec.Fields["state"])
 		}
 
 		cRec, ok := snap.Projection.Record("C-notify")
@@ -443,9 +464,7 @@ func TestAC4_DifferentDigestReturnsIDConflictAppendsNothing(t *testing.T) {
 	raw2 := encodeProposal(t, differentProposal)
 
 	_, err := g.Admit(b, raw2)
-	if err == nil {
-		t.Fatal("expected error for changed digest with same proposal_id, got nil")
-	}
+	requireErrorCode(t, err, "id_conflict")
 
 	snap2, _ := s.Snapshot(nil)
 	if snap1.Revision != snap2.Revision {
@@ -559,52 +578,53 @@ func TestAC5_ReadDependencyChangeVsUnrelatedChange(t *testing.T) {
 func TestAC6_ErrorPrecedence(t *testing.T) {
 	defer guard(t)
 
-	s, w := newTestStore(t)
-	clock := func() time.Time {
-		ts, _ := codec.ParseTime(w.ClockByBatch[0])
-		return ts
-	}
-	g := newTestGate(t, s, clock)
-	bPrincipal := bindingFromWire(w)
-
-	// Setup: create C-notify at revision 2
-	if _, err := g.Admit(bPrincipal, encodeProposal(t, w.Proposals[0])); err != nil {
-		t.Fatalf("setup failed: %v", err)
-	}
-
 	// 1. Envelope error takes precedence over bad base revision
 	t.Run("InvalidInput_Over_BadRevision", func(t *testing.T) {
 		defer guard(t)
+		s, w := newTestStore(t)
+		clock := func() time.Time { ts, _ := codec.ParseTime(w.ClockByBatch[0]); return ts }
+		g := newTestGate(t, s, clock)
+		bPrincipal := bindingFromWire(w)
+
 		malformedJSONWithNegativeBase := []byte(`{"v": 1, "proposal_id": "p-bad", "commitment": "C-notify", "base_revision": -1, "extra": "forbidden", "ops": [], "justification": []}`)
 		_, err := g.Admit(bPrincipal, malformedJSONWithNegativeBase)
-		if err == nil {
-			t.Fatal("expected invalid_input error, got nil")
-		}
+		requireErrorCode(t, err, "invalid_input")
 	})
 
 	// 2. Ingress unauthenticated takes precedence over invalid op
 	t.Run("Unauthenticated_Over_InvalidOp", func(t *testing.T) {
 		defer guard(t)
+		s, w := newTestStore(t)
+		clock := func() time.Time { ts, _ := codec.ParseTime(w.ClockByBatch[0]); return ts }
+		g := newTestGate(t, s, clock)
+
 		bBad := Binding{ActorID: "", Role: ""}
 		propWithInvalidOp := map[string]any{
 			"v":             int64(1),
 			"proposal_id":   "p-test",
 			"commitment":    "C-notify",
-			"base_revision": int64(2),
+			"base_revision": int64(0),
 			"ops": []any{
 				map[string]any{"op": "commitment.unknown"},
 			},
 			"justification": []any{},
 		}
 		_, err := g.Admit(bBad, encodeProposal(t, propWithInvalidOp))
-		if err == nil {
-			t.Fatal("expected unauthenticated error, got nil")
-		}
+		requireErrorCode(t, err, "unauthenticated")
 	})
 
 	// 3. Bad base revision takes precedence over invalid/unknown op
 	t.Run("BadRevision_Over_InvalidOp", func(t *testing.T) {
 		defer guard(t)
+		s, w := newTestStore(t)
+		clock := func() time.Time { ts, _ := codec.ParseTime(w.ClockByBatch[0]); return ts }
+		g := newTestGate(t, s, clock)
+		bPrincipal := bindingFromWire(w)
+
+		if _, err := g.Admit(bPrincipal, encodeProposal(t, w.Proposals[0])); err != nil {
+			t.Fatalf("setup failed: %v", err)
+		}
+
 		propBadRevInvalidOp := map[string]any{
 			"v":             int64(1),
 			"proposal_id":   "p-test-rev",
@@ -627,10 +647,21 @@ func TestAC6_ErrorPrecedence(t *testing.T) {
 	// 4. Invalid op syntax takes precedence over forbidden
 	t.Run("InvalidOp_Over_Forbidden", func(t *testing.T) {
 		defer guard(t)
+		s, w := newTestStore(t)
+		clock := func() time.Time { ts, _ := codec.ParseTime(w.ClockByBatch[0]); return ts }
+		g := newTestGate(t, s, clock)
+		bPrincipal := bindingFromWire(w)
+
+		if _, err := g.Admit(bPrincipal, encodeProposal(t, w.Proposals[0])); err != nil {
+			t.Fatalf("setup failed: %v", err)
+		}
+
+		cNotify := "C-notify"
 		bPlanner := Binding{
 			ActorID:     "planner-1",
 			Role:        "planner",
 			PrincipalID: "principal:local",
+			Commitment:  &cNotify,
 		}
 		propMissingField := map[string]any{
 			"v":             int64(1),
@@ -651,9 +682,18 @@ func TestAC6_ErrorPrecedence(t *testing.T) {
 		}
 	})
 
-	// 5. Op syntax/forbidden takes precedence over read conflicts (stale base)
+	// 5. Op syntax takes precedence over read conflicts (stale base)
 	t.Run("InvalidOp_Over_StaleBase", func(t *testing.T) {
 		defer guard(t)
+		s, w := newTestStore(t)
+		clock := func() time.Time { ts, _ := codec.ParseTime(w.ClockByBatch[0]); return ts }
+		g := newTestGate(t, s, clock)
+		bPrincipal := bindingFromWire(w)
+
+		if _, err := g.Admit(bPrincipal, encodeProposal(t, w.Proposals[0])); err != nil {
+			t.Fatalf("setup failed: %v", err)
+		}
+
 		// Advance C-notify to revision 4
 		edit1 := map[string]any{
 			"v":             int64(1),
@@ -669,14 +709,15 @@ func TestAC6_ErrorPrecedence(t *testing.T) {
 			t.Fatalf("advance edit failed: %v", err)
 		}
 
-		// Propose invalid op on stale base 2
+		// Propose batch on stale base 2 with op 1 reading C-notify and op 2 invalid_op
 		propInvalidOnStale := map[string]any{
 			"v":             int64(1),
 			"proposal_id":   "p-inv-stale",
 			"commitment":    "C-notify",
 			"base_revision": int64(2), // stale base!
 			"ops": []any{
-				map[string]any{"op": "commitment.unknown", "id": "C-notify"},
+				map[string]any{"op": "commitment.edit", "id": "C-notify", "statement": "Valid edit"},
+				map[string]any{"op": "commitment.edit", "id": "C-notify", "statement": ""}, // empty statement: invalid_op
 			},
 			"justification": []any{},
 		}
@@ -684,31 +725,69 @@ func TestAC6_ErrorPrecedence(t *testing.T) {
 		if err != nil {
 			t.Fatalf("admit returned transport error: %v", err)
 		}
-		if r.Disposition != "rejected" || r.Code != "unknown_op" {
-			t.Errorf("receipt = (%s, code %s), want (rejected, unknown_op)", r.Disposition, r.Code)
+		if r.Disposition != "rejected" || r.Code != "invalid_op" {
+			t.Errorf("receipt = (%s, code %s), want (rejected, invalid_op)", r.Disposition, r.Code)
 		}
 	})
 
 	// 6. Stale base takes precedence over lifecycle failure
 	t.Run("StaleBase_Over_Lifecycle", func(t *testing.T) {
 		defer guard(t)
-		// Propose valid op on stale base 2, but where record would fail lifecycle check
-		propLifecycleOnStale := map[string]any{
+		s, w := newTestStore(t)
+		currTime, _ := codec.ParseTime(w.ClockByBatch[0])
+		clock := func() time.Time { return currTime }
+		g := newTestGate(t, s, clock)
+		bPrincipal := bindingFromWire(w)
+
+		// Play wire proposals 0, 1, 2: C-notify is active at head 8
+		if _, err := g.Admit(bPrincipal, encodeProposal(t, w.Proposals[0])); err != nil {
+			t.Fatalf("p-create failed: %v", err)
+		}
+		currTime, _ = codec.ParseTime(w.ClockByBatch[1])
+		if _, err := g.Admit(bPrincipal, encodeProposal(t, w.Proposals[1])); err != nil {
+			t.Fatalf("p-hold failed: %v", err)
+		}
+		currTime, _ = codec.ParseTime(w.ClockByBatch[2])
+		if _, err := g.Admit(bPrincipal, encodeProposal(t, w.Proposals[2])); err != nil {
+			t.Fatalf("p-answer failed: %v", err)
+		}
+
+		// Edit on stale base 2 yields stale_base
+		editOnStale := map[string]any{
 			"v":             int64(1),
-			"proposal_id":   "p-lc-stale",
+			"proposal_id":   "p-edit-stale",
 			"commitment":    "C-notify",
-			"base_revision": int64(2), // stale base!
+			"base_revision": int64(2),
 			"ops": []any{
-				map[string]any{"op": "commitment.edit", "id": "C-notify", "statement": "Stale edit"},
+				map[string]any{"op": "commitment.edit", "id": "C-notify", "statement": "Edit active"},
 			},
 			"justification": []any{},
 		}
-		r, err := g.Admit(bPrincipal, encodeProposal(t, propLifecycleOnStale))
+		rStale, err := g.Admit(bPrincipal, encodeProposal(t, editOnStale))
 		if err != nil {
-			t.Fatalf("admit returned transport error: %v", err)
+			t.Fatalf("admit stale failed: %v", err)
 		}
-		if r.Disposition != "rejected" || r.Code != "stale_base" {
-			t.Errorf("receipt = (%s, code %s), want (rejected, stale_base)", r.Disposition, r.Code)
+		if rStale.Disposition != "rejected" || rStale.Code != "stale_base" {
+			t.Errorf("receipt = (%s, code %s), want (rejected, stale_base)", rStale.Disposition, rStale.Code)
+		}
+
+		// Same edit on head base 8 yields invalid_transition
+		editOnHead := map[string]any{
+			"v":             int64(1),
+			"proposal_id":   "p-edit-head",
+			"commitment":    "C-notify",
+			"base_revision": int64(8),
+			"ops": []any{
+				map[string]any{"op": "commitment.edit", "id": "C-notify", "statement": "Edit active"},
+			},
+			"justification": []any{},
+		}
+		rHead, err := g.Admit(bPrincipal, encodeProposal(t, editOnHead))
+		if err != nil {
+			t.Fatalf("admit head failed: %v", err)
+		}
+		if rHead.Disposition != "rejected" || rHead.Code != "invalid_transition" {
+			t.Errorf("receipt = (%s, code %s), want (rejected, invalid_transition)", rHead.Disposition, rHead.Code)
 		}
 	})
 }
@@ -739,8 +818,9 @@ func TestAC7_ApprovalAnsweredAtExpiryResolvesAsExpired(t *testing.T) {
 	}
 	approvalID := rHold.Details["approval_id"].(string)
 
-	// Step 3: Answer at EXACT expiry instant: 2026-11-19T12:00:00.000000Z
-	currTime, _ = codec.ParseTime("2026-11-19T12:00:00.000000Z")
+	// Step 3: Answer at EXACT expiry instant read from the proposal
+	expiresAtStr := w.Proposals[1]["ops"].([]any)[0].(map[string]any)["expires_at"].(string)
+	currTime, _ = codec.ParseTime(expiresAtStr)
 	ansProp := map[string]any{
 		"v":             int64(1),
 		"proposal_id":   "p-ans-expiry",
@@ -778,6 +858,15 @@ func TestAC7_ApprovalAnsweredAtExpiryResolvesAsExpired(t *testing.T) {
 		t.Errorf("originReceipt = (%s, code %s), want (rejected, approval_expired)", originReceipt.Disposition, originReceipt.Code)
 	}
 
+	// Approval record must have state "expired"
+	appRec, ok := snap.Projection.Record(approvalID)
+	if !ok {
+		t.Fatalf("approval record %s not found", approvalID)
+	}
+	if appRec.Fields["state"] != "expired" {
+		t.Errorf("approval record state = %v, want expired", appRec.Fields["state"])
+	}
+
 	// Commitment must NOT be activated; must remain proposed
 	cRec, ok := snap.Projection.Record("C-notify")
 	if !ok {
@@ -788,7 +877,6 @@ func TestAC7_ApprovalAnsweredAtExpiryResolvesAsExpired(t *testing.T) {
 	}
 
 	// Contrast with an approval answered 1 microsecond before deadline
-	// Test on a fresh store
 	t.Run("OneMicrosecondBeforeExpiryApproves", func(t *testing.T) {
 		defer guard(t)
 		s2, w2 := newTestStore(t)
@@ -803,7 +891,7 @@ func TestAC7_ApprovalAnsweredAtExpiryResolvesAsExpired(t *testing.T) {
 			t.Fatalf("setup hold failed: %v", err)
 		}
 
-		expiryInstant, _ := codec.ParseTime("2026-11-19T12:00:00.000000Z")
+		expiryInstant, _ := codec.ParseTime(expiresAtStr)
 		time2 = expiryInstant.Add(-time.Microsecond)
 		rBefore, err := g2.Admit(b, encodeProposal(t, ansProp))
 		if err != nil {
@@ -895,7 +983,7 @@ func TestAC8_FailingMultiOpBatchSavesNoDomainEvents(t *testing.T) {
 		t.Fatalf("read events failed: %v", err)
 	}
 	if len(events) != 1 {
-		t.Fatalf("history length = %d, want 1", len(events))
+		t.Fatalf("events length = %d, want 1", len(events))
 	}
 	if events[0].Type != "ProposalReceipted" {
 		t.Errorf("event type = %s, want ProposalReceipted", events[0].Type)
