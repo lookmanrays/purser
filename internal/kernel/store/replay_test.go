@@ -1,7 +1,7 @@
 package store
 
 import (
-	"bytes"
+	"fmt"
 	"path/filepath"
 	"reflect"
 	"sync"
@@ -9,14 +9,35 @@ import (
 	"time"
 
 	"github.com/lookmanrays/purser/internal/kernel/codec"
+	"github.com/lookmanrays/purser/internal/kernel/projection"
 	"github.com/lookmanrays/purser/internal/testvectors"
 )
+
+func execSQL(t *testing.T, s *Store, query string, args ...any) {
+	t.Helper()
+	if _, err := s.db.Exec(query, args...); err != nil {
+		t.Fatalf("execSQL %q: %v", query, err)
+	}
+}
+
+func openStoreForReplayTest(t *testing.T, path string) *Store {
+	t.Helper()
+	s, err := Open(path, Options{
+		Registry:    projection.Base(),
+		BusyTimeout: 5 * time.Second,
+	})
+	if err != nil {
+		t.Fatalf("Open %s: %v", path, err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	return s
+}
 
 // populateLegacyStore initializes a store and populates it with the legacy wire vector events.
 func populateLegacyStore(t *testing.T, w *testvectors.WireVector) *Store {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "legacy.db")
-	s := openStoreForTest(t, path, Options{})
+	s := openStoreForReplayTest(t, path)
 	if _, err := s.Initialize(); err != nil {
 		t.Fatalf("Initialize legacy store: %v", err)
 	}
@@ -59,6 +80,10 @@ func TestAC1_ReplayLegacyVector(t *testing.T) {
 		defer guard(t)
 
 		s := populateLegacyStore(t, w)
+
+		// Delete materialized projection rows to prove Replay rebuilds from the event log.
+		execSQL(t, s, "DELETE FROM records; DELETE FROM receipts; DELETE FROM edges")
+
 		snap, err := s.Replay(nil)
 		if err != nil {
 			t.Fatalf("Replay(nil) failed: %v", err)
@@ -76,6 +101,19 @@ func TestAC1_ReplayLegacyVector(t *testing.T) {
 		if sum != w.Legacy.ExpectedProjectionHash {
 			t.Fatalf("Projection checksum = %q, want %q", sum, w.Legacy.ExpectedProjectionHash)
 		}
+
+		// A later Snapshot(nil) must also see the rebuilt projection
+		afterSnap, err := s.Snapshot(nil)
+		if err != nil {
+			t.Fatalf("Snapshot(nil) after Replay: %v", err)
+		}
+		afterSum, err := afterSnap.Projection.Checksum()
+		if err != nil {
+			t.Fatalf("Checksum afterSnap: %v", err)
+		}
+		if afterSum != w.Legacy.ExpectedProjectionHash {
+			t.Fatalf("Snapshot(nil) checksum = %q, want %q", afterSum, w.Legacy.ExpectedProjectionHash)
+		}
 	})
 
 	t.Run("ReplayWithMatchingTrustedHead", func(t *testing.T) {
@@ -86,6 +124,10 @@ func TestAC1_ReplayLegacyVector(t *testing.T) {
 			Revision: int64(len(w.Legacy.Events)),
 			Hash:     w.Legacy.ExpectedHeadHash,
 		}
+
+		// Delete materialized projection rows to prove Replay rebuilds from the event log.
+		execSQL(t, s, "DELETE FROM records; DELETE FROM receipts; DELETE FROM edges")
+
 		snap, err := s.Replay(trusted)
 		if err != nil {
 			t.Fatalf("Replay(trusted) failed: %v", err)
@@ -100,6 +142,18 @@ func TestAC1_ReplayLegacyVector(t *testing.T) {
 		if sum != w.Legacy.ExpectedProjectionHash {
 			t.Fatalf("Projection checksum = %q, want %q", sum, w.Legacy.ExpectedProjectionHash)
 		}
+
+		afterSnap, err := s.Snapshot(nil)
+		if err != nil {
+			t.Fatalf("Snapshot(nil) after Replay(trusted): %v", err)
+		}
+		afterSum, err := afterSnap.Projection.Checksum()
+		if err != nil {
+			t.Fatalf("Checksum afterSnap: %v", err)
+		}
+		if afterSum != w.Legacy.ExpectedProjectionHash {
+			t.Fatalf("Snapshot(nil) checksum = %q, want %q", afterSum, w.Legacy.ExpectedProjectionHash)
+		}
 	})
 }
 
@@ -107,31 +161,32 @@ func TestAC1_ReplayLegacyVector(t *testing.T) {
 func TestAC4_ConcurrentReadersDuringReplay(t *testing.T) {
 	defer guard(t)
 
-	s, w := newTestStore(t)
-	if _, err := s.Initialize(); err != nil {
-		t.Fatalf("Initialize: %v", err)
+	// Build a consistent store with P1-02b's uniform store helper.
+	s := makeUniformStore(t, 2000)
+	newSnap, err := s.Snapshot(nil)
+	if err != nil {
+		t.Fatalf("Snapshot before delete: %v", err)
+	}
+	newSum, err := newSnap.Projection.Checksum()
+	if err != nil {
+		t.Fatalf("Checksum newSnap: %v", err)
 	}
 
-	// Populate batch 0
-	oldSnap, _ := playBatch(t, s, 0, w)
+	// Delete one materialized record row. The log is untouched, so head revision & hash match meta,
+	// but the installed projection is missing a row.
+	execSQL(t, s, "DELETE FROM records WHERE id = (SELECT id FROM records LIMIT 1)")
+
+	oldSnap, err := s.Snapshot(nil)
+	if err != nil {
+		t.Fatalf("Snapshot after delete: %v", err)
+	}
 	oldSum, err := oldSnap.Projection.Checksum()
 	if err != nil {
 		t.Fatalf("Checksum oldSnap: %v", err)
 	}
-
-	// Insert batch 1 events into the events table directly
-	for i := 2; i <= 3; i++ {
-		evMap := w.Events[i]
-		raw, encodeErr := codec.Encode(evMap)
-		if encodeErr != nil {
-			t.Fatalf("Encode event %d: %v", i, encodeErr)
-		}
-		rev := evMap["revision"].(int64)
-		execStoreSQL(t, s, "INSERT INTO events (revision, body) VALUES (?, ?)", rev, raw)
+	if oldSum == newSum {
+		t.Fatal("oldSum and newSum must differ after deleting a record")
 	}
-
-	newHash := w.Expected.SnapshotAt4["head_hash"].(string)
-	newRev := w.Expected.SnapshotAt4["revision"].(int64)
 
 	done := make(chan struct{})
 	defer func() {
@@ -153,30 +208,38 @@ func TestAC4_ConcurrentReadersDuringReplay(t *testing.T) {
 	}
 
 	const readerCount = 4
-	var wg sync.WaitGroup
+	var readyWg sync.WaitGroup
+	var doneWg sync.WaitGroup
 	for r := 0; r < readerCount; r++ {
-		wg.Add(1)
+		readyWg.Add(1)
+		doneWg.Add(1)
 		go func() {
-			defer wg.Done()
+			defer doneWg.Done()
+			first := true
 			for {
 				select {
 				case <-done:
 					return
 				default:
 					snap, snapErr := s.Snapshot(nil)
+					if first {
+						readyWg.Done()
+						first = false
+					}
 					if snapErr != nil {
-						setReaderErr(snapErr)
+						setReaderErr(fmt.Errorf("reader Snapshot(nil) error: %w", snapErr))
 						return
 					}
 					sum, sumErr := snap.Projection.Checksum()
 					if sumErr != nil {
-						setReaderErr(sumErr)
+						setReaderErr(fmt.Errorf("reader Checksum error: %w", sumErr))
 						return
 					}
 					isOld := snap.Revision == oldSnap.Revision && snap.HeadHash == oldSnap.HeadHash && sum == oldSum
-					isNew := snap.Revision == newRev && snap.HeadHash == newHash
+					isNew := snap.Revision == newSnap.Revision && snap.HeadHash == newSnap.HeadHash && sum == newSum
 					if !isOld && !isNew {
-						setReaderErr(bytes.ErrTooLarge) // Sentinel for invalid torn read
+						setReaderErr(fmt.Errorf("torn read: revision=%d, hash=%s, checksum=%s (want old sum=%s or new sum=%s)",
+							snap.Revision, snap.HeadHash, sum, oldSum, newSum))
 						return
 					}
 				}
@@ -184,20 +247,41 @@ func TestAC4_ConcurrentReadersDuringReplay(t *testing.T) {
 		}()
 	}
 
-	// Run replay in the main test thread
+	// Wait for all readers to complete at least one read before calling Replay
+	readyWg.Wait()
+
+	// Replay rebuilds the complete projection and installs it atomically
 	replayedSnap, replayErr := s.Replay(nil)
 	close(done)
-	wg.Wait()
+	doneWg.Wait()
 
 	if replayErr != nil {
 		t.Fatalf("Replay failed: %v", replayErr)
 	}
 	if readerErr != nil {
-		t.Fatalf("concurrent reader observed invalid/torn state or error: %v", readerErr)
+		t.Fatalf("concurrent reader error: %v", readerErr)
 	}
-	if replayedSnap.Revision != newRev || replayedSnap.HeadHash != newHash {
-		t.Fatalf("Replay snapshot = (rev=%d, hash=%s), want (rev=%d, hash=%s)",
-			replayedSnap.Revision, replayedSnap.HeadHash, newRev, newHash)
+	replayedSum, err := replayedSnap.Projection.Checksum()
+	if err != nil {
+		t.Fatalf("Checksum replayedSnap: %v", err)
+	}
+	if replayedSnap.Revision != newSnap.Revision || replayedSnap.HeadHash != newSnap.HeadHash || replayedSum != newSum {
+		t.Fatalf("Replay snapshot = (rev=%d, hash=%s, sum=%s), want (rev=%d, hash=%s, sum=%s)",
+			replayedSnap.Revision, replayedSnap.HeadHash, replayedSum, newSnap.Revision, newSnap.HeadHash, newSum)
+	}
+
+	// Afterwards Snapshot(nil) must equal new
+	afterSnap, err := s.Snapshot(nil)
+	if err != nil {
+		t.Fatalf("Snapshot(nil) after Replay: %v", err)
+	}
+	afterSum, err := afterSnap.Projection.Checksum()
+	if err != nil {
+		t.Fatalf("Checksum afterSnap: %v", err)
+	}
+	if afterSnap.Revision != newSnap.Revision || afterSnap.HeadHash != newSnap.HeadHash || afterSum != newSum {
+		t.Fatalf("Snapshot after Replay = (rev=%d, hash=%s, sum=%s), want (rev=%d, hash=%s, sum=%s)",
+			afterSnap.Revision, afterSnap.HeadHash, afterSum, newSnap.Revision, newSnap.HeadHash, newSum)
 	}
 }
 
@@ -225,6 +309,14 @@ func TestAC5_ReplayAtHeadEqualsSnapshot(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Snapshot(nil) before: %v", err)
 		}
+		sumBefore, err := snapBefore.Projection.Checksum()
+		if err != nil {
+			t.Fatalf("Checksum snapBefore: %v", err)
+		}
+
+		// Delete materialized projection rows to prove Replay rebuilds from the event log.
+		execSQL(t, s, "DELETE FROM records; DELETE FROM receipts; DELETE FROM edges")
+
 		replayed, err := s.Replay(nil)
 		if err != nil {
 			t.Fatalf("Replay(nil): %v", err)
@@ -237,16 +329,12 @@ func TestAC5_ReplayAtHeadEqualsSnapshot(t *testing.T) {
 			t.Fatalf("HeadHash: replayed=%s, snap=%s", replayed.HeadHash, snapBefore.HeadHash)
 		}
 
-		sumSnap, err := snapBefore.Projection.Checksum()
-		if err != nil {
-			t.Fatalf("Checksum snapBefore: %v", err)
-		}
 		sumReplay, err := replayed.Projection.Checksum()
 		if err != nil {
 			t.Fatalf("Checksum replayed: %v", err)
 		}
-		if sumReplay != sumSnap {
-			t.Fatalf("Projection checksum: replayed=%s, snap=%s", sumReplay, sumSnap)
+		if sumReplay != sumBefore {
+			t.Fatalf("Projection checksum: replayed=%s, snap=%s", sumReplay, sumBefore)
 		}
 
 		if !reflect.DeepEqual(replayed.Projection.Records, snapBefore.Projection.Records) {
@@ -259,11 +347,12 @@ func TestAC5_ReplayAtHeadEqualsSnapshot(t *testing.T) {
 			t.Fatal("Projection edges differ between Replay and Snapshot")
 		}
 
+		// Snapshot(nil) after Replay must equal replayed and snapBefore
 		snapAfter, err := s.Snapshot(nil)
 		if err != nil {
 			t.Fatalf("Snapshot(nil) after: %v", err)
 		}
-		if !reflect.DeepEqual(snapAfter.Projection.Records, replayed.Projection.Records) {
+		if !reflect.DeepEqual(snapAfter.Projection.Records, snapBefore.Projection.Records) {
 			t.Fatal("Installed projection records differ after Replay")
 		}
 	})
