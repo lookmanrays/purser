@@ -46,10 +46,10 @@ interface:
     func RequestDigest(b Binding, p Proposal) (string, error)
 
     // ReadSet records what an operator read, so the gate can detect stale bases.
+    // Collection reads (a set's insertions and deletions) arrive with P1-07.
     type ReadSet struct{ /* unexported */ }
     func (r *ReadSet) Record(id string)
     func (r *ReadSet) Absent(id string)
-    func (r *ReadSet) Collection(key string)
 
     // ArtifactStore is the content-addressed byte store operators use to stage
     // witness bytes. *artifacts.Store (P1-04) implements it; the gate does not
@@ -124,6 +124,7 @@ functions:
       - "a non-object op entry fails per-op syntax with invalid_op, in its place in the order (after base validity and scope)"
       - "a read dependency changed after base_revision gives stale_base with conflicts sorted by key"
       - "ops apply in order to tentative state; a rejection discards all tentative events"
+      - "tentative state applies each op's events with Options.Store.Registry(), the registry the store appends and replays with, so an op sees earlier ops' events of any registered type; a tentative event is applied with batch end equal to its own revision, as the reference does"
       - "the receipt event and admitted events form one batch; a rejection is a one-event batch"
       - "a pending outcome records the approval and a needs_principal receipt with the approval ID"
     errors: [invalid_input, unauthenticated, id_conflict, unavailable, integrity_error]
@@ -154,4 +155,5 @@ errors:
   approval_denied: "receipted: the principal denied the approval"
 non_goals:
   - "No identity or role taken from proposal JSON"
+  - "No collection reads yet: no M1 operator reads a set. ReadSet.Collection arrives with the first operators that do (P1-07)"
   - "No retries or scheduling"
