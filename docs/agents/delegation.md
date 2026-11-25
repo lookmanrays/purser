@@ -18,12 +18,12 @@ The experiment runs on **P1-03 only**. Afterwards we keep, change or drop it.
 1. In a terminal outside Codex, find the model slug and check that print mode works:
 
    ```bash
-   agy models                                   # note the Gemini 4 Hydrogen slug
+   agy models                                   # the slug carries the effort: gemini-4-hydrogen-high
    agy -p "Reply with exactly: OK" --output-format json --print-timeout 2m
    ```
 
    Expect `"status":"SUCCESS"` and `"response":"OK"`.
-2. Permissions. Print mode has no approval prompt: a tool action that needs approval is soft-denied, the run continues and still exits 0, with a notice on stderr. Antigravity needs to edit files and run `go`, `gofmt` and `git`. Either add allow rules under `permissions.allow` in `~/.gemini/antigravity-cli/settings.json` (for example `"command(git)"`, `"command(go)"`, plus whatever rule the CLI documents for file edits), or pass `--dangerously-skip-permissions`, which approves every tool call, including commands outside the worktree. That choice is the human's.
+2. Permissions. Print mode has no approval prompt: a tool action that needs approval is soft-denied, the run continues and still exits 0, with a notice on stderr. Antigravity needs to edit files and run `go`, `gofmt` and `git`. Grant exactly that for the one run: `--mode accept-edits` approves file edits, and `--settings` adds allow rules for this session only, never saved (see the command below). `--dangerously-skip-permissions` approves every tool call, including commands outside the worktree; use it only if the human chooses to.
 3. From inside Codex, run the same smoke test. If it hangs or prints nothing (non-TTY bugs have been reported), give it a pseudo-terminal: on macOS `script -q /dev/null agy -p ...`, on Linux `script -qec "agy -p ..." /dev/null`. `agy` writes its logs under `~/.gemini/antigravity-cli/` and needs the network; if your sandbox blocks that, ask to run it outside the sandbox.
 
 ## Each task
@@ -47,11 +47,15 @@ Run it, and treat anything other than `SUCCESS`, or a soft-deny notice on stderr
 
 ```bash
 cd ../agy-<ID>-$TASK
-agy -p "$(cat /tmp/agy-<ID>-$TASK.md)" --model <slug> --effort high \
+agy -p "$(cat /tmp/agy-<ID>-$TASK.md)" --model gemini-4-hydrogen-high \
+  --mode accept-edits --disable-slash-commands \
+  --settings '{"permissions":{"allow":["command(go)","command(gofmt)","command(git)"]}}' \
   --output-format json --print-timeout 30m \
   > /tmp/agy-<ID>-$TASK.json 2> /tmp/agy-<ID>-$TASK.err
 jq -r '.status, .conversation_id, .response' /tmp/agy-<ID>-$TASK.json
 ```
+
+If stderr reports a denied command, add only that command to the allow list and rerun with `--conversation`. Antigravity also has the Serena MCP server for symbol lookups.
 
 Then, back in your build worktree, read `git diff HEAD...agy/<ID>/$TASK`, and cherry-pick, edit or rewrite. For a follow-up in the same Antigravity session, add `--conversation <conversation_id>`. At most three tasks at once. When done:
 
