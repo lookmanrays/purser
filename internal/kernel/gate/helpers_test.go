@@ -8,7 +8,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -138,9 +137,6 @@ func requireErrorCode(t *testing.T, err error, wantCode string) {
 	if errors.As(err, &c) && c.Code() == wantCode {
 		return
 	}
-	if strings.Contains(err.Error(), wantCode) {
-		return
-	}
 	t.Fatalf("error %v does not have code %q", err, wantCode)
 }
 
@@ -178,10 +174,10 @@ type parityInvalidBinding struct {
 }
 
 type parityInvalidOp struct {
-	Name         string         `json:"name"`
-	Binding      map[string]any `json:"binding"`
-	Proposal     map[string]any `json:"proposal"`
-	ExpectedCode string         `json:"expected_code"`
+	Name         string          `json:"name"`
+	Binding      map[string]any  `json:"binding"`
+	Proposal     json.RawMessage `json:"proposal"`
+	ExpectedCode string          `json:"expected_code"`
 }
 
 type parityData struct {
