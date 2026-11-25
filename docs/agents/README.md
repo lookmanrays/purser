@@ -20,10 +20,10 @@ Start every agent in the main checkout (the repository root). It creates its wor
 
 | Tool | Model and effort |
 | --- | --- |
-| Codex | GPT-6.2 Sol at High, for kernel builds only (P1-02a to P1-08b, plus P1-07). Fix CI or review comments in the same chat; use Extra High only in a new chat when a frozen test resists. Never Astra, Max or Ultra. |
+| Codex | GPT-6.2 Sol at High: kernel builds (P1-02a to P1-08b), plus the tests and reviews of every package Antigravity builds. Fix CI or review comments in the same chat; use Extra High only in a new chat when a frozen test resists. Never Astra, Max or Ultra. |
 | Antigravity | Gemini 3.8 Flash in Planning mode, highest effort for builds and kernel tests. |
 
-`antigravity-2` in a brief means a second Antigravity agent in its own chat, which never sees the builder's chat or branch. It writes tests for, and reviews, the packages Antigravity builds.
+Codex writes the tests for, and reviews, the packages Antigravity builds, as the role table in `docs/plan.md` says. `antigravity-2` (a second Antigravity agent in its own chat, which never sees the builder's chat or branch) is still a valid brief value, but no open brief uses it: its test reviews kept finding tests that a correct implementation could not pass.
 
 What the P1-01 bake-off showed: Flash follows the process well, keeps scope and reaches high coverage, but can miss reference behaviour that the tests do not encode. Its builds therefore always get a reference-parity review, and the strict kernel packages stay with Codex.
 
