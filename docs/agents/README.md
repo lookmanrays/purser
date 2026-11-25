@@ -8,6 +8,8 @@ Every task is one package and one role. The agent sets up its own branch and wor
 | Builder | [builder.md](builder.md) | `You are the builder for Purser package <ID>. Follow docs/agents/builder.md exactly.` |
 | Reviewer | [reviewer.md](reviewer.md) | `You are the reviewer of pull request #<N> for Purser package <ID>. Follow docs/agents/reviewer.md exactly.` |
 
+Experiment: a Codex builder may delegate bounded tasks to Antigravity's headless CLI when its launch prompt allows it; see [delegation.md](delegation.md).
+
 Start every agent in the main checkout (the repository root). It creates its worktree under `.worktrees/`, which Git and the Go tools ignore.
 
 ## Chats
