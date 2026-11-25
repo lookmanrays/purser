@@ -27,7 +27,7 @@ type Proposal struct {
 	ProposalID    string
 	Commitment    string
 	BaseRevision  int64
-	Ops           []map[string]any
+	Ops           []any // each entry exactly as decoded; a non-object entry is rejected with invalid_op
 	Justification []string
 }
 
