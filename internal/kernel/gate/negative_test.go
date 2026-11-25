@@ -55,7 +55,14 @@ func TestNegative_InvalidOps(t *testing.T) {
 			g := newTestGate(t, s, clock)
 			bPrincipal := bindingFromWire(w)
 
-			baseRev, _ := tc.Proposal["base_revision"].(int64)
+			propMap, err := codec.DecodeObject(tc.Proposal)
+			if err != nil {
+				t.Fatalf("codec.DecodeObject failed: %v", err)
+			}
+			baseRev, ok := propMap["base_revision"].(int64)
+			if !ok {
+				t.Fatalf("base_revision is not int64: %T (%v)", propMap["base_revision"], propMap["base_revision"])
+			}
 			if baseRev >= 2 {
 				currTime, _ = codec.ParseTime(w.ClockByBatch[0])
 				if _, err := g.Admit(bPrincipal, encodeProposal(t, w.Proposals[0])); err != nil {
@@ -70,7 +77,7 @@ func TestNegative_InvalidOps(t *testing.T) {
 			}
 
 			b := bindingFromMap(tc.Binding)
-			raw := encodeProposal(t, tc.Proposal)
+			raw := encodeProposal(t, propMap)
 
 			r, err := g.Admit(b, raw)
 			if err != nil {
