@@ -8,6 +8,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -66,6 +67,9 @@ func newTestStore(t *testing.T) (*store.Store, *testvectors.WireVector) {
 		t.Fatalf("store.Open failed: %v", err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
+	if _, err := s.Initialize(); err != nil {
+		t.Fatalf("store.Initialize failed: %v", err)
+	}
 	return s, w
 }
 
@@ -95,6 +99,49 @@ func bindingFromWire(w *testvectors.WireVector) Binding {
 		b.Assignment = &a
 	}
 	return b
+}
+
+func bindingFromMap(m map[string]any) Binding {
+	b := Binding{}
+	if a, ok := m["actor_id"].(string); ok {
+		b.ActorID = a
+	}
+	if r, ok := m["role"].(string); ok {
+		b.Role = r
+	}
+	if pr, ok := m["principal_id"].(string); ok {
+		b.PrincipalID = pr
+	}
+	if c, ok := m["commitment"].(string); ok {
+		b.Commitment = &c
+	}
+	if asg, ok := m["assignment"].(string); ok {
+		b.Assignment = &asg
+	}
+	if m["unexpected"] != nil {
+		b.Attachments = map[string]any{"unexpected": m["unexpected"]}
+	}
+	return b
+}
+
+func requireErrorCode(t *testing.T, err error, wantCode string) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("expected error code %q, got nil", wantCode)
+	}
+	var ce *codec.Error
+	if errors.As(err, &ce) && ce.Code == wantCode {
+		return
+	}
+	type coder interface{ Code() string }
+	var c coder
+	if errors.As(err, &c) && c.Code() == wantCode {
+		return
+	}
+	if strings.Contains(err.Error(), wantCode) {
+		return
+	}
+	t.Fatalf("error %v does not have code %q", err, wantCode)
 }
 
 func encodeProposal(t *testing.T, prop map[string]any) []byte {
@@ -131,9 +178,10 @@ type parityInvalidBinding struct {
 }
 
 type parityInvalidOp struct {
-	Name         string `json:"name"`
-	Op           any    `json:"op"`
-	ExpectedCode string `json:"expected_code"`
+	Name         string         `json:"name"`
+	Binding      map[string]any `json:"binding"`
+	Proposal     map[string]any `json:"proposal"`
+	ExpectedCode string         `json:"expected_code"`
 }
 
 type parityData struct {
