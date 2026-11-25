@@ -55,7 +55,7 @@ v2_kinds:
     state: {type: string, enum: [proposed, accepted, superseded]}
 
   GraphSnapshot:   # P2-08
-    git_commit: {type: string, rule: "typed candidate identity of the indexed commit"}
+    git_commit: {type: object, rule: "typed candidate identity of the indexed commit, as the kernel writes candidates (rules.candidate): exactly {kind, algorithm, digest} with kind git.commit, algorithm sha1 (40 lowercase hex) or sha256 (64 lowercase hex)"}
     digest: {type: string, rule: "sha256 over the canonical graph rows"}
     indexers: {type: array, items: {name: string, version: string}}
     files: {type: integer}
