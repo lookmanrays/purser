@@ -1,6 +1,9 @@
 name: CI
 
-on: pull_request
+on:
+  pull_request:
+    # Docs-only pull requests run docs.yml instead.
+    paths-ignore: ["**/*.md", "docs/**"]
 
 permissions:
   contents: read
@@ -37,6 +40,8 @@ jobs:
         run: make check
       - name: Check package briefs
         run: make briefcheck
+      - name: Check briefs and contracts
+        run: python3 -I tools/check_briefs.py
       - name: Check Python reference vectors
         run: python3 reference/python/docs/contracts/check_vectors.py
         env:
