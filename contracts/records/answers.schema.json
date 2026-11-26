@@ -302,6 +302,27 @@
           "subject": {
             "$ref": "defs.schema.json#/$defs/any_id"
           }
+        },
+        "if": {
+          "properties": {
+            "action": {
+              "const": "principal_approve"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "subject": {
+              "$ref": "defs.schema.json#/$defs/approval_id"
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "subject": {
+              "$ref": "defs.schema.json#/$defs/id"
+            }
+          }
         }
       }
     }

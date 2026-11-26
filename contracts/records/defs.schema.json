@@ -19,7 +19,7 @@
     },
     "nonempty": {
       "type": "string",
-      "pattern": "\\S"
+      "format": "purser-nonblank"
     },
     "min1": {
       "type": "string",
@@ -52,20 +52,22 @@
       "type": "string",
       "format": "purser-git-path"
     },
+    "rel_path": {
+      "type": "string",
+      "format": "purser-rel-path"
+    },
     "git_paths": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/git_path"
-      },
-      "uniqueItems": true
+      }
     },
     "allowed_paths": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/git_path"
       },
-      "minItems": 1,
-      "uniqueItems": true
+      "minItems": 1
     },
     "git_commit": {
       "type": "object",
@@ -350,80 +352,28 @@
     },
     "receipt_details": {
       "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "approval_id": {
-          "$ref": "#/$defs/approval_id"
-        },
-        "state": {
-          "enum": [
-            "approved",
-            "denied",
-            "expired",
-            "stale",
-            "ready",
-            "superseded",
-            "dispatching",
-            "pending",
-            "confirmed_happened",
-            "confirmed_absent"
+      "if": {
+        "required": [
+          "approval_id"
+        ]
+      },
+      "then": {
+        "if": {
+          "required": [
+            "state"
           ]
         },
-        "effect": {
-          "$ref": "#/$defs/id"
-        },
-        "attempt": {
-          "$ref": "#/$defs/id"
-        },
-        "intent_digest": {
-          "$ref": "#/$defs/sha256"
-        },
-        "conflicts": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "key",
-              "changed"
-            ],
-            "properties": {
-              "key": {
-                "$ref": "#/$defs/min1"
-              },
-              "changed": {
-                "$ref": "#/$defs/pos_int"
-              }
-            }
-          }
-        },
-        "work": {
-          "$ref": "#/$defs/id"
-        },
-        "reasons": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/reason"
-          }
-        }
-      },
-      "oneOf": [
-        {
-          "maxProperties": 0
-        },
-        {
-          "required": [
-            "approval_id"
-          ],
-          "maxProperties": 1
-        },
-        {
+        "then": {
+          "type": "object",
+          "additionalProperties": false,
           "required": [
             "approval_id",
             "state"
           ],
-          "maxProperties": 2,
           "properties": {
+            "approval_id": {
+              "$ref": "#/$defs/approval_id"
+            },
             "state": {
               "enum": [
                 "approved",
@@ -434,70 +384,200 @@
             }
           }
         },
-        {
+        "else": {
+          "type": "object",
+          "additionalProperties": false,
           "required": [
-            "effect",
-            "state"
+            "approval_id"
           ],
-          "maxProperties": 2,
           "properties": {
-            "state": {
-              "enum": [
-                "ready",
-                "superseded",
-                "dispatching",
-                "pending",
-                "confirmed_happened",
-                "confirmed_absent"
-              ]
+            "approval_id": {
+              "$ref": "#/$defs/approval_id"
             }
           }
-        },
-        {
+        }
+      },
+      "else": {
+        "if": {
           "required": [
-            "effect",
-            "attempt",
-            "state"
-          ],
-          "maxProperties": 3,
-          "properties": {
-            "state": {
-              "enum": [
-                "pending",
-                "confirmed_happened",
-                "confirmed_absent"
-              ]
-            }
-          }
+            "conflicts"
+          ]
         },
-        {
-          "required": [
-            "effect",
-            "attempt",
-            "intent_digest",
-            "state"
-          ],
-          "maxProperties": 4,
-          "properties": {
-            "state": {
-              "const": "dispatching"
-            }
-          }
-        },
-        {
+        "then": {
+          "type": "object",
+          "additionalProperties": false,
           "required": [
             "conflicts"
           ],
-          "maxProperties": 1
+          "properties": {
+            "conflicts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "key",
+                  "changed"
+                ],
+                "properties": {
+                  "key": {
+                    "$ref": "#/$defs/min1"
+                  },
+                  "changed": {
+                    "$ref": "#/$defs/pos_int"
+                  }
+                }
+              }
+            }
+          }
         },
-        {
-          "required": [
-            "work",
-            "reasons"
-          ],
-          "maxProperties": 2
+        "else": {
+          "if": {
+            "anyOf": [
+              {
+                "required": [
+                  "work"
+                ]
+              },
+              {
+                "required": [
+                  "reasons"
+                ]
+              }
+            ]
+          },
+          "then": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "work",
+              "reasons"
+            ],
+            "properties": {
+              "work": {
+                "$ref": "#/$defs/id"
+              },
+              "reasons": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/reason"
+                }
+              }
+            }
+          },
+          "else": {
+            "if": {
+              "anyOf": [
+                {
+                  "required": [
+                    "effect"
+                  ]
+                },
+                {
+                  "required": [
+                    "attempt"
+                  ]
+                },
+                {
+                  "required": [
+                    "intent_digest"
+                  ]
+                }
+              ]
+            },
+            "then": {
+              "if": {
+                "required": [
+                  "intent_digest"
+                ]
+              },
+              "then": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "effect",
+                  "attempt",
+                  "intent_digest",
+                  "state"
+                ],
+                "properties": {
+                  "effect": {
+                    "$ref": "#/$defs/id"
+                  },
+                  "attempt": {
+                    "$ref": "#/$defs/id"
+                  },
+                  "intent_digest": {
+                    "$ref": "#/$defs/sha256"
+                  },
+                  "state": {
+                    "const": "dispatching"
+                  }
+                }
+              },
+              "else": {
+                "if": {
+                  "required": [
+                    "attempt"
+                  ]
+                },
+                "then": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "effect",
+                    "attempt",
+                    "state"
+                  ],
+                  "properties": {
+                    "effect": {
+                      "$ref": "#/$defs/id"
+                    },
+                    "attempt": {
+                      "$ref": "#/$defs/id"
+                    },
+                    "state": {
+                      "enum": [
+                        "pending",
+                        "confirmed_happened",
+                        "confirmed_absent"
+                      ]
+                    }
+                  }
+                },
+                "else": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "effect",
+                    "state"
+                  ],
+                  "properties": {
+                    "effect": {
+                      "$ref": "#/$defs/id"
+                    },
+                    "state": {
+                      "enum": [
+                        "ready",
+                        "superseded",
+                        "dispatching",
+                        "pending",
+                        "confirmed_happened",
+                        "confirmed_absent"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "else": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {}
+            }
+          }
         }
-      ]
+      }
     },
     "receipt_data": {
       "type": "object",

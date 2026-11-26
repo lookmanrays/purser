@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/santhosh-tekuri/jsonschema/v6/kind"
@@ -45,6 +46,8 @@ func compileAll() map[string]*jsonschema.Schema {
 	c.RegisterFormat(&jsonschema.Format{Name: "purser-time", Validate: validateTime})
 	c.RegisterFormat(&jsonschema.Format{Name: "purser-branch", Validate: validateBranch})
 	c.RegisterFormat(&jsonschema.Format{Name: "purser-git-path", Validate: validateGitPath})
+	c.RegisterFormat(&jsonschema.Format{Name: "purser-rel-path", Validate: validateRelPath})
+	c.RegisterFormat(&jsonschema.Format{Name: "purser-nonblank", Validate: validateNonblank})
 
 	entries, err := fs.ReadDir(records.FS, ".")
 	if err != nil {
@@ -66,9 +69,7 @@ func compileAll() map[string]*jsonschema.Schema {
 		if err := c.AddResource("purser://records/"+e.Name(), doc); err != nil {
 			panic(fmt.Errorf("%s: %w", e.Name(), err))
 		}
-		if e.Name() != "defs.schema.json" {
-			names = append(names, strings.TrimSuffix(e.Name(), ".schema.json"))
-		}
+		names = append(names, strings.TrimSuffix(e.Name(), ".schema.json"))
 	}
 	out := make(map[string]*jsonschema.Schema, len(names))
 	for _, name := range names {
@@ -188,4 +189,28 @@ func validateGitPath(v any) error {
 		}
 	}
 	return nil
+}
+
+func validateRelPath(v any) error {
+	s, ok := v.(string)
+	if !ok {
+		return nil
+	}
+	if strings.ContainsRune(s, '\\') {
+		return errors.New("backslash in path")
+	}
+	return validateGitPath(s)
+}
+
+func validateNonblank(v any) error {
+	s, ok := v.(string)
+	if !ok {
+		return nil
+	}
+	for _, r := range s {
+		if !unicode.IsSpace(r) && (r < 0x1c || r > 0x1f) {
+			return nil
+		}
+	}
+	return errors.New("blank string")
 }

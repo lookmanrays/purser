@@ -48,7 +48,7 @@
       "$ref": "defs.schema.json#/$defs/min1"
     },
     "path": {
-      "type": "string"
+      "$ref": "defs.schema.json#/$defs/rel_path"
     },
     "range": {
       "type": "object",
@@ -100,5 +100,114 @@
     "owner": {
       "type": "string"
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "module"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "id": {
+            "pattern": "^mod:.+"
+          },
+          "owner": {
+            "const": ""
+          },
+          "symbol_kind": false,
+          "content_sha256": false,
+          "error": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "package"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "id": {
+            "pattern": "^pkg:.+"
+          },
+          "owner": {
+            "const": ""
+          },
+          "symbol_kind": false,
+          "content_sha256": false,
+          "error": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "file"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "id": {
+            "pattern": "^file:.+"
+          },
+          "owner": {
+            "pattern": "^file:.+"
+          },
+          "symbol_kind": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "symbol"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "id": {
+            "pattern": "^sym:.+"
+          },
+          "owner": {
+            "pattern": "^file:.+"
+          },
+          "content_sha256": false,
+          "error": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "test"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "id": {
+            "pattern": "^test:.+"
+          },
+          "owner": {
+            "pattern": "^file:.+"
+          },
+          "symbol_kind": false,
+          "content_sha256": false,
+          "error": false
+        }
+      }
+    }
+  ]
 }

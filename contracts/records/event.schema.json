@@ -244,7 +244,7 @@
             ],
             "properties": {
               "id": {
-                "$ref": "defs.schema.json#/$defs/any_id"
+                "$ref": "defs.schema.json#/$defs/approval_id"
               },
               "requester": {
                 "$ref": "defs.schema.json#/$defs/min1"
@@ -288,7 +288,7 @@
             ],
             "properties": {
               "id": {
-                "$ref": "defs.schema.json#/$defs/any_id"
+                "$ref": "defs.schema.json#/$defs/approval_id"
               },
               "state": {
                 "enum": [
@@ -958,8 +958,7 @@
                 "type": "array",
                 "items": {
                   "$ref": "defs.schema.json#/$defs/nonempty"
-                },
-                "uniqueItems": true
+                }
               },
               "rationale": {
                 "$ref": "defs.schema.json#/$defs/nonempty"
@@ -968,15 +967,13 @@
                 "type": "array",
                 "items": {
                   "$ref": "defs.schema.json#/$defs/id"
-                },
-                "uniqueItems": true
+                }
               },
               "triggers": {
                 "type": "array",
                 "items": {
                   "$ref": "defs.schema.json#/$defs/id"
-                },
-                "uniqueItems": true
+                }
               },
               "supersedes": {
                 "oneOf": [

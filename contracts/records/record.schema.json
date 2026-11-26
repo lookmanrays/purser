@@ -58,7 +58,7 @@
   "then": {
     "properties": {
       "id": {
-        "$ref": "defs.schema.json#/$defs/any_id"
+        "$ref": "defs.schema.json#/$defs/approval_id"
       }
     }
   },
@@ -68,5 +68,343 @@
         "$ref": "defs.schema.json#/$defs/id"
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "Commitment"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.Commitment.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "WorkItem"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.WorkItem.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "Approval"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.Approval.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "Assignment"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.Assignment.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "Result"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.Result.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "Obligation"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.Obligation.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "VerificationRun"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.VerificationRun.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "Observation"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.Observation.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "Evidence"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.Evidence.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "Waiver"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.Waiver.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "Assumption"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.Assumption.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "Decision"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.Decision.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "DecisionOpinion"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.DecisionOpinion.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "Effect"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.Effect.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "AuthorityGrant"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.AuthorityGrant.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "EffectAttempt"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.EffectAttempt.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "Contract"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.Contract.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "GraphSnapshot"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.GraphSnapshot.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "Contradiction"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.Contradiction.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "Routing"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.Routing.schema.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "Cost"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "fields": {
+            "$ref": "fields.Cost.schema.json"
+          }
+        }
+      }
+    }
+  ]
 }
