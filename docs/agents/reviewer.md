@@ -21,7 +21,7 @@ Then read `docs/packages/<ID>.md`, every contract it names, and the frozen tests
 3. No module outside `deps_allowed`; nothing under `contracts/` or `reference/` changed.
 4. Exported names, signatures, error codes and invariants match the contract exactly.
 5. Nothing passes the tests while breaking the contract's invariants or non-goals: hidden I/O, clock reads, global state, ignored errors, panics on bad input, quadratic loops over the log.
-6. Changed lines are within the brief's budget; no TODO without a linked issue or brief.
+6. Changed lines are within the brief's budget (paths under `budget.excluding` don't count, but are still reviewed); no TODO without a linked issue or brief.
 7. **Reference parity.** When `scope.read` names files under `reference/python/`, compare the implementation with the reference's validation code branch by branch, and run the edge cases through both, for example `python3 -I` with `reference/python` on `sys.path`. Any input the two treat differently is a required change unless the contract says otherwise.
 8. Declarations match the contract verbatim, including struct field order.
 9. When reviewing tests before freezing, run `python3 -I tools/check_literals.py <test files>`. Every `SUSPECT` line is a data-like literal (digest, prefixed ID, timestamp) found in no vector, fixture or contract: request changes. Read the `review` lines too, and check every literal expected value, including arguments such as lookup IDs, against the file it claims to come from.
