@@ -10,7 +10,7 @@ Your task is exactly one package brief, `docs/packages/<id>.md`. Read all of it 
 3. To escalate, write `docs/packages/<id>.contradiction.md` (what is wrong, the evidence, your proposed fix), push it, open or update the pull request with it, and stop. The pull request is the escalation channel; do not use a task tracker or a browser.
 4. Reuse what the brief lists under `reuse`. Add no third-party module unless it is listed in `deps_allowed`. Adding a listed module may change the root `go.mod` and `go.sum` even though they are not in `scope.write`; those lines do not count toward the budget.
 5. Done means the brief's Definition of done, including the evidence note in the PR body.
-6. Over the brief's budget of changed lines (tests, and any paths the brief lists under `budget.excluding`, excluded)? Stop and propose a split.
+6. Over the brief's budget of changed lines? Stop and propose a split. Changed lines are the non-blank lines added or deleted relative to `main`, not counting tests, test data, stubs, `go.mod` and `go.sum`, your package's own `docs/packages/<ID>.*` files, or paths the brief lists under `budget.excluding`. Count them with the command in `docs/agents/builder.md`.
 7. For a size M or L package, start the PR description with an execution plan and keep it current.
 8. Never weaken a check to get green: no lowered coverage floor, disabled lint rule, skipped race run or deleted fuzz target.
 9. Never take identity, role or authority from JSON input. Bindings come only from trusted ingress.
