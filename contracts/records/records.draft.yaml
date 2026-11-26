@@ -133,4 +133,6 @@ interface:
     - "a missing required property: the pointer of that property, e.g. /data/statement for an event whose data lacks statement"
     - "a property that is not allowed: the pointer of that property, e.g. /data/extra"
     - "any other violation: the pointer of the value that fails, e.g. /base_revision; the whole value is the empty pointer \"\""
+    - "where a value must match one of several shapes (Observation kinds, Effect states, receipt details by code), the violation is reported from the shape the value violates least: the variant with the fewest violations, the first such variant on a tie. Adding one property from another variant therefore reports that property, and removing one required property reports it. Express such unions as anyOf of closed variants and pick the variant in the error walker; do not select by a single discriminating key"
+    - "receipt details follow kernel-v1.md by code in both the projected receipt and ProposalReceipted.data, for example approval_id for needs_principal and conflicts for stale_base; one shared definition serves both"
     - "with several violations, which one is reported is unspecified; tests use values with exactly one violation"
