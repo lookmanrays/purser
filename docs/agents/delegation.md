@@ -15,52 +15,86 @@ The experiment runs on **P1-03 only**. Afterwards we keep, change or drop it.
 
 ## Set up once
 
-1. In a terminal outside Codex, find the model slug and check that print mode works:
+1. Find the model slug and check that print mode works in your terminal and from Codex.
 
    ```bash
-   agy models                                   # the slug carries the effort: gemini-4-hydrogen-high
-   agy -p "Reply with exactly: OK" --output-format json --print-timeout 2m
+   agy models
+   agy -p "Reply with exactly: OK" --model gemini-4-hydrogen-high \
+     --output-format json --print-timeout 2m
    ```
 
-   Expect `"status":"SUCCESS"` and `"response":"OK"`.
-2. Permissions. Print mode has no approval prompt: a tool action that needs approval is soft-denied, the run continues and still exits 0, with a notice on stderr. Antigravity needs to edit files and run `go`, `gofmt` and `git`. Grant exactly that for the one run: `--mode accept-edits` approves file edits, and `--settings` adds allow rules for this session only, never saved (see the command below). `--dangerously-skip-permissions` approves every tool call, including commands outside the worktree; use it only if the human chooses to.
-3. From inside Codex, run the same smoke test. If it hangs or prints nothing (non-TTY bugs have been reported), give it a pseudo-terminal: on macOS `script -q /dev/null agy -p ...`, on Linux `script -qec "agy -p ..." /dev/null`. `agy` writes its logs under `~/.gemini/antigravity-cli/` and needs the network; if your sandbox blocks that, ask to run it outside the sandbox.
+   Expect `SUCCESS` and a response of `OK` after trimming whitespace. If print mode hangs without output, retry with a pseudo-terminal. On macOS use `script -q /dev/null agy -p ...`. On Linux use `script -qec "agy -p ..." /dev/null`.
+
+2. Use `--mode accept-edits` for workspace edits and keep `--sandbox` enabled for terminal execution. Pass the shell commands and MCP tools required by the task in the session-only `--settings` allowlist. Headless mode soft-denies requests that need interactive approval. The process can still exit 0 and report `SUCCESS`. [Headless mode](https://antigravity.google/docs/cli/headless/) · [Permission rules](https://antigravity.google/docs/permissions/)
+
+3. Use `--dangerously-skip-permissions` only when the human explicitly authorizes it for the run. Add it to the sandboxed command below for that run. On `agy` 1.5.17 it cleared shell and MCP approval prompts. An explicit deny rule still blocked the command it matched, and the terminal sandbox still blocked Git from creating `.git/index.lock`. [Terminal sandbox](https://antigravity.google/docs/sandbox/)
 
 ## Each task
 
-From your build worktree (`.worktrees/build-<ID>`), give the task its own worktree and branch, so two agents never edit the same checkout:
+From the build worktree, create a separate worktree and branch for the delegated task. This example uses the P1-03 proposal parser.
 
 ```bash
-TASK=<short-name>
-git worktree add ../agy-<ID>-$TASK -b agy/<ID>/$TASK HEAD
+package_id=P1-03
+task=proposal
+delegated_branch="agy/$package_id/$task"
+delegated_worktree="../agy-$package_id-$task"
+prompt_file="/tmp/agy-$package_id-$task.md"
+git worktree add "$delegated_worktree" -b "$delegated_branch" HEAD
 ```
 
-Write the prompt to `/tmp/agy-<ID>-$TASK.md`. It states the package ID and brief path, the task, the files Antigravity may write, the reference to port (file and function), the test command that proves it, and these lines:
+Write the prompt to `$prompt_file`. Name the package and brief, the files Antigravity may write, the reference file and function to port, and the test command that proves the result. Include these lines.
 
 ```text
-Do not edit *_test.go, testdata, contracts/ or docs/. Do not push.
-Commit on the current branch and stop.
-Reply with what you changed and every reference rule you could not match.
+Do not edit *_test.go, testdata, contracts/ or docs/.
+Leave edits for the builder to review and commit. Do not stage, commit or push.
+Reply with what you changed, the commands and results, and every reference rule you could not match.
 ```
 
-Run it, and treat anything other than `SUCCESS`, or a soft-deny notice on stderr, as a failed task:
+Run from the delegated worktree. Adjust the allowlist to the task's commands.
 
 ```bash
-cd ../agy-<ID>-$TASK
-agy -p "$(cat /tmp/agy-<ID>-$TASK.md)" --model gemini-4-hydrogen-high \
-  --mode accept-edits --disable-slash-commands \
-  --settings '{"permissions":{"allow":["command(go)","command(gofmt)","command(git)"]}}' \
-  --output-format json --print-timeout 30m \
-  > /tmp/agy-<ID>-$TASK.json 2> /tmp/agy-<ID>-$TASK.err
-jq -r '.status, .conversation_id, .response' /tmp/agy-<ID>-$TASK.json
+trace="/tmp/agy-$package_id-$task.ndjson"
+stderr_log="/tmp/agy-$package_id-$task.err"
+settings='{"permissions":{"allow":["command(go test)","command(go vet)","command(gofmt)","command(git diff)","command(git status)"]}}'
+
+(
+  cd "$delegated_worktree" || exit
+  agy -p "$(cat "$prompt_file")" --model gemini-4-hydrogen-high \
+    --mode accept-edits --disable-slash-commands --sandbox \
+    --settings "$settings" --output-format stream-json --print-timeout 30m
+) > "$trace" 2> "$stderr_log"
+agy_exit=$?
+printf 'agy exit = %s\n' "$agy_exit"
+jq -r 'select(.event == "result") | .result | .status, .conversation_id, .response' "$trace"
+jq -c 'select(.event == "step_update" and .step_update.state == "ERROR") | .step_update.tool_info.error' "$trace"
+cat "$stderr_log"
 ```
 
-If stderr reports a denied command, add only that command to the allow list and rerun with `--conversation`. Antigravity also has the Serena MCP server for symbol lookups.
+Check the exit code, terminal result, tool errors, and stderr. Verify the expected files and test output before treating the task as successful. A permission denial can leave `SUCCESS` with an empty response. [Streaming JSON events](https://antigravity.google/docs/cli/headless/#streaming-json)
 
-Then, back in your build worktree, read `git diff HEAD...agy/<ID>/$TASK`, and cherry-pick, edit or rewrite. For a follow-up in the same Antigravity session, add `--conversation <conversation_id>`. At most three tasks at once. When done:
+When a call needs approval, use its exact command or MCP server/tool name from the trace. A P1-03 diagnostic on `agy` 1.5.17 verified both grants below with the sandbox enabled.
+
+```text
+command(ls -la contracts/ internal/kernel/codec/ internal/kernel/gate/)
+mcp(serena/initial_instructions)
+```
+
+Add the needed rule to `permissions.allow` and rerun with `--conversation <conversation_id>`, a follow-up prompt, and fresh trace paths. Serena must be configured in Antigravity for its MCP calls to work. [MCP configuration](https://antigravity.google/docs/cli/mcp/) · [Permission rule syntax](https://antigravity.google/docs/permissions/)
+
+## Review and integrate
+
+Back in the build worktree, review the delegated worktree's tracked diff and open any new files before staging.
 
 ```bash
-git worktree remove ../agy-<ID>-$TASK && git branch -D agy/<ID>/$TASK
+git -C "$delegated_worktree" status --short
+git -C "$delegated_worktree" diff HEAD
+git -C "$delegated_worktree" ls-files --others --exclude-standard
+```
+
+Check the diff against the reference and rerun the focused tests yourself. Stage only reviewed files and commit with the builder's Git from the delegated worktree. Cherry-pick, edit or rewrite the result in the build worktree. Keep at most three delegated tasks active. After integration or discard, remove the delegated worktree when clean and delete the local branch.
+
+```bash
+git worktree remove "$delegated_worktree" && git branch -D "$delegated_branch"
 ```
 
 ## Record
