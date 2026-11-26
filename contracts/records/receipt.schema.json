@@ -2,14 +2,40 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["actor_id", "proposal_id", "digest", "disposition", "code", "details", "revision"],
+  "required": [
+    "actor_id",
+    "proposal_id",
+    "digest",
+    "disposition",
+    "code",
+    "details",
+    "revision"
+  ],
   "properties": {
-    "actor_id": {"$ref": "defs.schema.json#/$defs/min1"},
-    "proposal_id": {"$ref": "defs.schema.json#/$defs/id"},
-    "digest": {"$ref": "defs.schema.json#/$defs/sha256"},
-    "disposition": {"enum": ["admitted", "pending", "rejected"]},
-    "code": {"$ref": "defs.schema.json#/$defs/nonempty"},
-    "details": {"$ref": "defs.schema.json#/$defs/receipt_details"},
-    "revision": {"$ref": "defs.schema.json#/$defs/pos_int"}
+    "actor_id": {
+      "$ref": "defs.schema.json#/$defs/min1"
+    },
+    "proposal_id": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "digest": {
+      "$ref": "defs.schema.json#/$defs/sha256"
+    },
+    "disposition": {
+      "enum": [
+        "admitted",
+        "pending",
+        "rejected"
+      ]
+    },
+    "code": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "details": {
+      "$ref": "defs.schema.json#/$defs/receipt_details"
+    },
+    "revision": {
+      "$ref": "defs.schema.json#/$defs/pos_int"
+    }
   }
 }

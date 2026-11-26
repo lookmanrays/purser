@@ -2,24 +2,103 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "kind", "lang", "name", "exported", "source", "owner"],
+  "required": [
+    "id",
+    "kind",
+    "lang",
+    "name",
+    "exported",
+    "source",
+    "owner"
+  ],
   "properties": {
-    "id": {"type": "string", "pattern": "^(mod|pkg|file|sym|test):.+"},
-    "kind": {"enum": ["module", "package", "file", "symbol", "test"]},
-    "symbol_kind": {"enum": ["function", "method", "type", "interface", "field", "const", "var", "class", "enum"]},
-    "lang": {"enum": ["go", "typescript"]},
-    "name": {"$ref": "defs.schema.json#/$defs/min1"},
-    "path": {"type": "string"},
-    "range": {
-      "type": "object", "additionalProperties": false, "required": ["StartLine", "StartCol", "EndLine", "EndCol"],
-      "properties": {"StartLine": {"$ref": "defs.schema.json#/$defs/pos_int"}, "StartCol": {"$ref": "defs.schema.json#/$defs/nonneg_int"}, "EndLine": {"$ref": "defs.schema.json#/$defs/pos_int"}, "EndCol": {"$ref": "defs.schema.json#/$defs/nonneg_int"}}
+    "id": {
+      "type": "string",
+      "pattern": "^(mod|pkg|file|sym|test):.+"
     },
-    "signature": {"type": "string"},
-    "doc": {"type": "string"},
-    "exported": {"type": "boolean"},
-    "content_sha256": {"$ref": "defs.schema.json#/$defs/sha256"},
-    "source": {"enum": ["scip", "syntax", "lsp", "coverage"]},
-    "error": {"type": "string"},
-    "owner": {"type": "string"}
+    "kind": {
+      "enum": [
+        "module",
+        "package",
+        "file",
+        "symbol",
+        "test"
+      ]
+    },
+    "symbol_kind": {
+      "enum": [
+        "function",
+        "method",
+        "type",
+        "interface",
+        "field",
+        "const",
+        "var",
+        "class",
+        "enum"
+      ]
+    },
+    "lang": {
+      "enum": [
+        "go",
+        "typescript"
+      ]
+    },
+    "name": {
+      "$ref": "defs.schema.json#/$defs/min1"
+    },
+    "path": {
+      "type": "string"
+    },
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "StartLine",
+        "StartCol",
+        "EndLine",
+        "EndCol"
+      ],
+      "properties": {
+        "StartLine": {
+          "$ref": "defs.schema.json#/$defs/pos_int"
+        },
+        "StartCol": {
+          "$ref": "defs.schema.json#/$defs/nonneg_int"
+        },
+        "EndLine": {
+          "$ref": "defs.schema.json#/$defs/pos_int"
+        },
+        "EndCol": {
+          "$ref": "defs.schema.json#/$defs/nonneg_int"
+        }
+      }
+    },
+    "signature": {
+      "type": "string"
+    },
+    "doc": {
+      "type": "string"
+    },
+    "exported": {
+      "type": "boolean"
+    },
+    "content_sha256": {
+      "$ref": "defs.schema.json#/$defs/sha256"
+    },
+    "source": {
+      "enum": [
+        "scip",
+        "syntax",
+        "lsp",
+        "coverage"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    }
   }
 }

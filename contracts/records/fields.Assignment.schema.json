@@ -2,12 +2,36 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["work", "executor", "generation", "state"],
+  "required": [
+    "work",
+    "executor",
+    "generation",
+    "state"
+  ],
   "properties": {
-    "work": {"$ref": "defs.schema.json#/$defs/id"},
-    "executor": {"$ref": "defs.schema.json#/$defs/nonempty"},
-    "generation": {"$ref": "defs.schema.json#/$defs/pos_int"},
-    "state": {"enum": ["current", "superseded"]},
-    "work_supports": {"type": "object", "patternProperties": {"^[A-Za-z][A-Za-z0-9_.-]{0,95}$": {"$ref": "defs.schema.json#/$defs/sha256"}}, "additionalProperties": false}
+    "work": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "executor": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "generation": {
+      "$ref": "defs.schema.json#/$defs/pos_int"
+    },
+    "state": {
+      "enum": [
+        "current",
+        "superseded"
+      ]
+    },
+    "work_supports": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z][A-Za-z0-9_.-]{0,95}$": {
+          "$ref": "defs.schema.json#/$defs/sha256"
+        }
+      },
+      "additionalProperties": false
+    }
   }
 }

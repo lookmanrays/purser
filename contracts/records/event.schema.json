@@ -2,59 +2,1482 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["v", "event_version", "revision", "batch_start", "batch_size", "actor_id", "proposal_id", "at", "type", "data", "prev_hash", "hash"],
+  "required": [
+    "v",
+    "event_version",
+    "revision",
+    "batch_start",
+    "batch_size",
+    "actor_id",
+    "proposal_id",
+    "at",
+    "type",
+    "data",
+    "prev_hash",
+    "hash"
+  ],
   "properties": {
-    "v": {"type": "integer", "const": 1},
-    "event_version": {"type": "integer", "enum": [0, 1]},
-    "revision": {"$ref": "defs.schema.json#/$defs/pos_int"},
-    "batch_start": {"$ref": "defs.schema.json#/$defs/pos_int"},
-    "batch_size": {"$ref": "defs.schema.json#/$defs/pos_int"},
-    "actor_id": {"$ref": "defs.schema.json#/$defs/min1"},
-    "proposal_id": {"$ref": "defs.schema.json#/$defs/id"},
-    "at": {"$ref": "defs.schema.json#/$defs/timestamp"},
-    "type": {"enum": [
-      "CommitmentCreated", "CommitmentEdited", "ApprovalRequested", "ApprovalResolved", "CommitmentActivated", "ProposalReceipted",
-      "WorkCreated", "CoverageSet", "WorkAssigned", "ResultSubmitted", "ObligationSet", "RunOpened", "ObservationRecorded",
-      "EvidenceRecorded", "ObligationWaived", "WorkAccepted", "WorkClosed", "WorkReopened", "CommitmentSatisfied", "CommitmentReopened",
-      "AssumptionCreated", "DecisionRecorded", "DecisionOpinionRecorded", "PremiseObserved", "DependencyAdded", "DependencyRemoved",
-      "WorkSupportUpdated", "EffectRequired", "GrantIssued", "GrantRevoked", "EffectIntentBound", "EffectDispatchAuthorized", "GitEffectObserved"
-    ]},
-    "data": {"type": "object"},
-    "prev_hash": {"$ref": "defs.schema.json#/$defs/sha256"},
-    "hash": {"$ref": "defs.schema.json#/$defs/sha256"}
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "event_version": {
+      "type": "integer",
+      "enum": [
+        0,
+        1
+      ]
+    },
+    "revision": {
+      "$ref": "defs.schema.json#/$defs/pos_int"
+    },
+    "batch_start": {
+      "$ref": "defs.schema.json#/$defs/pos_int"
+    },
+    "batch_size": {
+      "$ref": "defs.schema.json#/$defs/pos_int"
+    },
+    "actor_id": {
+      "$ref": "defs.schema.json#/$defs/min1"
+    },
+    "proposal_id": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "at": {
+      "$ref": "defs.schema.json#/$defs/timestamp"
+    },
+    "type": {
+      "enum": [
+        "CommitmentCreated",
+        "CommitmentEdited",
+        "ApprovalRequested",
+        "ApprovalResolved",
+        "CommitmentActivated",
+        "ProposalReceipted",
+        "WorkCreated",
+        "CoverageSet",
+        "WorkAssigned",
+        "ResultSubmitted",
+        "ObligationSet",
+        "RunOpened",
+        "ObservationRecorded",
+        "EvidenceRecorded",
+        "ObligationWaived",
+        "WorkAccepted",
+        "WorkClosed",
+        "WorkReopened",
+        "CommitmentSatisfied",
+        "CommitmentReopened",
+        "AssumptionCreated",
+        "DecisionRecorded",
+        "DecisionOpinionRecorded",
+        "PremiseObserved",
+        "DependencyAdded",
+        "DependencyRemoved",
+        "WorkSupportUpdated",
+        "EffectRequired",
+        "GrantIssued",
+        "GrantRevoked",
+        "EffectIntentBound",
+        "EffectDispatchAuthorized",
+        "GitEffectObserved"
+      ]
+    },
+    "data": {
+      "type": "object"
+    },
+    "prev_hash": {
+      "$ref": "defs.schema.json#/$defs/sha256"
+    },
+    "hash": {
+      "$ref": "defs.schema.json#/$defs/sha256"
+    }
   },
   "allOf": [
-    {"if": {"properties": {"type": {"const": "CommitmentCreated"}, "event_version": {"const": 0}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "root", "principal", "text"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "root": {"$ref": "defs.schema.json#/$defs/id"}, "principal": {"$ref": "defs.schema.json#/$defs/min1"}, "text": {"$ref": "defs.schema.json#/$defs/nonempty"}}}}}},
-    {"if": {"properties": {"type": {"const": "CommitmentCreated"}, "event_version": {"const": 1}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "root", "principal", "statement"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "root": {"$ref": "defs.schema.json#/$defs/id"}, "principal": {"$ref": "defs.schema.json#/$defs/min1"}, "statement": {"$ref": "defs.schema.json#/$defs/nonempty"}}}}}},
-    {"if": {"properties": {"type": {"not": {"const": "CommitmentCreated"}}}}, "then": {"properties": {"event_version": {"const": 1}}}},
-    {"if": {"properties": {"type": {"const": "CommitmentEdited"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "statement"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "statement": {"$ref": "defs.schema.json#/$defs/nonempty"}}}}}},
-    {"if": {"properties": {"type": {"const": "ApprovalRequested"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "requester", "request", "request_digest", "read_versions", "expires_at"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/any_id"}, "requester": {"$ref": "defs.schema.json#/$defs/min1"}, "request": {"$ref": "proposal.schema.json"}, "request_digest": {"$ref": "defs.schema.json#/$defs/sha256"}, "read_versions": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/read_version"}}, "expires_at": {"$ref": "defs.schema.json#/$defs/timestamp"}}}}}},
-    {"if": {"properties": {"type": {"const": "ApprovalResolved"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "state"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/any_id"}, "state": {"enum": ["approved", "denied", "expired", "stale"]}}}}}},
-    {"if": {"properties": {"type": {"enum": ["CommitmentActivated", "CommitmentSatisfied", "CommitmentReopened"]}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}}}}}},
-    {"if": {"properties": {"type": {"const": "ProposalReceipted"}}}, "then": {"properties": {"data": {"$ref": "defs.schema.json#/$defs/receipt_data"}}}},
-    {"if": {"properties": {"type": {"const": "WorkCreated"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "parent", "title"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "parent": {"$ref": "defs.schema.json#/$defs/id"}, "title": {"$ref": "defs.schema.json#/$defs/nonempty"}}}}}},
-    {"if": {"properties": {"type": {"const": "CoverageSet"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "coverage"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "coverage": {"$ref": "defs.schema.json#/$defs/coverage"}}}}}},
-    {"if": {"properties": {"type": {"const": "WorkAssigned"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "work", "executor", "generation"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "work": {"$ref": "defs.schema.json#/$defs/id"}, "executor": {"$ref": "defs.schema.json#/$defs/nonempty"}, "generation": {"$ref": "defs.schema.json#/$defs/pos_int"}}}}}},
-    {"if": {"properties": {"type": {"const": "ResultSubmitted"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "work", "assignment", "generation", "producer", "candidate"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "work": {"$ref": "defs.schema.json#/$defs/id"}, "assignment": {"$ref": "defs.schema.json#/$defs/id"}, "generation": {"$ref": "defs.schema.json#/$defs/pos_int"}, "producer": {"$ref": "defs.schema.json#/$defs/nonempty"}, "candidate": {"$ref": "defs.schema.json#/$defs/candidate"}}}}}},
-    {"if": {"properties": {"type": {"const": "ObligationSet"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "work", "version", "title", "observer", "verifier", "definition_sha256", "environment_sha256"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "work": {"$ref": "defs.schema.json#/$defs/id"}, "version": {"$ref": "defs.schema.json#/$defs/pos_int"}, "title": {"$ref": "defs.schema.json#/$defs/nonempty"}, "observer": {"$ref": "defs.schema.json#/$defs/nonempty"}, "verifier": {"$ref": "defs.schema.json#/$defs/nonempty"}, "definition_sha256": {"$ref": "defs.schema.json#/$defs/sha256"}, "environment_sha256": {"$ref": "defs.schema.json#/$defs/sha256"}}}}}},
-    {"if": {"properties": {"type": {"const": "RunOpened"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "work", "generation", "assignment", "result", "producer", "candidate", "obligation", "criterion_version", "observer", "verifier", "definition_sha256", "environment_sha256"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "work": {"$ref": "defs.schema.json#/$defs/id"}, "generation": {"$ref": "defs.schema.json#/$defs/pos_int"}, "assignment": {"$ref": "defs.schema.json#/$defs/id"}, "result": {"$ref": "defs.schema.json#/$defs/id"}, "producer": {"$ref": "defs.schema.json#/$defs/nonempty"}, "candidate": {"$ref": "defs.schema.json#/$defs/candidate"}, "obligation": {"$ref": "defs.schema.json#/$defs/id"}, "criterion_version": {"$ref": "defs.schema.json#/$defs/pos_int"}, "observer": {"$ref": "defs.schema.json#/$defs/nonempty"}, "verifier": {"$ref": "defs.schema.json#/$defs/nonempty"}, "definition_sha256": {"$ref": "defs.schema.json#/$defs/sha256"}, "environment_sha256": {"$ref": "defs.schema.json#/$defs/sha256"}}}}}},
-    {"if": {"properties": {"type": {"const": "ObservationRecorded"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "run", "observer", "artifact_sha256"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "run": {"$ref": "defs.schema.json#/$defs/id"}, "observer": {"$ref": "defs.schema.json#/$defs/nonempty"}, "artifact_sha256": {"$ref": "defs.schema.json#/$defs/sha256"}}}}}},
-    {"if": {"properties": {"type": {"const": "EvidenceRecorded"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "run", "observation", "verifier", "verdict"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "run": {"$ref": "defs.schema.json#/$defs/id"}, "observation": {"$ref": "defs.schema.json#/$defs/id"}, "verifier": {"$ref": "defs.schema.json#/$defs/nonempty"}, "verdict": {"enum": ["pass", "fail", "inconclusive"]}}}}}},
-    {"if": {"properties": {"type": {"const": "ObligationWaived"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "obligation", "version", "work", "generation", "result", "candidate", "reason", "principal"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "obligation": {"$ref": "defs.schema.json#/$defs/id"}, "version": {"$ref": "defs.schema.json#/$defs/pos_int"}, "work": {"$ref": "defs.schema.json#/$defs/id"}, "generation": {"$ref": "defs.schema.json#/$defs/pos_int"}, "result": {"$ref": "defs.schema.json#/$defs/id"}, "candidate": {"$ref": "defs.schema.json#/$defs/candidate"}, "reason": {"$ref": "defs.schema.json#/$defs/nonempty"}, "principal": {"$ref": "defs.schema.json#/$defs/nonempty"}}}}}},
-    {"if": {"properties": {"type": {"const": "WorkAccepted"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "outcome", "principal"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "outcome": {"$ref": "defs.schema.json#/$defs/sha256"}, "principal": {"$ref": "defs.schema.json#/$defs/nonempty"}}}}}},
-    {"if": {"properties": {"type": {"const": "WorkClosed"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "outcome"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "outcome": {"$ref": "defs.schema.json#/$defs/sha256"}}}}}},
-    {"if": {"properties": {"type": {"const": "WorkReopened"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "state"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "state": {"enum": ["open", "assigned", "submitted"]}}}}}},
-    {"if": {"properties": {"type": {"const": "AssumptionCreated"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "statement", "observer"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "statement": {"$ref": "defs.schema.json#/$defs/nonempty"}, "observer": {"$ref": "defs.schema.json#/$defs/nonempty"}}}}}},
-    {"if": {"properties": {"type": {"const": "DecisionRecorded"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "choice", "alternatives", "rationale", "support", "triggers", "supersedes"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "choice": {"$ref": "defs.schema.json#/$defs/nonempty"}, "alternatives": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/nonempty"}, "uniqueItems": true}, "rationale": {"$ref": "defs.schema.json#/$defs/nonempty"}, "support": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/id"}, "uniqueItems": true}, "triggers": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/id"}, "uniqueItems": true}, "supersedes": {"oneOf": [{"$ref": "defs.schema.json#/$defs/id"}, {"type": "null"}]}}}}}},
-    {"if": {"properties": {"type": {"const": "DecisionOpinionRecorded"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "decision", "opinion", "author"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "decision": {"$ref": "defs.schema.json#/$defs/id"}, "opinion": {"$ref": "defs.schema.json#/$defs/nonempty"}, "author": {"$ref": "defs.schema.json#/$defs/nonempty"}}}}}},
-    {"if": {"properties": {"type": {"const": "PremiseObserved"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "assumption", "finding", "observer", "artifact_sha256"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "assumption": {"$ref": "defs.schema.json#/$defs/id"}, "finding": {"enum": ["confirms", "contradicts"]}, "observer": {"$ref": "defs.schema.json#/$defs/nonempty"}, "artifact_sha256": {"$ref": "defs.schema.json#/$defs/sha256"}}}}}},
-    {"if": {"properties": {"type": {"enum": ["DependencyAdded", "DependencyRemoved"]}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "support"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "support": {"$ref": "defs.schema.json#/$defs/id"}}}}}},
-    {"if": {"properties": {"type": {"const": "WorkSupportUpdated"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "state", "generation", "supports", "causes"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "state": {"enum": ["open", "assigned", "submitted", "closed", "stale"]}, "generation": {"$ref": "defs.schema.json#/$defs/pos_int"}, "supports": {"type": "object", "patternProperties": {"^[A-Za-z][A-Za-z0-9_.-]{0,95}$": {"$ref": "defs.schema.json#/$defs/sha256"}}, "additionalProperties": false}, "causes": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/id"}}}}}}},
-    {"if": {"properties": {"type": {"const": "EffectRequired"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "work", "slot", "repository", "repository_instance", "resource", "paths"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "work": {"$ref": "defs.schema.json#/$defs/id"}, "slot": {"$ref": "defs.schema.json#/$defs/id"}, "repository": {"$ref": "defs.schema.json#/$defs/id"}, "repository_instance": {"$ref": "defs.schema.json#/$defs/sha256"}, "resource": {"$ref": "defs.schema.json#/$defs/branch"}, "paths": {"$ref": "defs.schema.json#/$defs/allowed_paths"}}}}}},
-    {"if": {"properties": {"type": {"const": "GrantIssued"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "work", "slot", "repository", "resource", "paths", "grantee", "assignment", "generation", "expires_at", "principal"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "work": {"$ref": "defs.schema.json#/$defs/id"}, "slot": {"$ref": "defs.schema.json#/$defs/id"}, "repository": {"$ref": "defs.schema.json#/$defs/id"}, "resource": {"$ref": "defs.schema.json#/$defs/branch"}, "paths": {"$ref": "defs.schema.json#/$defs/allowed_paths"}, "grantee": {"$ref": "defs.schema.json#/$defs/nonempty"}, "assignment": {"$ref": "defs.schema.json#/$defs/id"}, "generation": {"$ref": "defs.schema.json#/$defs/pos_int"}, "expires_at": {"$ref": "defs.schema.json#/$defs/timestamp"}, "principal": {"$ref": "defs.schema.json#/$defs/nonempty"}}}}}},
-    {"if": {"properties": {"type": {"const": "GrantRevoked"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "principal", "in_flight"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "principal": {"$ref": "defs.schema.json#/$defs/nonempty"}, "in_flight": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/id"}}}}}}},
-    {"if": {"properties": {"type": {"const": "EffectIntentBound"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "intent", "repository_instance", "changed_paths"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "intent": {"$ref": "defs.schema.json#/$defs/intent"}, "repository_instance": {"$ref": "defs.schema.json#/$defs/sha256"}, "changed_paths": {"$ref": "defs.schema.json#/$defs/git_paths"}}}}}},
-    {"if": {"properties": {"type": {"const": "EffectDispatchAuthorized"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "effect", "broker", "authorized_at"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "effect": {"$ref": "defs.schema.json#/$defs/id"}, "broker": {"const": "broker:git"}, "authorized_at": {"$ref": "defs.schema.json#/$defs/timestamp"}}}}}},
-    {"if": {"properties": {"type": {"const": "GitEffectObserved"}}}, "then": {"properties": {"data": {"type": "object", "additionalProperties": false, "required": ["id", "commitment", "effect", "attempt", "observer", "state", "reason", "artifact_sha256"], "properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}, "commitment": {"$ref": "defs.schema.json#/$defs/id"}, "effect": {"$ref": "defs.schema.json#/$defs/id"}, "attempt": {"$ref": "defs.schema.json#/$defs/id"}, "observer": {"const": "observer:git"}, "state": {"enum": ["pending", "confirmed_happened", "confirmed_absent"]}, "reason": {"$ref": "defs.schema.json#/$defs/nonempty"}, "artifact_sha256": {"$ref": "defs.schema.json#/$defs/sha256"}}}}}}
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "CommitmentCreated"
+          },
+          "event_version": {
+            "const": 0
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "root",
+              "principal",
+              "text"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "root": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "principal": {
+                "$ref": "defs.schema.json#/$defs/min1"
+              },
+              "text": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "CommitmentCreated"
+          },
+          "event_version": {
+            "const": 1
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "root",
+              "principal",
+              "statement"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "root": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "principal": {
+                "$ref": "defs.schema.json#/$defs/min1"
+              },
+              "statement": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "not": {
+              "const": "CommitmentCreated"
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "event_version": {
+            "const": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "CommitmentEdited"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "statement"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "statement": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "ApprovalRequested"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "requester",
+              "request",
+              "request_digest",
+              "read_versions",
+              "expires_at"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/any_id"
+              },
+              "requester": {
+                "$ref": "defs.schema.json#/$defs/min1"
+              },
+              "request": {
+                "$ref": "proposal.schema.json"
+              },
+              "request_digest": {
+                "$ref": "defs.schema.json#/$defs/sha256"
+              },
+              "read_versions": {
+                "type": "array",
+                "items": {
+                  "$ref": "defs.schema.json#/$defs/read_version"
+                }
+              },
+              "expires_at": {
+                "$ref": "defs.schema.json#/$defs/timestamp"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "ApprovalResolved"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "state"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/any_id"
+              },
+              "state": {
+                "enum": [
+                  "approved",
+                  "denied",
+                  "expired",
+                  "stale"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "CommitmentActivated",
+              "CommitmentSatisfied",
+              "CommitmentReopened"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "ProposalReceipted"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "defs.schema.json#/$defs/receipt_data"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "WorkCreated"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "parent",
+              "title"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "parent": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "title": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "CoverageSet"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "coverage"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "coverage": {
+                "$ref": "defs.schema.json#/$defs/coverage"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "WorkAssigned"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "work",
+              "executor",
+              "generation"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "work": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "executor": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "generation": {
+                "$ref": "defs.schema.json#/$defs/pos_int"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "ResultSubmitted"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "work",
+              "assignment",
+              "generation",
+              "producer",
+              "candidate"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "work": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "assignment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "generation": {
+                "$ref": "defs.schema.json#/$defs/pos_int"
+              },
+              "producer": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "candidate": {
+                "$ref": "defs.schema.json#/$defs/candidate"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "ObligationSet"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "work",
+              "version",
+              "title",
+              "observer",
+              "verifier",
+              "definition_sha256",
+              "environment_sha256"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "work": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "version": {
+                "$ref": "defs.schema.json#/$defs/pos_int"
+              },
+              "title": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "observer": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "verifier": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "definition_sha256": {
+                "$ref": "defs.schema.json#/$defs/sha256"
+              },
+              "environment_sha256": {
+                "$ref": "defs.schema.json#/$defs/sha256"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "RunOpened"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "work",
+              "generation",
+              "assignment",
+              "result",
+              "producer",
+              "candidate",
+              "obligation",
+              "criterion_version",
+              "observer",
+              "verifier",
+              "definition_sha256",
+              "environment_sha256"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "work": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "generation": {
+                "$ref": "defs.schema.json#/$defs/pos_int"
+              },
+              "assignment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "result": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "producer": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "candidate": {
+                "$ref": "defs.schema.json#/$defs/candidate"
+              },
+              "obligation": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "criterion_version": {
+                "$ref": "defs.schema.json#/$defs/pos_int"
+              },
+              "observer": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "verifier": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "definition_sha256": {
+                "$ref": "defs.schema.json#/$defs/sha256"
+              },
+              "environment_sha256": {
+                "$ref": "defs.schema.json#/$defs/sha256"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "ObservationRecorded"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "run",
+              "observer",
+              "artifact_sha256"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "run": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "observer": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "artifact_sha256": {
+                "$ref": "defs.schema.json#/$defs/sha256"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "EvidenceRecorded"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "run",
+              "observation",
+              "verifier",
+              "verdict"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "run": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "observation": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "verifier": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "verdict": {
+                "enum": [
+                  "pass",
+                  "fail",
+                  "inconclusive"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "ObligationWaived"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "obligation",
+              "version",
+              "work",
+              "generation",
+              "result",
+              "candidate",
+              "reason",
+              "principal"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "obligation": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "version": {
+                "$ref": "defs.schema.json#/$defs/pos_int"
+              },
+              "work": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "generation": {
+                "$ref": "defs.schema.json#/$defs/pos_int"
+              },
+              "result": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "candidate": {
+                "$ref": "defs.schema.json#/$defs/candidate"
+              },
+              "reason": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "principal": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "WorkAccepted"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "outcome",
+              "principal"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "outcome": {
+                "$ref": "defs.schema.json#/$defs/sha256"
+              },
+              "principal": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "WorkClosed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "outcome"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "outcome": {
+                "$ref": "defs.schema.json#/$defs/sha256"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "WorkReopened"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "state"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "state": {
+                "enum": [
+                  "open",
+                  "assigned",
+                  "submitted"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "AssumptionCreated"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "statement",
+              "observer"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "statement": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "observer": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "DecisionRecorded"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "choice",
+              "alternatives",
+              "rationale",
+              "support",
+              "triggers",
+              "supersedes"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "choice": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "alternatives": {
+                "type": "array",
+                "items": {
+                  "$ref": "defs.schema.json#/$defs/nonempty"
+                },
+                "uniqueItems": true
+              },
+              "rationale": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "support": {
+                "type": "array",
+                "items": {
+                  "$ref": "defs.schema.json#/$defs/id"
+                },
+                "uniqueItems": true
+              },
+              "triggers": {
+                "type": "array",
+                "items": {
+                  "$ref": "defs.schema.json#/$defs/id"
+                },
+                "uniqueItems": true
+              },
+              "supersedes": {
+                "oneOf": [
+                  {
+                    "$ref": "defs.schema.json#/$defs/id"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "DecisionOpinionRecorded"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "decision",
+              "opinion",
+              "author"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "decision": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "opinion": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "author": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "PremiseObserved"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "assumption",
+              "finding",
+              "observer",
+              "artifact_sha256"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "assumption": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "finding": {
+                "enum": [
+                  "confirms",
+                  "contradicts"
+                ]
+              },
+              "observer": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "artifact_sha256": {
+                "$ref": "defs.schema.json#/$defs/sha256"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "DependencyAdded",
+              "DependencyRemoved"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "support"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "support": {
+                "$ref": "defs.schema.json#/$defs/id"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "WorkSupportUpdated"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "state",
+              "generation",
+              "supports",
+              "causes"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "state": {
+                "enum": [
+                  "open",
+                  "assigned",
+                  "submitted",
+                  "closed",
+                  "stale"
+                ]
+              },
+              "generation": {
+                "$ref": "defs.schema.json#/$defs/pos_int"
+              },
+              "supports": {
+                "type": "object",
+                "patternProperties": {
+                  "^[A-Za-z][A-Za-z0-9_.-]{0,95}$": {
+                    "$ref": "defs.schema.json#/$defs/sha256"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "causes": {
+                "type": "array",
+                "items": {
+                  "$ref": "defs.schema.json#/$defs/id"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "EffectRequired"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "work",
+              "slot",
+              "repository",
+              "repository_instance",
+              "resource",
+              "paths"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "work": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "slot": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "repository": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "repository_instance": {
+                "$ref": "defs.schema.json#/$defs/sha256"
+              },
+              "resource": {
+                "$ref": "defs.schema.json#/$defs/branch"
+              },
+              "paths": {
+                "$ref": "defs.schema.json#/$defs/allowed_paths"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "GrantIssued"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "work",
+              "slot",
+              "repository",
+              "resource",
+              "paths",
+              "grantee",
+              "assignment",
+              "generation",
+              "expires_at",
+              "principal"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "work": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "slot": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "repository": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "resource": {
+                "$ref": "defs.schema.json#/$defs/branch"
+              },
+              "paths": {
+                "$ref": "defs.schema.json#/$defs/allowed_paths"
+              },
+              "grantee": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "assignment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "generation": {
+                "$ref": "defs.schema.json#/$defs/pos_int"
+              },
+              "expires_at": {
+                "$ref": "defs.schema.json#/$defs/timestamp"
+              },
+              "principal": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "GrantRevoked"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "principal",
+              "in_flight"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "principal": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "in_flight": {
+                "type": "array",
+                "items": {
+                  "$ref": "defs.schema.json#/$defs/id"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "EffectIntentBound"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "intent",
+              "repository_instance",
+              "changed_paths"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "intent": {
+                "$ref": "defs.schema.json#/$defs/intent"
+              },
+              "repository_instance": {
+                "$ref": "defs.schema.json#/$defs/sha256"
+              },
+              "changed_paths": {
+                "$ref": "defs.schema.json#/$defs/git_paths"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "EffectDispatchAuthorized"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "effect",
+              "broker",
+              "authorized_at"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "effect": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "broker": {
+                "const": "broker:git"
+              },
+              "authorized_at": {
+                "$ref": "defs.schema.json#/$defs/timestamp"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "GitEffectObserved"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "commitment",
+              "effect",
+              "attempt",
+              "observer",
+              "state",
+              "reason",
+              "artifact_sha256"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "commitment": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "effect": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "attempt": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "observer": {
+                "const": "observer:git"
+              },
+              "state": {
+                "enum": [
+                  "pending",
+                  "confirmed_happened",
+                  "confirmed_absent"
+                ]
+              },
+              "reason": {
+                "$ref": "defs.schema.json#/$defs/nonempty"
+              },
+              "artifact_sha256": {
+                "$ref": "defs.schema.json#/$defs/sha256"
+              }
+            }
+          }
+        }
+      }
+    }
   ]
 }

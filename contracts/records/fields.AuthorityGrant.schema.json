@@ -2,21 +2,69 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["work", "slot", "repository", "repository_instance", "resource", "paths", "grantee", "assignment", "generation", "expires_at", "principal", "capability", "state"],
+  "required": [
+    "work",
+    "slot",
+    "repository",
+    "repository_instance",
+    "resource",
+    "paths",
+    "grantee",
+    "assignment",
+    "generation",
+    "expires_at",
+    "principal",
+    "capability",
+    "state"
+  ],
   "properties": {
-    "work": {"$ref": "defs.schema.json#/$defs/id"},
-    "slot": {"$ref": "defs.schema.json#/$defs/id"},
-    "repository": {"$ref": "defs.schema.json#/$defs/id"},
-    "repository_instance": {"$ref": "defs.schema.json#/$defs/sha256"},
-    "resource": {"$ref": "defs.schema.json#/$defs/branch"},
-    "paths": {"$ref": "defs.schema.json#/$defs/allowed_paths"},
-    "grantee": {"$ref": "defs.schema.json#/$defs/nonempty"},
-    "assignment": {"$ref": "defs.schema.json#/$defs/id"},
-    "generation": {"$ref": "defs.schema.json#/$defs/pos_int"},
-    "expires_at": {"$ref": "defs.schema.json#/$defs/timestamp"},
-    "principal": {"$ref": "defs.schema.json#/$defs/min1"},
-    "capability": {"const": "git.commit"},
-    "state": {"enum": ["active", "revoked"]},
-    "in_flight_at_revocation": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/id"}}
+    "work": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "slot": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "repository": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "repository_instance": {
+      "$ref": "defs.schema.json#/$defs/sha256"
+    },
+    "resource": {
+      "$ref": "defs.schema.json#/$defs/branch"
+    },
+    "paths": {
+      "$ref": "defs.schema.json#/$defs/allowed_paths"
+    },
+    "grantee": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "assignment": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "generation": {
+      "$ref": "defs.schema.json#/$defs/pos_int"
+    },
+    "expires_at": {
+      "$ref": "defs.schema.json#/$defs/timestamp"
+    },
+    "principal": {
+      "$ref": "defs.schema.json#/$defs/min1"
+    },
+    "capability": {
+      "const": "git.commit"
+    },
+    "state": {
+      "enum": [
+        "active",
+        "revoked"
+      ]
+    },
+    "in_flight_at_revocation": {
+      "type": "array",
+      "items": {
+        "$ref": "defs.schema.json#/$defs/id"
+      }
+    }
   }
 }

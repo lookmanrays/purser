@@ -2,11 +2,28 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["run", "observation", "verifier", "verdict"],
+  "required": [
+    "run",
+    "observation",
+    "verifier",
+    "verdict"
+  ],
   "properties": {
-    "run": {"$ref": "defs.schema.json#/$defs/id"},
-    "observation": {"$ref": "defs.schema.json#/$defs/id"},
-    "verifier": {"$ref": "defs.schema.json#/$defs/nonempty"},
-    "verdict": {"enum": ["pass", "fail", "inconclusive"]}
+    "run": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "observation": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "verifier": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "verdict": {
+      "enum": [
+        "pass",
+        "fail",
+        "inconclusive"
+      ]
+    }
   }
 }

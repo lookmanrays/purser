@@ -2,11 +2,43 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["git_commit", "mode", "indexers", "affected_files"],
+  "required": [
+    "git_commit",
+    "mode",
+    "indexers",
+    "affected_files"
+  ],
   "properties": {
-    "git_commit": {"$ref": "defs.schema.json#/$defs/min1"},
-    "mode": {"enum": ["full", "incremental"]},
-    "indexers": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"$ref": "defs.schema.json#/$defs/nonempty"}, "version": {"$ref": "defs.schema.json#/$defs/nonempty"}}}},
-    "affected_files": {"$ref": "defs.schema.json#/$defs/nonneg_int"}
+    "git_commit": {
+      "$ref": "defs.schema.json#/$defs/min1"
+    },
+    "mode": {
+      "enum": [
+        "full",
+        "incremental"
+      ]
+    },
+    "indexers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "version"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "defs.schema.json#/$defs/nonempty"
+          },
+          "version": {
+            "$ref": "defs.schema.json#/$defs/nonempty"
+          }
+        }
+      }
+    },
+    "affected_files": {
+      "$ref": "defs.schema.json#/$defs/nonneg_int"
+    }
   }
 }

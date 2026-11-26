@@ -2,20 +2,97 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["kind", "implements", "tier", "scope", "reuse", "tests", "budget"],
+  "required": [
+    "kind",
+    "implements",
+    "tier",
+    "scope",
+    "reuse",
+    "tests",
+    "budget"
+  ],
   "properties": {
-    "kind": {"enum": ["feature", "module", "function", "wiring", "spike"]},
-    "implements": {"oneOf": [{"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_.-]*@v[0-9]+$"}, {"type": "null"}]},
-    "tier": {"enum": ["architect", "lead", "implementer", "tool"]},
-    "scope": {
-      "type": "object", "additionalProperties": false, "required": ["write", "read"],
-      "properties": {"write": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/min1"}}, "read": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/min1"}}}
+    "kind": {
+      "enum": [
+        "feature",
+        "module",
+        "function",
+        "wiring",
+        "spike"
+      ]
     },
-    "reuse": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/min1"}},
-    "tests": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/id"}},
+    "implements": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*@v[0-9]+$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tier": {
+      "enum": [
+        "architect",
+        "lead",
+        "implementer",
+        "tool"
+      ]
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "write",
+        "read"
+      ],
+      "properties": {
+        "write": {
+          "type": "array",
+          "items": {
+            "$ref": "defs.schema.json#/$defs/min1"
+          }
+        },
+        "read": {
+          "type": "array",
+          "items": {
+            "$ref": "defs.schema.json#/$defs/min1"
+          }
+        }
+      }
+    },
+    "reuse": {
+      "type": "array",
+      "items": {
+        "$ref": "defs.schema.json#/$defs/min1"
+      }
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "$ref": "defs.schema.json#/$defs/id"
+      }
+    },
     "budget": {
-      "type": "object", "additionalProperties": false, "required": ["diff_lines", "files", "attempts"],
-      "properties": {"diff_lines": {"$ref": "defs.schema.json#/$defs/nonneg_int"}, "files": {"$ref": "defs.schema.json#/$defs/nonneg_int"}, "attempts": {"$ref": "defs.schema.json#/$defs/nonneg_int"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "diff_lines",
+        "files",
+        "attempts"
+      ],
+      "properties": {
+        "diff_lines": {
+          "$ref": "defs.schema.json#/$defs/nonneg_int"
+        },
+        "files": {
+          "$ref": "defs.schema.json#/$defs/nonneg_int"
+        },
+        "attempts": {
+          "$ref": "defs.schema.json#/$defs/nonneg_int"
+        }
+      }
     }
   }
 }

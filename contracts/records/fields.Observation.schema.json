@@ -3,20 +3,73 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "run": {"$ref": "defs.schema.json#/$defs/id"},
-    "observer": {"$ref": "defs.schema.json#/$defs/nonempty"},
-    "artifact_sha256": {"$ref": "defs.schema.json#/$defs/sha256"},
-    "assumption": {"$ref": "defs.schema.json#/$defs/id"},
-    "finding": {"enum": ["confirms", "contradicts"]},
-    "effect": {"$ref": "defs.schema.json#/$defs/id"},
-    "attempt": {"$ref": "defs.schema.json#/$defs/id"},
-    "state": {"enum": ["pending", "confirmed_happened", "confirmed_absent"]},
-    "reason": {"$ref": "defs.schema.json#/$defs/nonempty"},
-    "work": {"$ref": "defs.schema.json#/$defs/id"}
+    "run": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "observer": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "artifact_sha256": {
+      "$ref": "defs.schema.json#/$defs/sha256"
+    },
+    "assumption": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "finding": {
+      "enum": [
+        "confirms",
+        "contradicts"
+      ]
+    },
+    "effect": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "attempt": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "state": {
+      "enum": [
+        "pending",
+        "confirmed_happened",
+        "confirmed_absent"
+      ]
+    },
+    "reason": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "work": {
+      "$ref": "defs.schema.json#/$defs/id"
+    }
   },
   "oneOf": [
-    {"required": ["run", "observer", "artifact_sha256"], "maxProperties": 3},
-    {"required": ["assumption", "finding", "observer", "artifact_sha256"], "maxProperties": 4},
-    {"required": ["effect", "attempt", "observer", "state", "reason", "artifact_sha256", "work"], "maxProperties": 7}
+    {
+      "required": [
+        "run",
+        "observer",
+        "artifact_sha256"
+      ],
+      "maxProperties": 3
+    },
+    {
+      "required": [
+        "assumption",
+        "finding",
+        "observer",
+        "artifact_sha256"
+      ],
+      "maxProperties": 4
+    },
+    {
+      "required": [
+        "effect",
+        "attempt",
+        "observer",
+        "state",
+        "reason",
+        "artifact_sha256",
+        "work"
+      ],
+      "maxProperties": 7
+    }
   ]
 }

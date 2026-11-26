@@ -2,19 +2,56 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["work", "generation", "assignment", "result", "producer", "candidate", "obligation", "criterion_version", "observer", "verifier", "definition_sha256", "environment_sha256"],
+  "required": [
+    "work",
+    "generation",
+    "assignment",
+    "result",
+    "producer",
+    "candidate",
+    "obligation",
+    "criterion_version",
+    "observer",
+    "verifier",
+    "definition_sha256",
+    "environment_sha256"
+  ],
   "properties": {
-    "work": {"$ref": "defs.schema.json#/$defs/id"},
-    "generation": {"$ref": "defs.schema.json#/$defs/pos_int"},
-    "assignment": {"$ref": "defs.schema.json#/$defs/id"},
-    "result": {"$ref": "defs.schema.json#/$defs/id"},
-    "producer": {"$ref": "defs.schema.json#/$defs/nonempty"},
-    "candidate": {"$ref": "defs.schema.json#/$defs/candidate"},
-    "obligation": {"$ref": "defs.schema.json#/$defs/id"},
-    "criterion_version": {"$ref": "defs.schema.json#/$defs/pos_int"},
-    "observer": {"$ref": "defs.schema.json#/$defs/nonempty"},
-    "verifier": {"$ref": "defs.schema.json#/$defs/nonempty"},
-    "definition_sha256": {"$ref": "defs.schema.json#/$defs/sha256"},
-    "environment_sha256": {"$ref": "defs.schema.json#/$defs/sha256"}
+    "work": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "generation": {
+      "$ref": "defs.schema.json#/$defs/pos_int"
+    },
+    "assignment": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "result": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "producer": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "candidate": {
+      "$ref": "defs.schema.json#/$defs/candidate"
+    },
+    "obligation": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "criterion_version": {
+      "$ref": "defs.schema.json#/$defs/pos_int"
+    },
+    "observer": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "verifier": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "definition_sha256": {
+      "$ref": "defs.schema.json#/$defs/sha256"
+    },
+    "environment_sha256": {
+      "$ref": "defs.schema.json#/$defs/sha256"
+    }
   }
 }

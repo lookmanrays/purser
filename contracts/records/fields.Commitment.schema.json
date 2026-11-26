@@ -2,11 +2,29 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["state", "root", "statement", "principal"],
+  "required": [
+    "state",
+    "root",
+    "statement",
+    "principal"
+  ],
   "properties": {
-    "state": {"enum": ["proposed", "active", "satisfied", "released"]},
-    "root": {"$ref": "defs.schema.json#/$defs/id"},
-    "statement": {"$ref": "defs.schema.json#/$defs/nonempty"},
-    "principal": {"$ref": "defs.schema.json#/$defs/min1"}
+    "state": {
+      "enum": [
+        "proposed",
+        "active",
+        "satisfied",
+        "released"
+      ]
+    },
+    "root": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "statement": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "principal": {
+      "$ref": "defs.schema.json#/$defs/min1"
+    }
   }
 }

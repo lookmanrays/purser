@@ -2,21 +2,135 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["state", "generation", "parent", "candidate"],
+  "required": [
+    "state",
+    "generation",
+    "parent",
+    "candidate"
+  ],
   "properties": {
-    "state": {"enum": ["open", "assigned", "submitted", "closed", "stale"]},
-    "generation": {"$ref": "defs.schema.json#/$defs/pos_int"},
-    "parent": {"oneOf": [{"$ref": "defs.schema.json#/$defs/id"}, {"type": "null"}]},
-    "candidate": {"oneOf": [{"$ref": "defs.schema.json#/$defs/candidate"}, {"type": "null"}]},
-    "title": {"$ref": "defs.schema.json#/$defs/nonempty"},
-    "coverage": {"$ref": "defs.schema.json#/$defs/coverage"},
-    "assignment": {"$ref": "defs.schema.json#/$defs/id"},
-    "result": {"oneOf": [{"$ref": "defs.schema.json#/$defs/id"}, {"type": "null"}]},
-    "closed_outcome": {"oneOf": [{"$ref": "defs.schema.json#/$defs/sha256"}, {"type": "null"}]},
-    "accepted_outcome": {"oneOf": [{"$ref": "defs.schema.json#/$defs/sha256"}, {"type": "null"}]},
-    "causes": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/id"}},
-    "structural_supports": {"type": "object", "patternProperties": {"^[A-Za-z][A-Za-z0-9_.-]{0,95}$": {"$ref": "defs.schema.json#/$defs/sha256"}}, "additionalProperties": false},
-    "effect_slots": {"type": "object", "patternProperties": {"^[A-Za-z][A-Za-z0-9_.-]{0,95}$": {"type": "object", "additionalProperties": false, "required": ["effect", "repository", "repository_instance", "resource", "paths"], "properties": {"effect": {"$ref": "defs.schema.json#/$defs/id"}, "repository": {"$ref": "defs.schema.json#/$defs/id"}, "repository_instance": {"$ref": "defs.schema.json#/$defs/sha256"}, "resource": {"$ref": "defs.schema.json#/$defs/branch"}, "paths": {"$ref": "defs.schema.json#/$defs/allowed_paths"}}}}, "additionalProperties": false},
-    "spec": {"$ref": "WorkSpec.schema.json"}
+    "state": {
+      "enum": [
+        "open",
+        "assigned",
+        "submitted",
+        "closed",
+        "stale"
+      ]
+    },
+    "generation": {
+      "$ref": "defs.schema.json#/$defs/pos_int"
+    },
+    "parent": {
+      "oneOf": [
+        {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "candidate": {
+      "oneOf": [
+        {
+          "$ref": "defs.schema.json#/$defs/candidate"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "coverage": {
+      "$ref": "defs.schema.json#/$defs/coverage"
+    },
+    "assignment": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "result": {
+      "oneOf": [
+        {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "closed_outcome": {
+      "oneOf": [
+        {
+          "$ref": "defs.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "accepted_outcome": {
+      "oneOf": [
+        {
+          "$ref": "defs.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "causes": {
+      "type": "array",
+      "items": {
+        "$ref": "defs.schema.json#/$defs/id"
+      }
+    },
+    "structural_supports": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z][A-Za-z0-9_.-]{0,95}$": {
+          "$ref": "defs.schema.json#/$defs/sha256"
+        }
+      },
+      "additionalProperties": false
+    },
+    "effect_slots": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z][A-Za-z0-9_.-]{0,95}$": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "effect",
+            "repository",
+            "repository_instance",
+            "resource",
+            "paths"
+          ],
+          "properties": {
+            "effect": {
+              "$ref": "defs.schema.json#/$defs/id"
+            },
+            "repository": {
+              "$ref": "defs.schema.json#/$defs/id"
+            },
+            "repository_instance": {
+              "$ref": "defs.schema.json#/$defs/sha256"
+            },
+            "resource": {
+              "$ref": "defs.schema.json#/$defs/branch"
+            },
+            "paths": {
+              "$ref": "defs.schema.json#/$defs/allowed_paths"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "spec": {
+      "$ref": "WorkSpec.schema.json"
+    }
   }
 }

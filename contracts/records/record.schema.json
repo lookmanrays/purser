@@ -2,15 +2,71 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "kind", "commitment", "changed", "fields"],
+  "required": [
+    "id",
+    "kind",
+    "commitment",
+    "changed",
+    "fields"
+  ],
   "properties": {
-    "id": {"$ref": "defs.schema.json#/$defs/any_id"},
-    "kind": {"enum": ["Commitment", "WorkItem", "Approval", "Assignment", "Result", "Obligation", "VerificationRun", "Observation", "Evidence", "Waiver", "Assumption", "Decision", "DecisionOpinion", "Effect", "AuthorityGrant", "EffectAttempt", "Contract", "GraphSnapshot", "Contradiction", "Routing", "Cost"]},
-    "commitment": {"$ref": "defs.schema.json#/$defs/id"},
-    "changed": {"$ref": "defs.schema.json#/$defs/pos_int"},
-    "fields": {"type": "object"}
+    "id": {
+      "$ref": "defs.schema.json#/$defs/any_id"
+    },
+    "kind": {
+      "enum": [
+        "Commitment",
+        "WorkItem",
+        "Approval",
+        "Assignment",
+        "Result",
+        "Obligation",
+        "VerificationRun",
+        "Observation",
+        "Evidence",
+        "Waiver",
+        "Assumption",
+        "Decision",
+        "DecisionOpinion",
+        "Effect",
+        "AuthorityGrant",
+        "EffectAttempt",
+        "Contract",
+        "GraphSnapshot",
+        "Contradiction",
+        "Routing",
+        "Cost"
+      ]
+    },
+    "commitment": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "changed": {
+      "$ref": "defs.schema.json#/$defs/pos_int"
+    },
+    "fields": {
+      "type": "object"
+    }
   },
-  "if": {"properties": {"kind": {"const": "Approval"}}},
-  "then": {"properties": {"id": {"$ref": "defs.schema.json#/$defs/any_id"}}},
-  "else": {"properties": {"id": {"$ref": "defs.schema.json#/$defs/id"}}}
+  "if": {
+    "properties": {
+      "kind": {
+        "const": "Approval"
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "id": {
+        "$ref": "defs.schema.json#/$defs/any_id"
+      }
+    }
+  },
+  "else": {
+    "properties": {
+      "id": {
+        "$ref": "defs.schema.json#/$defs/id"
+      }
+    }
+  }
 }
