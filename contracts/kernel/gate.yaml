@@ -92,6 +92,13 @@ interface:
         Apply(t Tentative, op map[string]any, reads *ReadSet) (Outcome, error)
     }
 
+    // PriorAccess is implemented by operators whose receipts a binding may
+    // redeliver only if it could act on the op as of the receipt's revision
+    // (the reference's prior_access for work, decision and effect operators). P1-04.
+    type PriorAccess interface {
+        PriorAccess(at store.Snapshot, op map[string]any, b Binding) bool
+    }
+
     type Gate struct{ /* unexported */ }
 
     type Options struct {
@@ -121,6 +128,7 @@ functions:
       - "order: identity and dedup, base validity, per-op syntax and authorization, read conflicts, lifecycle and time"
       - "same (actor, proposal ID) and digest returns the latest receipt and appends nothing"
       - "same pair with a different digest returns the typed error id_conflict: no receipt, the earlier receipt stays, nothing is appended"
+      - "redelivering a receipt whose code is not bad_revision, invalid_op, unknown_op, forbidden or not_found asks every op whose operator implements PriorAccess, with the snapshot at the receipt's revision; any false returns unauthenticated and appends nothing (reference gate._redelivery)"
       - "a non-object op entry fails per-op syntax with invalid_op, in its place in the order (after base validity and scope)"
       - "a read dependency changed after base_revision gives stale_base with conflicts sorted by key"
       - "ops apply in order to tentative state; a rejection discards all tentative events"
