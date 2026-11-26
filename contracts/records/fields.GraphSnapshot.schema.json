@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "git_commit",
+    "digest",
+    "indexers",
+    "files",
+    "symbols"
+  ],
+  "properties": {
+    "git_commit": {
+      "$ref": "defs.schema.json#/$defs/git_commit"
+    },
+    "digest": {
+      "$ref": "defs.schema.json#/$defs/sha256"
+    },
+    "indexers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "version"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "defs.schema.json#/$defs/nonempty"
+          },
+          "version": {
+            "$ref": "defs.schema.json#/$defs/nonempty"
+          }
+        }
+      }
+    },
+    "files": {
+      "$ref": "defs.schema.json#/$defs/nonneg_int"
+    },
+    "symbols": {
+      "$ref": "defs.schema.json#/$defs/nonneg_int"
+    }
+  }
+}

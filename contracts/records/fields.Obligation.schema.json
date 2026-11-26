@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "work",
+    "version",
+    "title",
+    "observer",
+    "verifier",
+    "definition_sha256",
+    "environment_sha256",
+    "current_run",
+    "waiver"
+  ],
+  "properties": {
+    "work": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "defs.schema.json#/$defs/pos_int"
+    },
+    "title": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "observer": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "verifier": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "definition_sha256": {
+      "$ref": "defs.schema.json#/$defs/sha256"
+    },
+    "environment_sha256": {
+      "$ref": "defs.schema.json#/$defs/sha256"
+    },
+    "current_run": {
+      "oneOf": [
+        {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "waiver": {
+      "oneOf": [
+        {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

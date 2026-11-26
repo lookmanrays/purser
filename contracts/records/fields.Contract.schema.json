@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "version",
+    "contract_kind",
+    "path",
+    "digest",
+    "producer",
+    "consumers",
+    "state"
+  ],
+  "properties": {
+    "contract": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "defs.schema.json#/$defs/pos_int"
+    },
+    "contract_kind": {
+      "enum": [
+        "module",
+        "function",
+        "data",
+        "endpoint",
+        "event",
+        "ui",
+        "cli"
+      ]
+    },
+    "path": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "digest": {
+      "$ref": "defs.schema.json#/$defs/sha256"
+    },
+    "producer": {
+      "oneOf": [
+        {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "consumers": {
+      "type": "array",
+      "items": {
+        "$ref": "defs.schema.json#/$defs/id"
+      }
+    },
+    "state": {
+      "enum": [
+        "proposed",
+        "accepted",
+        "superseded"
+      ]
+    }
+  }
+}

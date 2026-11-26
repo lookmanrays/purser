@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "v",
+    "proposal_id",
+    "commitment",
+    "base_revision",
+    "ops",
+    "justification"
+  ],
+  "properties": {
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "proposal_id": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "commitment": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "base_revision": {
+      "$ref": "defs.schema.json#/$defs/int53"
+    },
+    "ops": {
+      "type": "array",
+      "minItems": 1
+    },
+    "justification": {
+      "type": "array",
+      "items": {
+        "$ref": "defs.schema.json#/$defs/min1"
+      }
+    }
+  }
+}

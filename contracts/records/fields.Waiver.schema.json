@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "obligation",
+    "version",
+    "work",
+    "generation",
+    "result",
+    "candidate",
+    "reason",
+    "principal"
+  ],
+  "properties": {
+    "obligation": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "defs.schema.json#/$defs/pos_int"
+    },
+    "work": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "generation": {
+      "$ref": "defs.schema.json#/$defs/pos_int"
+    },
+    "result": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "candidate": {
+      "$ref": "defs.schema.json#/$defs/candidate"
+    },
+    "reason": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "principal": {
+      "$ref": "defs.schema.json#/$defs/min1"
+    }
+  }
+}

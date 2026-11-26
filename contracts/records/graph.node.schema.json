@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "kind",
+    "lang",
+    "name",
+    "exported",
+    "source",
+    "owner"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^(mod|pkg|file|sym|test):.+"
+    },
+    "kind": {
+      "enum": [
+        "module",
+        "package",
+        "file",
+        "symbol",
+        "test"
+      ]
+    },
+    "symbol_kind": {
+      "enum": [
+        "function",
+        "method",
+        "type",
+        "interface",
+        "field",
+        "const",
+        "var",
+        "class",
+        "enum"
+      ]
+    },
+    "lang": {
+      "enum": [
+        "go",
+        "typescript"
+      ]
+    },
+    "name": {
+      "$ref": "defs.schema.json#/$defs/min1"
+    },
+    "path": {
+      "$ref": "defs.schema.json#/$defs/rel_path"
+    },
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "StartLine",
+        "StartCol",
+        "EndLine",
+        "EndCol"
+      ],
+      "properties": {
+        "StartLine": {
+          "$ref": "defs.schema.json#/$defs/pos_int"
+        },
+        "StartCol": {
+          "$ref": "defs.schema.json#/$defs/nonneg_int"
+        },
+        "EndLine": {
+          "$ref": "defs.schema.json#/$defs/pos_int"
+        },
+        "EndCol": {
+          "$ref": "defs.schema.json#/$defs/nonneg_int"
+        }
+      }
+    },
+    "signature": {
+      "type": "string"
+    },
+    "doc": {
+      "type": "string"
+    },
+    "exported": {
+      "type": "boolean"
+    },
+    "content_sha256": {
+      "$ref": "defs.schema.json#/$defs/sha256"
+    },
+    "source": {
+      "enum": [
+        "scip",
+        "syntax",
+        "lsp",
+        "coverage"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "module"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "id": {
+            "pattern": "^mod:.+"
+          },
+          "owner": {
+            "const": ""
+          },
+          "symbol_kind": false,
+          "content_sha256": false,
+          "error": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "package"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "id": {
+            "pattern": "^pkg:.+"
+          },
+          "owner": {
+            "const": ""
+          },
+          "symbol_kind": false,
+          "content_sha256": false,
+          "error": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "file"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "id": {
+            "pattern": "^file:.+"
+          },
+          "owner": {
+            "pattern": "^file:.+"
+          },
+          "symbol_kind": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "symbol"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "id": {
+            "pattern": "^sym:.+"
+          },
+          "owner": {
+            "pattern": "^file:.+"
+          },
+          "content_sha256": false,
+          "error": false
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "test"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "id": {
+            "pattern": "^test:.+"
+          },
+          "owner": {
+            "pattern": "^file:.+"
+          },
+          "symbol_kind": false,
+          "content_sha256": false,
+          "error": false
+        }
+      }
+    }
+  ]
+}

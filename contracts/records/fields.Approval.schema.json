@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requester",
+    "request",
+    "request_digest",
+    "read_versions",
+    "expires_at",
+    "state"
+  ],
+  "properties": {
+    "requester": {
+      "$ref": "defs.schema.json#/$defs/min1"
+    },
+    "request": {
+      "$ref": "proposal.schema.json"
+    },
+    "request_digest": {
+      "$ref": "defs.schema.json#/$defs/sha256"
+    },
+    "read_versions": {
+      "type": "array",
+      "items": {
+        "$ref": "defs.schema.json#/$defs/read_version"
+      }
+    },
+    "expires_at": {
+      "$ref": "defs.schema.json#/$defs/timestamp"
+    },
+    "state": {
+      "enum": [
+        "pending",
+        "approved",
+        "denied",
+        "expired",
+        "stale"
+      ]
+    }
+  }
+}

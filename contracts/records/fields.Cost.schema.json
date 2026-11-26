@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "work",
+    "role",
+    "tier",
+    "provider",
+    "model",
+    "input_tokens",
+    "output_tokens",
+    "cached_tokens",
+    "usd_micros"
+  ],
+  "properties": {
+    "work": {
+      "oneOf": [
+        {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "role": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "tier": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "provider": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "model": {
+      "$ref": "defs.schema.json#/$defs/nonempty"
+    },
+    "input_tokens": {
+      "$ref": "defs.schema.json#/$defs/nonneg_int"
+    },
+    "output_tokens": {
+      "$ref": "defs.schema.json#/$defs/nonneg_int"
+    },
+    "cached_tokens": {
+      "$ref": "defs.schema.json#/$defs/nonneg_int"
+    },
+    "usd_micros": {
+      "$ref": "defs.schema.json#/$defs/nonneg_int"
+    }
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "if": {
+    "anyOf": [
+      {
+        "required": [
+          "assumption"
+        ]
+      },
+      {
+        "required": [
+          "finding"
+        ]
+      }
+    ]
+  },
+  "then": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "assumption",
+      "finding",
+      "observer",
+      "artifact_sha256"
+    ],
+    "properties": {
+      "assumption": {
+        "$ref": "defs.schema.json#/$defs/id"
+      },
+      "finding": {
+        "enum": [
+          "confirms",
+          "contradicts"
+        ]
+      },
+      "observer": {
+        "$ref": "defs.schema.json#/$defs/nonempty"
+      },
+      "artifact_sha256": {
+        "$ref": "defs.schema.json#/$defs/sha256"
+      }
+    }
+  },
+  "else": {
+    "if": {
+      "anyOf": [
+        {
+          "required": [
+            "effect"
+          ]
+        },
+        {
+          "required": [
+            "attempt"
+          ]
+        },
+        {
+          "required": [
+            "state"
+          ]
+        },
+        {
+          "required": [
+            "reason"
+          ]
+        },
+        {
+          "required": [
+            "work"
+          ]
+        }
+      ]
+    },
+    "then": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effect",
+        "attempt",
+        "observer",
+        "state",
+        "reason",
+        "artifact_sha256",
+        "work"
+      ],
+      "properties": {
+        "effect": {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        "attempt": {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        "observer": {
+          "$ref": "defs.schema.json#/$defs/nonempty"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "confirmed_happened",
+            "confirmed_absent"
+          ]
+        },
+        "reason": {
+          "$ref": "defs.schema.json#/$defs/nonempty"
+        },
+        "artifact_sha256": {
+          "$ref": "defs.schema.json#/$defs/sha256"
+        },
+        "work": {
+          "$ref": "defs.schema.json#/$defs/id"
+        }
+      }
+    },
+    "else": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run",
+        "observer",
+        "artifact_sha256"
+      ],
+      "properties": {
+        "run": {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        "observer": {
+          "$ref": "defs.schema.json#/$defs/nonempty"
+        },
+        "artifact_sha256": {
+          "$ref": "defs.schema.json#/$defs/sha256"
+        }
+      }
+    }
+  }
+}

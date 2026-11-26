@@ -1,0 +1,330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "q01"
+  ],
+  "properties": {
+    "q01": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "commitment",
+          "principal"
+        ],
+        "properties": {
+          "commitment": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "principal": {
+            "$ref": "defs.schema.json#/$defs/nonempty"
+          }
+        }
+      }
+    },
+    "q02": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "work",
+          "state",
+          "generation",
+          "candidate"
+        ],
+        "properties": {
+          "work": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "assigned",
+              "submitted",
+              "closed",
+              "stale"
+            ]
+          },
+          "generation": {
+            "$ref": "defs.schema.json#/$defs/pos_int"
+          },
+          "candidate": {
+            "oneOf": [
+              {
+                "$ref": "defs.schema.json#/$defs/candidate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "q03": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "decision",
+          "state",
+          "support"
+        ],
+        "properties": {
+          "decision": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "state": {
+            "enum": [
+              "effective",
+              "reconsidering"
+            ]
+          },
+          "support": {
+            "type": "array",
+            "items": {
+              "$ref": "defs.schema.json#/$defs/id"
+            }
+          }
+        }
+      }
+    },
+    "q04": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "assumption",
+          "affected"
+        ],
+        "properties": {
+          "assumption": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "affected": {
+            "type": "array",
+            "items": {
+              "$ref": "defs.schema.json#/$defs/id"
+            }
+          }
+        }
+      }
+    },
+    "q05": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "grant",
+          "commitment",
+          "grantee",
+          "capability",
+          "resource",
+          "expires_at",
+          "state"
+        ],
+        "properties": {
+          "grant": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "commitment": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "grantee": {
+            "$ref": "defs.schema.json#/$defs/nonempty"
+          },
+          "capability": {
+            "const": "git.commit"
+          },
+          "resource": {
+            "$ref": "defs.schema.json#/$defs/branch"
+          },
+          "expires_at": {
+            "$ref": "defs.schema.json#/$defs/timestamp"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "expired",
+              "revoked"
+            ]
+          }
+        }
+      }
+    },
+    "q06": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "effect",
+          "attempt",
+          "state"
+        ],
+        "properties": {
+          "effect": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "attempt": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "state": {
+            "enum": [
+              "dispatching",
+              "pending"
+            ]
+          }
+        }
+      }
+    },
+    "q07": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "obligation",
+          "work",
+          "version",
+          "state",
+          "evidence"
+        ],
+        "properties": {
+          "obligation": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "work": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "version": {
+            "$ref": "defs.schema.json#/$defs/pos_int"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "passed",
+              "waived",
+              "failed",
+              "inconclusive",
+              "conflict"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "defs.schema.json#/$defs/id"
+            }
+          }
+        }
+      }
+    },
+    "q08": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "work",
+          "reasons"
+        ],
+        "properties": {
+          "work": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "$ref": "defs.schema.json#/$defs/reason"
+            }
+          }
+        }
+      }
+    },
+    "q09": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "commitment",
+          "root",
+          "missing"
+        ],
+        "properties": {
+          "commitment": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "root": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "$ref": "defs.schema.json#/$defs/reason"
+            }
+          }
+        }
+      }
+    },
+    "q10": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "subject"
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "assign",
+              "authorize_dispatch",
+              "evaluate_close",
+              "execute",
+              "observe",
+              "principal_accept",
+              "principal_approve",
+              "reconcile",
+              "reconsider",
+              "rework",
+              "verify"
+            ]
+          },
+          "subject": {
+            "$ref": "defs.schema.json#/$defs/any_id"
+          }
+        },
+        "if": {
+          "properties": {
+            "action": {
+              "const": "principal_approve"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "subject": {
+              "$ref": "defs.schema.json#/$defs/approval_id"
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "subject": {
+              "$ref": "defs.schema.json#/$defs/id"
+            }
+          }
+        }
+      }
+    }
+  }
+}
