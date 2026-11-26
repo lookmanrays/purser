@@ -38,6 +38,7 @@ func ParseProposal(_ []byte) (Proposal, error) { unimplemented(); return Proposa
 func RequestDigest(_ Binding, _ Proposal) (string, error) { unimplemented(); return "", nil }
 
 // ReadSet records what an operator read, so the gate can detect stale bases.
+// Collection reads (a set's insertions and deletions) arrive with P1-07.
 type ReadSet struct{}
 
 // Record records a dependency on an existing record.
@@ -45,9 +46,6 @@ func (r *ReadSet) Record(_ string) { unimplemented() }
 
 // Absent records a dependency on the non-existence of a record.
 func (r *ReadSet) Absent(_ string) { unimplemented() }
-
-// Collection records a dependency on a collection state.
-func (r *ReadSet) Collection(_ string) { unimplemented() }
 
 // ArtifactStore is the content-addressed byte store operators use to stage witness bytes.
 type ArtifactStore interface {
