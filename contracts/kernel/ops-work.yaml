@@ -44,17 +44,39 @@ interface:
 functions:
   - name: work.spec
     pre: ["binding role is principal or planner", "work exists in the envelope commitment and is not closed"]
-    post: ["validates spec against contracts/records WorkSpec schema", "emits WorkSpecSet {id, spec}; the reducer stores it as fields.spec"]
+    post:
+      - "validates spec in Go (kernel packages may not import internal/schema) by exactly the rules of contracts/records WorkSpec.schema.json: closed object; required kind, implements, tier, scope, reuse, tests, budget; kind in [feature, module, function, wiring, spike]; implements null or a string matching ^[A-Za-z][A-Za-z0-9_.-]*@v[0-9]+$; tier in [architect, lead, implementer, tool]; scope a closed object with required write and read, each an array of non-empty strings; reuse an array of non-empty strings; tests an array of valid IDs; budget a closed object with required diff_lines, files and attempts, each an integer >= 0"
+      - "emits WorkSpecSet, event version 1, with data exactly {id, spec}; the reducer stores spec as fields.spec on the WorkItem"
     errors: [invalid_op, forbidden, not_found, invalid_transition]
     examples:
-      - {given: {op: {op: "work.spec", id: "W-a", spec: {kind: function, implements: "billing.ApplyCredit@1", tier: implementer, scope: {write: ["internal/billing/credit.go"], read: []}, reuse: [], tests: ["O-a"], budget: {diff_lines: 120, files: 2, attempts: 3}}}}, then: {disposition: admitted}}
+      - {given: {op: {op: "work.spec", id: "W-a", spec: {kind: function, implements: "billing.ApplyCredit@v1", tier: implementer, scope: {write: ["internal/billing/credit.go"], read: []}, reuse: [], tests: ["O-a"], budget: {diff_lines: 120, files: 2, attempts: 3}}}}, then: {disposition: admitted}}
       - {given: {op: {op: "work.spec", id: "W-a", spec: {kind: "lambda"}}}, then: {code: invalid_op}}
   - name: run.open
-    post: ["freezes candidate, definition and environment identities from witness bytes"]
-    errors: [forbidden, digest_mismatch, invalid_op, invalid_transition]
+    post: ["takes no witness bytes: freezes observer, verifier, definition_sha256 and environment_sha256 from the obligation, with the result's fields, as workops.py does"]
+    errors: [forbidden, invalid_op, invalid_transition, not_found]
     examples:
       - {vector: "lifecycle-v1.json#evidence_bindings"}
       - {given: {binding: "observer is the result producer"}, then: {code: forbidden}}
+  - name: observation.record
+    pre: ["binding role observer with a Witness; the actor is the run's observer and not its producer, else forbidden"]
+    post:
+      - "Witness.Candidate equals the run's candidate and the SHA-256 of Witness.Definition and Witness.Environment equal the run's digests, else witness_mismatch with nothing stored"
+      - "stores Definition, Environment and Artifact in the artifact store, then emits ObservationRecorded with artifact_sha256"
+    errors: [forbidden, witness_mismatch, invalid_op, not_found]
+    examples:
+      - {vector: "lifecycle-v1.json#steps"}
+      - {given: {witness: "definition bytes whose SHA-256 differs from the run's"}, then: {code: witness_mismatch, artifacts_written: 0}}
+  - name: evidence.record
+    post: ["the named observation must witness the run, else witness_mismatch", "reads the observation artifact and the run's definition and environment through the artifact store, verifying each"]
+    errors: [forbidden, witness_mismatch, invalid_op, not_found]
+    examples:
+      - {vector: "lifecycle-v1.json#evidence_bindings"}
+  - name: obligation.set
+    post:
+      - "trusted verifier enrollment (role verifier with a Criterion): a new obligation at version 1 whose work and observer equal Criterion.Work and Criterion.Observer, and whose definition_sha256 and environment_sha256 equal the SHA-256 of the Criterion bytes, else forbidden (workops.check_enrollment); stores both byte fields"
+    errors: [forbidden, id_exists, invalid_op, invalid_transition, not_found]
+    examples:
+      - {vector: "golden test_work.test_immutable_verifier_enrollment_and_separate_producer_scope"}
   - name: work.assign
     post: ["advances generation; clears the previous result and candidate"]
     errors: [forbidden, not_found, invalid_transition]
@@ -62,7 +84,7 @@ functions:
       - {vector: "golden test_work.test_frontier_from_restart_and_assignment_attenuation"}
 invariants:
   - "every op records its reads in the ReadSet before deciding"
-  - "witness bytes larger than artifacts.MaxWitnessBytes are rejected before storage"
+  - "proof bytes over gate.MaxProofBytes fail authentication (unauthenticated, no receipt) before anything is stored"
   - "the result producer is never the observer or verifier of a run over that result"
   - "reducers are registered for every work event type in workevents.py"
 errors:
@@ -70,7 +92,8 @@ errors:
   forbidden: "role or separation-of-duty violation"
   not_found: "referenced record missing in scope"
   invalid_transition: "lifecycle does not allow the op"
-  digest_mismatch: "witness bytes do not match declared digests"
+  witness_mismatch: "the observer's witness does not match the run, or the observation does not witness the run"
+  id_exists: "the obligation ID names a record of another kind"
   closure_blocked: "P1-05: work.close on ineligible work, with typed reasons"
 non_goals:
   - "work.spec is stored, not enforced, until P3 and P4"
