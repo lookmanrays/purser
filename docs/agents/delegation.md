@@ -2,7 +2,7 @@
 
 A Codex builder may hand bounded tasks to Antigravity through its headless CLI (`agy -p`) and integrate the results. This is a small version of what Purser's worker adapters (P4-09) will do, so the log you keep is part of the result.
 
-The experiment runs on **P1-03 only**. Afterwards we keep, change or drop it.
+The experiment runs on **P1-03 and P1-04**. P1-03 produced no delegated code: the headless permission setup wasn't working yet. Its nine operators make P1-04 a better test. Afterwards we keep, change or drop it.
 
 ## Rules
 
