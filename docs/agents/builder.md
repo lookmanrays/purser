@@ -27,7 +27,15 @@ Work only inside that directory from now on.
 - Write only paths matching `scope.write`. Never edit a path matching `tests_frozen`, anything under `contracts/` or `reference/`, or another brief.
 - Replace every `zz_stub.go` with the real implementation (delete the stub file).
 - No module outside `deps_allowed`. Adding a listed module may change the root `go.mod` and `go.sum` (`go get <module>`, then `go mod tidy`); the scope check allows it whenever `deps_allowed` is non-empty, so this is not a scope conflict.
-- Stay within `budget.changed_lines` (tests, `go.mod`, `go.sum` and any paths listed under `budget.excluding` excluded). If you would exceed it, stop and propose a split.
+- Stay within `budget.changed_lines`. If you would exceed it, stop and propose a split. Count changed lines like this, adding one `':!<glob>'` for each path under the brief's `budget.excluding`:
+
+  ```bash
+  git diff origin/main...HEAD -- . ':!*_test.go' ':!**/testdata/**' ':!**/zz_stub.go' \
+    ':!go.mod' ':!go.sum' ':!docs/packages/<ID>.*' \
+    | grep -E '^[+-]' | grep -vE '^(\+\+\+|---) ' | grep -vcE '^[+-][[:space:]]*$'
+  ```
+
+  Report that number in the pull request.
 - Do not refactor, rename or improve anything the brief does not ask for.
 
 ## 4. Fidelity rules
