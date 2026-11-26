@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,95}$"},
+    "approval_id": {"type": "string", "pattern": "^a:[0-9a-f]{64}$"},
+    "any_id": {"type": "string", "pattern": "^([A-Za-z][A-Za-z0-9_.-]{0,95}|a:[0-9a-f]{64})$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonempty": {"type": "string", "pattern": "\\S"},
+    "min1": {"type": "string", "minLength": 1},
+    "timestamp": {"type": "string", "format": "purser-time"},
+    "int53": {"type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991},
+    "pos_int": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+    "nonneg_int": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "branch": {"type": "string", "format": "purser-branch"},
+    "git_path": {"type": "string", "format": "purser-git-path"},
+    "git_paths": {"type": "array", "items": {"$ref": "#/$defs/git_path"}, "uniqueItems": true},
+    "allowed_paths": {"type": "array", "items": {"$ref": "#/$defs/git_path"}, "minItems": 1, "uniqueItems": true},
+    "git_commit": {
+      "type": "object", "additionalProperties": false, "required": ["kind", "algorithm", "digest"],
+      "properties": {"kind": {"const": "git.commit"}, "algorithm": {"enum": ["sha1", "sha256"]}, "digest": {"type": "string"}},
+      "if": {"properties": {"algorithm": {"const": "sha1"}}},
+      "then": {"properties": {"digest": {"pattern": "^[0-9a-f]{40}$"}}},
+      "else": {"properties": {"digest": {"$ref": "#/$defs/sha256"}}}
+    },
+    "candidate": {
+      "type": "object", "additionalProperties": false, "required": ["kind", "algorithm", "digest"],
+      "properties": {"kind": {"enum": ["git.commit", "artifact.bytes"]}, "algorithm": {"type": "string"}, "digest": {"type": "string"}},
+      "if": {"properties": {"kind": {"const": "artifact.bytes"}}},
+      "then": {"properties": {"algorithm": {"const": "sha256"}, "digest": {"$ref": "#/$defs/sha256"}}},
+      "else": {
+        "properties": {"algorithm": {"enum": ["sha1", "sha256"]}},
+        "if": {"properties": {"algorithm": {"const": "sha1"}}},
+        "then": {"properties": {"digest": {"pattern": "^[0-9a-f]{40}$"}}},
+        "else": {"properties": {"digest": {"$ref": "#/$defs/sha256"}}}
+      }
+    },
+    "coverage": {
+      "type": "object", "additionalProperties": false, "required": ["kind", "k"],
+      "properties": {"kind": {"enum": ["all", "any", "k_of_n"]}, "k": {"type": ["integer", "null"]}},
+      "if": {"properties": {"kind": {"const": "k_of_n"}}},
+      "then": {"properties": {"k": {"$ref": "#/$defs/pos_int"}}},
+      "else": {"properties": {"k": {"type": "null"}}}
+    },
+    "read_version": {
+      "type": "object", "additionalProperties": false, "required": ["key", "changed"],
+      "properties": {"key": {"$ref": "#/$defs/id"}, "changed": {"$ref": "#/$defs/nonneg_int"}}
+    },
+    "reason": {
+      "type": "object", "additionalProperties": false, "required": ["code", "refs"],
+      "properties": {"code": {"$ref": "#/$defs/nonempty"}, "refs": {"type": "array", "items": {"$ref": "#/$defs/any_id"}}}
+    },
+    "edge": {
+      "type": "object", "additionalProperties": false, "required": ["kind", "from_id", "to_id", "changed"],
+      "properties": {"kind": {"enum": ["child_of", "depends_on"]}, "from_id": {"$ref": "#/$defs/id"}, "to_id": {"$ref": "#/$defs/id"}, "changed": {"$ref": "#/$defs/pos_int"}}
+    },
+    "intent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["repository", "commitment", "work", "generation", "assignment", "slot", "effect", "capability", "resource", "expected_old", "target", "purpose", "grant"],
+      "properties": {
+        "repository": {"$ref": "#/$defs/id"}, "commitment": {"$ref": "#/$defs/id"}, "work": {"$ref": "#/$defs/id"},
+        "generation": {"$ref": "#/$defs/pos_int"}, "assignment": {"$ref": "#/$defs/id"}, "slot": {"$ref": "#/$defs/id"},
+        "effect": {"$ref": "#/$defs/id"}, "capability": {"const": "git.commit"}, "resource": {"$ref": "#/$defs/branch"},
+        "expected_old": {"$ref": "#/$defs/git_commit"}, "target": {"$ref": "#/$defs/git_commit"},
+        "purpose": {"$ref": "#/$defs/nonempty"}, "grant": {"$ref": "#/$defs/id"}
+      }
+    },
+    "receipt_details": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "approval_id": {"$ref": "#/$defs/approval_id"},
+        "state": {"enum": ["approved", "denied", "expired", "stale", "ready", "superseded", "dispatching", "pending", "confirmed_happened", "confirmed_absent"]},
+        "effect": {"$ref": "#/$defs/id"}, "attempt": {"$ref": "#/$defs/id"}, "intent_digest": {"$ref": "#/$defs/sha256"},
+        "conflicts": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["key", "changed"], "properties": {"key": {"$ref": "#/$defs/min1"}, "changed": {"$ref": "#/$defs/pos_int"}}}},
+        "work": {"$ref": "#/$defs/id"}, "reasons": {"type": "array", "items": {"$ref": "#/$defs/reason"}}
+      },
+      "oneOf": [
+        {"maxProperties": 0},
+        {"required": ["approval_id"], "maxProperties": 1},
+        {"required": ["approval_id", "state"], "maxProperties": 2, "properties": {"state": {"enum": ["approved", "denied", "expired", "stale"]}}},
+        {"required": ["effect", "state"], "maxProperties": 2, "properties": {"state": {"enum": ["ready", "superseded", "dispatching", "pending", "confirmed_happened", "confirmed_absent"]}}},
+        {"required": ["effect", "attempt", "state"], "maxProperties": 3, "properties": {"state": {"enum": ["pending", "confirmed_happened", "confirmed_absent"]}}},
+        {"required": ["effect", "attempt", "intent_digest", "state"], "maxProperties": 4, "properties": {"state": {"const": "dispatching"}}},
+        {"required": ["conflicts"], "maxProperties": 1},
+        {"required": ["work", "reasons"], "maxProperties": 2}
+      ]
+    },
+    "receipt_data": {
+      "type": "object", "additionalProperties": false,
+      "required": ["actor_id", "proposal_id", "digest", "disposition", "code", "details"],
+      "properties": {
+        "actor_id": {"$ref": "#/$defs/min1"}, "proposal_id": {"$ref": "#/$defs/id"}, "digest": {"$ref": "#/$defs/sha256"},
+        "disposition": {"enum": ["admitted", "pending", "rejected"]}, "code": {"$ref": "#/$defs/nonempty"},
+        "details": {"$ref": "#/$defs/receipt_details"}
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decision", "opinion", "author"],
+  "properties": {
+    "decision": {"$ref": "defs.schema.json#/$defs/id"},
+    "opinion": {"$ref": "defs.schema.json#/$defs/nonempty"},
+    "author": {"$ref": "defs.schema.json#/$defs/nonempty"}
+  }
+}

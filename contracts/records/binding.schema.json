@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["actor_id", "role", "principal_id", "commitment", "assignment"],
+  "properties": {
+    "actor_id": {"$ref": "defs.schema.json#/$defs/min1"},
+    "role": {"$ref": "defs.schema.json#/$defs/min1"},
+    "principal_id": {"const": "principal:local"},
+    "commitment": {"oneOf": [{"$ref": "defs.schema.json#/$defs/id"}, {"type": "null"}]},
+    "assignment": {"oneOf": [{"$ref": "defs.schema.json#/$defs/id"}, {"type": "null"}]}
+  },
+  "if": {"properties": {"role": {"const": "principal"}}},
+  "then": {"properties": {"actor_id": {"const": "principal:local"}}},
+  "else": {"properties": {"actor_id": {"not": {"const": "principal:local"}}}}
+}

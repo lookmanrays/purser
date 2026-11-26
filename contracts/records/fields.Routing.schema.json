@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["work", "level", "tier", "model", "attempt", "reason"],
+  "properties": {
+    "work": {"$ref": "defs.schema.json#/$defs/id"},
+    "level": {"type": "integer", "minimum": 0, "maximum": 3},
+    "tier": {"$ref": "defs.schema.json#/$defs/nonempty"},
+    "model": {"$ref": "defs.schema.json#/$defs/nonempty"},
+    "attempt": {"$ref": "defs.schema.json#/$defs/pos_int"},
+    "reason": {"$ref": "defs.schema.json#/$defs/nonempty"}
+  }
+}

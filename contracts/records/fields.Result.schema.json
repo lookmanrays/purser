@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["work", "assignment", "generation", "producer", "candidate"],
+  "properties": {
+    "work": {"$ref": "defs.schema.json#/$defs/id"},
+    "assignment": {"$ref": "defs.schema.json#/$defs/id"},
+    "generation": {"$ref": "defs.schema.json#/$defs/pos_int"},
+    "producer": {"$ref": "defs.schema.json#/$defs/nonempty"},
+    "candidate": {"$ref": "defs.schema.json#/$defs/candidate"}
+  }
+}

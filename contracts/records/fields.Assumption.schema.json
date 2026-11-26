@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["statement", "observer", "state", "causes", "affected"],
+  "properties": {
+    "statement": {"$ref": "defs.schema.json#/$defs/nonempty"},
+    "observer": {"$ref": "defs.schema.json#/$defs/nonempty"},
+    "state": {"enum": ["held", "invalidated"]},
+    "causes": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/id"}},
+    "affected": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/id"}},
+    "impact_edges": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["kind", "from_id", "to_id"], "properties": {"kind": {"const": "depends_on"}, "from_id": {"$ref": "defs.schema.json#/$defs/id"}, "to_id": {"$ref": "defs.schema.json#/$defs/id"}}}}
+  }
+}

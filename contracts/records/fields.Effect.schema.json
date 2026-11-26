@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["work", "slot", "state"],
+  "properties": {
+    "work": {"$ref": "defs.schema.json#/$defs/id"},
+    "slot": {"$ref": "defs.schema.json#/$defs/id"},
+    "state": {"enum": ["required", "ready", "superseded", "dispatching", "pending", "confirmed_happened", "confirmed_absent"]},
+    "intent": {"$ref": "defs.schema.json#/$defs/intent"},
+    "intent_digest": {"$ref": "defs.schema.json#/$defs/sha256"},
+    "repository_instance": {"$ref": "defs.schema.json#/$defs/sha256"},
+    "changed_paths": {"$ref": "defs.schema.json#/$defs/git_paths"},
+    "superseded_by": {"$ref": "defs.schema.json#/$defs/id"},
+    "attempt": {"$ref": "defs.schema.json#/$defs/id"},
+    "observation": {"oneOf": [{"$ref": "defs.schema.json#/$defs/id"}, {"type": "null"}]},
+    "reason": {"$ref": "defs.schema.json#/$defs/nonempty"}
+  },
+  "allOf": [
+    {"if": {"properties": {"state": {"const": "required"}}}, "then": {"maxProperties": 3}},
+    {"if": {"properties": {"state": {"enum": ["ready", "superseded", "dispatching", "pending", "confirmed_happened", "confirmed_absent"]}}}, "then": {"required": ["intent", "intent_digest", "repository_instance", "changed_paths"]}},
+    {"if": {"properties": {"state": {"const": "superseded"}}}, "then": {"required": ["superseded_by"]}},
+    {"if": {"properties": {"state": {"const": "dispatching"}}}, "then": {"required": ["attempt", "observation"], "properties": {"observation": {"type": "null"}}}},
+    {"if": {"properties": {"state": {"enum": ["pending", "confirmed_happened", "confirmed_absent"]}}}, "then": {"required": ["attempt", "observation", "reason"], "properties": {"observation": {"$ref": "defs.schema.json#/$defs/id"}}}}
+  ]
+}

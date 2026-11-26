@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["choice", "alternatives", "rationale", "support", "triggers", "supersedes", "state", "effective_revision", "causes"],
+  "properties": {
+    "choice": {"$ref": "defs.schema.json#/$defs/nonempty"},
+    "alternatives": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/nonempty"}, "uniqueItems": true},
+    "rationale": {"$ref": "defs.schema.json#/$defs/nonempty"},
+    "support": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/id"}, "uniqueItems": true},
+    "triggers": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/id"}, "uniqueItems": true},
+    "supersedes": {"oneOf": [{"$ref": "defs.schema.json#/$defs/id"}, {"type": "null"}]},
+    "superseded_by": {"$ref": "defs.schema.json#/$defs/id"},
+    "state": {"enum": ["effective", "reconsidering", "superseded"]},
+    "effective_revision": {"$ref": "defs.schema.json#/$defs/pos_int"},
+    "causes": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/id"}}
+  }
+}

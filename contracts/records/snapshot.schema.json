@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["revision", "head_hash", "projection"],
+  "properties": {
+    "revision": {"$ref": "defs.schema.json#/$defs/nonneg_int"},
+    "head_hash": {"$ref": "defs.schema.json#/$defs/sha256"},
+    "projection": {
+      "type": "object", "additionalProperties": false, "required": ["records", "receipts", "edges"],
+      "properties": {
+        "records": {"type": "array", "items": {"$ref": "record.schema.json"}},
+        "receipts": {"type": "array", "items": {"$ref": "receipt.schema.json"}},
+        "edges": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/edge"}}
+      }
+    }
+  }
+}
