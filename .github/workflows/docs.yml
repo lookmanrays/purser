@@ -1,0 +1,32 @@
+name: Docs
+
+# Runs instead of CI and Conformance Vectors when a pull request changes only
+# Markdown or docs/, and alongside them when it changes both.
+on:
+  pull_request:
+    paths: ["**/*.md", "docs/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  briefs:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - name: Install PyYAML
+        run: python3 -m pip install PyYAML
+      - name: Check briefs and contracts
+        run: python3 -I tools/check_briefs.py --index
+      - name: Check that the brief index is current
+        run: git diff --exit-code docs/packages/README.md
+      - name: Check package briefs
+        run: make briefcheck

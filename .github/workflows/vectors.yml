@@ -1,6 +1,9 @@
 name: Conformance Vectors
 
-on: pull_request
+on:
+  pull_request:
+    # Docs-only pull requests run docs.yml instead.
+    paths-ignore: ["**/*.md", "docs/**"]
 
 permissions:
   contents: read
