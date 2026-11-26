@@ -44,6 +44,7 @@ interface:
     func (s *Store) Transact(actorID, proposalID string, clock Clock, decide Decide) (Snapshot, []codec.Event, error)
     func (s *Store) Events(from, to int64) ([]codec.Event, error)
     func (s *Store) RawEvents(from, to int64) ([][]byte, error)
+    func (s *Store) Registry() *projection.Registry // P1-03
 
     // P1-02c
     type TrustedHead struct {
@@ -92,8 +93,16 @@ functions:
     errors: [integrity_error, unsupported_version, unavailable]
     examples:
       - {vector: "wire-v1.json#legacy: replay gives expected_projection_hash and expected_head_hash"}
+  - name: Registry
+    post:
+      - "returns the registry Open received, or the projection.Base() registry Open used when Options.Registry was nil"
+      - "the gate evaluates tentative batches with it, so tentative and committed transitions use the same reducers (kernel-v1.md, shared semantics)"
+    examples:
+      - {given: {open_with: "nil registry"}, then: {registry_knows: "CommitmentCreated v1", same_pointer_on_every_call: true}}
+      - {given: {open_with: "projection.Base() plus FixtureMarked v1"}, then: {registry_knows: "FixtureMarked v1"}}
 invariants:
   - "events are stored as their exact canonical bytes and never rewritten"
+  - "every reducer is registered before Open; afterwards the store, the gate and operators only read the registry"
   - "the head is always a complete batch"
   - "the materialized projection equals the fold of all events (P1-02b property test)"
   - "SQLite runs in WAL mode with synchronous=FULL"
